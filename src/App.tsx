@@ -1,0 +1,755 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  ReportProject, 
+  SnippetCard, 
+  CardType, 
+  MetricInput, 
+  ImageAssetInput 
+} from './types/report';
+import { 
+  createSampleProject, 
+  SAMPLE_SOURCE_TEXT, 
+  SAMPLE_MESSY_SOURCE_TEXT,
+  SAMPLE_METRICS, 
+  SAMPLE_IMAGES,
+  WEEK_40_BASELINE_SNAPSHOT
+} from './lib/sampleData';
+import { generateSnippetCards } from './lib/parsing/deterministicParser';
+import { saveLocalDraft, loadLocalDraft, clearLocalDraft } from './lib/persistence/localDraft';
+import { calculateExecutiveScore, applyQuickFixToProject } from './lib/analysis/executiveScore';
+import { compareReportSnapshots, DiffReport } from './lib/analysis/snapshotDiff';
+import { copyToClipboard } from './lib/export/clipboard';
+import { formatCardToMarkdown } from './lib/export/markdownExport';
+import { formatCardToHtml } from './lib/export/htmlExport';
+
+import { Header } from './components/layout/Header';
+import { InputPanel } from './components/input/InputPanel';
+import { ReportCanvas } from './components/composition/ReportCanvas';
+import { CardInspector } from './components/composition/CardInspector';
+import { ExportModal, MessageToolId } from './components/export/ExportModal';
+import { SnapshotComparisonModal } from './components/composition/SnapshotComparisonModal';
+import { GuidedTour, TourStep } from './components/guided-demo/GuidedTour';
+import { ShortcutsModal } from './components/common/ShortcutsModal';
+import { Toast, ToastMessage } from './components/common/Toast';
+import { FileText, Eye, SlidersHorizontal } from 'lucide-react';
+
+export default function App() {
+  // 1. Initialize project from local storage or sample data
+  const [project, setProject] = useState<ReportProject>(() => {
+    const saved = loadLocalDraft();
+    if (saved && saved.cards && saved.cards.length > 0) {
+      return saved;
+    }
+    return createSampleProject();
+  });
+
+  // 2. Undo stack (stores previous snapshots of cards)
+  const [historyStack, setHistoryStack] = useState<SnippetCard[][]>([]);
+
+  // 3. Baseline snapshot for What's Changed diff
+  const [baselineCards, setBaselineCards] = useState<SnippetCard[]>(() => {
+    return WEEK_40_BASELINE_SNAPSHOT;
+  });
+
+  // 4. UI interaction states
+  const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
+  const [inspectedCardId, setInspectedCardId] = useState<string | null>(() => {
+    return project.cards[0]?.id || null;
+  });
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [exportInitialMode, setExportInitialMode] = useState<'formats' | 'tools'>('formats');
+  const [exportInitialTool, setExportInitialTool] = useState<MessageToolId>('email');
+  const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
+  const [isGuidedTourOpen, setIsGuidedTourOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [tourStepIndex, setTourStepIndex] = useState(0);
+
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [highlightPassage, setHighlightPassage] = useState<{ start?: number; end?: number; text?: string } | null>(null);
+
+  // 5. Mobile workspace area view
+  const [mobileArea, setMobileArea] = useState<'input' | 'canvas' | 'inspector'>('canvas');
+
+  // Push toast helper
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const newToast: ToastMessage = {
+      id: `toast-${Date.now()}-${Math.random()}`,
+      type,
+      message,
+    };
+    setToasts((prev) => [...prev, newToast]);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // Save draft locally whenever project changes (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveLocalDraft(project);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [project]);
+
+  // Record undo state before destructive operations
+  const recordHistory = useCallback(() => {
+    setHistoryStack((prev) => [...prev.slice(-15), project.cards]);
+  }, [project.cards]);
+
+  // Undo function
+  const handleUndo = useCallback(() => {
+    if (historyStack.length === 0) return;
+    const previousCards = historyStack[historyStack.length - 1];
+    setHistoryStack((prev) => prev.slice(0, -1));
+    setProject((prev) => ({
+      ...prev,
+      cards: previousCards,
+      isDirty: true,
+      lastSavedAt: new Date().toISOString(),
+    }));
+    addToast('Reverted most recent action', 'info');
+  }, [historyStack, addToast]);
+
+  // Generate cards via deterministic parser
+  const handleGenerateReport = useCallback(() => {
+    recordHistory();
+    const generatedCards = generateSnippetCards(
+      project.rawNotes,
+      project.metrics,
+      project.images,
+      project.title
+    );
+
+    setProject((prev) => ({
+      ...prev,
+      cards: generatedCards,
+      isDirty: true,
+      lastSavedAt: new Date().toISOString(),
+    }));
+
+    if (generatedCards.length > 0) {
+      setInspectedCardId(generatedCards[0].id);
+      if (generatedCards[0].sourceRef) {
+        setHighlightPassage({ text: generatedCards[0].sourceRef.passageText });
+      }
+    }
+    setMobileArea('canvas');
+    addToast(`Generated ${generatedCards.length} verified snippet cards`, 'success');
+  }, [project.rawNotes, project.metrics, project.images, project.title, recordHistory, addToast]);
+
+  // Keyboard shortcut listener (Cmd+Z, Cmd+E, Cmd+Enter, ?)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in text inputs
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (historyStack.length > 0) {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        setIsExportOpen(true);
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleGenerateReport();
+      } else if (e.key === '?' && !isInput) {
+        e.preventDefault();
+        setIsShortcutsOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [historyStack, handleUndo, handleGenerateReport]);
+
+  // Handlers for inputs
+  const handleNotesChange = (rawNotes: string) => {
+    setProject((prev) => ({ ...prev, rawNotes, isDirty: true }));
+  };
+
+  const handleMetricsChange = (metrics: MetricInput[]) => {
+    setProject((prev) => ({ ...prev, metrics, isDirty: true }));
+  };
+
+  const handleImagesChange = (images: ImageAssetInput[]) => {
+    setProject((prev) => ({ ...prev, images, isDirty: true }));
+  };
+
+  // Load sample project
+  const handleLoadSample = (useMessy: boolean = false) => {
+    recordHistory();
+    const sample = createSampleProject(useMessy);
+    setProject(sample);
+    setSelectedCardIds(new Set());
+    if (sample.cards.length > 0) {
+      setInspectedCardId(sample.cards[0].id);
+    }
+    addToast(useMessy ? 'Loaded messy standup sample' : 'Loaded Customer Portal sample project', 'success');
+  };
+
+  // Reset project
+  const handleReset = () => {
+    recordHistory();
+    clearLocalDraft();
+    setProject({
+      id: `proj-${Date.now()}`,
+      title: 'New Project Status Report',
+      reportingPeriod: '',
+      rawNotes: '',
+      metrics: [],
+      images: [],
+      cards: [],
+      lastSavedAt: new Date().toISOString(),
+      isDirty: false,
+    });
+    setSelectedCardIds(new Set());
+    setInspectedCardId(null);
+    setHighlightPassage(null);
+    addToast('Cleared project draft', 'info');
+  };
+
+  // Quick fix application for Executive-Ready Score
+  const handleApplyQuickFix = (checkId: string) => {
+    recordHistory();
+    const updated = applyQuickFixToProject(project, checkId);
+    setProject(updated);
+    addToast('Applied standard quick-fix', 'success');
+  };
+
+  // Fix all outstanding checks in one click
+  const handleApplyAllFixes = () => {
+    recordHistory();
+    let current = { ...project };
+    const score = calculateExecutiveScore(current);
+    score.items.forEach((item) => {
+      if (item.status !== 'pass') {
+        current = applyQuickFixToProject(current, item.id);
+      }
+    });
+    setProject(current);
+    addToast('All diagnostic readiness checks resolved!', 'success');
+  };
+
+  // Card modifications
+  const handleUpdateCard = (updated: SnippetCard) => {
+    setProject((prev) => ({
+      ...prev,
+      cards: prev.cards.map((c) => (c.id === updated.id ? updated : c)),
+      isDirty: true,
+    }));
+  };
+
+  const handleDeleteCard = (id: string) => {
+    recordHistory();
+    setProject((prev) => ({
+      ...prev,
+      cards: prev.cards.filter((c) => c.id !== id),
+      isDirty: true,
+    }));
+    setSelectedCardIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    if (inspectedCardId === id) {
+      const remaining = project.cards.filter((c) => c.id !== id);
+      setInspectedCardId(remaining[0]?.id || null);
+    }
+    addToast('Card removed', 'info');
+  };
+
+  const handleDeleteSelectedCards = () => {
+    if (selectedCardIds.size === 0) return;
+    recordHistory();
+    setProject((prev) => ({
+      ...prev,
+      cards: prev.cards.filter((c) => !selectedCardIds.has(c.id)),
+      isDirty: true,
+    }));
+    setSelectedCardIds(new Set());
+    setInspectedCardId(null);
+    addToast(`Deleted ${selectedCardIds.size} cards`, 'info');
+  };
+
+  const handleDuplicateCard = (id: string) => {
+    const target = project.cards.find((c) => c.id === id);
+    if (!target) return;
+    recordHistory();
+    const duplicated: SnippetCard = {
+      ...target,
+      id: `card-copy-${Date.now()}`,
+      title: `${target.title} (Copy)`,
+      updatedAt: new Date().toISOString(),
+    };
+    const targetIdx = project.cards.findIndex((c) => c.id === id);
+    const newCards = [...project.cards];
+    newCards.splice(targetIdx + 1, 0, duplicated);
+
+    setProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
+    setInspectedCardId(duplicated.id);
+    addToast('Duplicated card', 'success');
+  };
+
+  const handleMoveCard = (id: string, direction: 'up' | 'down') => {
+    const idx = project.cards.findIndex((c) => c.id === id);
+    if (idx === -1) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === project.cards.length - 1) return;
+
+    const newCards = [...project.cards];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const temp = newCards[idx];
+    newCards[idx] = newCards[targetIdx];
+    newCards[targetIdx] = temp;
+
+    setProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
+  };
+
+  const handleAddCard = (type: CardType) => {
+    recordHistory();
+    const now = new Date().toISOString();
+    let newCard: SnippetCard;
+
+    switch (type) {
+      case 'executive_summary':
+        newCard = {
+          id: `card-exec-${Date.now()}`,
+          type: 'executive_summary',
+          title: 'Executive Summary',
+          summary: 'High-level synthesis of current sprint achievements and milestones.',
+          keyAccomplishments: ['Core features ready for review'],
+          createdAt: now,
+          updatedAt: now,
+        };
+        break;
+      case 'kpi_metric':
+        newCard = {
+          id: `card-metric-${Date.now()}`,
+          type: 'kpi_metric',
+          title: 'Sprint Velocity',
+          label: 'Sprint Velocity',
+          value: 90,
+          unit: '%',
+          target: 100,
+          createdAt: now,
+          updatedAt: now,
+        };
+        break;
+      case 'risk_blocker':
+        newCard = {
+          id: `card-risk-${Date.now()}`,
+          type: 'risk_blocker',
+          title: 'Potential Schedule Delay',
+          description: 'Awaiting dependency validation from partner team.',
+          severity: 'medium',
+          isBlocker: false,
+          mitigation: 'Daily standup checkpoint scheduled with engineering lead.',
+          createdAt: now,
+          updatedAt: now,
+        };
+        break;
+      case 'next_steps':
+        newCard = {
+          id: `card-nextsteps-${Date.now()}`,
+          type: 'next_steps',
+          title: 'Upcoming Sprint Commitments',
+          items: [
+            {
+              id: `step-${Date.now()}-1`,
+              action: 'Complete staging environment regression tests',
+              status: 'planned',
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        };
+        break;
+      case 'milestone':
+        newCard = {
+          id: `card-milestone-${Date.now()}`,
+          type: 'milestone',
+          title: 'API Integration Complete',
+          description: 'Endpoints verified and ready for end-to-end integration.',
+          status: 'on_track',
+          dueDate: '16 October 2026',
+          createdAt: now,
+          updatedAt: now,
+        };
+        break;
+      case 'visual_update':
+        newCard = {
+          id: `card-visual-${Date.now()}`,
+          type: 'visual_update',
+          title: 'UI Preview Asset',
+          imageUrl: project.images[0]?.dataUrl || '',
+          altText: 'UI preview asset mockup',
+          caption: 'User interface candidate build',
+          createdAt: now,
+          updatedAt: now,
+        };
+        break;
+    }
+
+    setProject((prev) => ({ ...prev, cards: [...prev.cards, newCard], isDirty: true }));
+    setInspectedCardId(newCard.id);
+    addToast(`Added new ${newCard.type.replace('_', ' ')} card`, 'success');
+  };
+
+  // Card selection
+  const handleToggleSelectCard = (id: string) => {
+    setSelectedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllCards = () => {
+    setSelectedCardIds(new Set(project.cards.map((c) => c.id)));
+  };
+
+  const handleDeselectAllCards = () => {
+    setSelectedCardIds(new Set());
+  };
+
+  // Single card copy
+  const handleCopyCard = async (card: SnippetCard) => {
+    const md = formatCardToMarkdown(card);
+    const html = formatCardToHtml(card);
+    const res = await copyToClipboard(md, html);
+    if (res.success) {
+      addToast(`Copied "${card.title}" to clipboard!`, 'success');
+    } else {
+      addToast('Failed to copy card', 'error');
+    }
+  };
+
+  // Copy selected cards
+  const handleCopySelectedCards = async () => {
+    const selected = project.cards.filter((c) => selectedCardIds.has(c.id));
+    if (selected.length === 0) return;
+    const md = selected.map(formatCardToMarkdown).join('\n\n---\n\n');
+    const html = selected.map(formatCardToHtml).join('<br/>');
+    const res = await copyToClipboard(md, html);
+    if (res.success) {
+      addToast(`Copied ${selected.length} selected cards!`, 'success');
+    } else {
+      addToast('Failed to copy cards', 'error');
+    }
+  };
+
+  // Computed analysis
+  const readinessScore = calculateExecutiveScore(project);
+  const snapshotDiff = compareReportSnapshots(baselineCards, project.cards);
+  const activeCard = project.cards.find((c) => c.id === inspectedCardId) || null;
+
+  // Guided Tour 5-Step Configuration
+  const tourSteps: TourStep[] = [
+    {
+      title: '1. Ingest Messy, Unstructured Notes',
+      badge: 'Input Ingestion',
+      summary: 'Demonstrates handling conversational, informal sprint updates with run-on bullets and unconfirmed dates without hallucinating.',
+      actionLabel: 'Load Messy Notes',
+      onExecute: () => {
+        handleLoadSample(true);
+        setMobileArea('input');
+        setTourStepIndex(1);
+      },
+    },
+    {
+      title: '2. Magic Transform with Source Traceability',
+      badge: 'Deterministic Extraction',
+      summary: 'Transforms raw updates into typed Snippet Cards. Click any card to inspect the exact underlying sentence with truth-preserving confidence.',
+      actionLabel: 'Synthesize & Inspect',
+      onExecute: () => {
+        handleGenerateReport();
+        const blocker = project.cards.find(c => c.type === 'risk_blocker');
+        if (blocker) {
+          setInspectedCardId(blocker.id);
+          if (blocker.sourceRef) {
+            setHighlightPassage({ text: blocker.sourceRef.passageText });
+          }
+        }
+        setMobileArea('canvas');
+        setTourStepIndex(2);
+      },
+    },
+    {
+      title: '3. Executive-Ready Diagnostic Score',
+      badge: 'Readiness Audit',
+      summary: 'Transparent 6-point checklist auditing missing context, unstated dates, missing KPI targets, and WCAG image alt text with 1-click quick-fixes.',
+      actionLabel: 'Audit & Quick-Fix',
+      onExecute: () => {
+        setMobileArea('inspector');
+        handleApplyAllFixes();
+        setTourStepIndex(3);
+      },
+    },
+    {
+      title: '4. What\'s Changed? (Snapshot Diff)',
+      badge: 'Comparator',
+      summary: 'Compare Week 40 baseline vs Week 41 current state: surfaces metric shifts (completion +15%, defects -2), resolved blockers, and new milestones.',
+      actionLabel: 'Open Snapshot Diff',
+      onExecute: () => {
+        setIsSnapshotModalOpen(true);
+        setTourStepIndex(4);
+      },
+    },
+    {
+      title: '5. Destination-Aware Presentation Export',
+      badge: 'Destination Export',
+      summary: 'Formats the single source of truth into Outlook/Gmail tables, Slack mrkdwn, Teams, or formal Weekly Memo with rich clipboard copy and PDF print.',
+      actionLabel: 'Preview Formats',
+      onExecute: () => {
+        setIsSnapshotModalOpen(false);
+        setExportInitialMode('formats');
+        setIsExportOpen(true);
+        setTourStepIndex(5);
+      },
+    },
+    {
+      title: '6. Live Message Tool Integration & Audit Trail',
+      badge: 'Tool Integration',
+      summary: 'Directly deliver reports into Slack, Microsoft Teams, Google Chat, Discord, or Email with live webhooks, payload inspectors, and persistent audit logs.',
+      actionLabel: 'Open Message Dispatcher',
+      onExecute: () => {
+        setIsSnapshotModalOpen(false);
+        setExportInitialMode('tools');
+        setExportInitialTool('slack');
+        setIsExportOpen(true);
+        setIsGuidedTourOpen(false);
+      },
+    },
+  ];
+
+  const handleOpenExport = useCallback(() => {
+    setExportInitialMode('formats');
+    setIsExportOpen(true);
+  }, []);
+
+  const handleOpenMessageTools = useCallback((tool: MessageToolId = 'email') => {
+    setExportInitialMode('tools');
+    setExportInitialTool(tool);
+    setIsExportOpen(true);
+  }, []);
+
+  const handleOpenMessageToolsForSelected = useCallback(() => {
+    setExportInitialMode('tools');
+    setExportInitialTool('slack');
+    setIsExportOpen(true);
+  }, []);
+
+  const handleShareCard = useCallback((card: SnippetCard) => {
+    setSelectedCardIds(new Set([card.id]));
+    setExportInitialMode('tools');
+    setExportInitialTool('slack');
+    setIsExportOpen(true);
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#F5F5F7] text-[#1F1F1F]">
+      {/* 1. Universal Apple-Inspired Header */}
+      <Header
+        isDirty={project.isDirty}
+        lastSavedAt={project.lastSavedAt}
+        canUndo={historyStack.length > 0}
+        onUndo={handleUndo}
+        onLoadSample={() => handleLoadSample(false)}
+        onOpenExport={handleOpenExport}
+        onOpenMessageTools={() => handleOpenMessageTools('email')}
+        onPrint={() => window.print()}
+        onReset={handleReset}
+        onOpenGuidedTour={() => {
+          setIsGuidedTourOpen(true);
+          setTourStepIndex(0);
+        }}
+        onOpenSnapshotDiff={() => setIsSnapshotModalOpen(true)}
+        onOpenShortcuts={() => setIsShortcutsOpen(true)}
+      />
+
+      {/* 2. Mobile Area Switcher */}
+      <div className="lg:hidden flex items-center justify-center p-2 bg-[#F5F5F7] border-b border-black/[0.06] no-print">
+        <div className="flex items-center p-0.5 bg-black/[0.05] rounded-full text-xs font-medium w-full max-w-sm">
+          <button
+            type="button"
+            onClick={() => setMobileArea('input')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
+              mobileArea === 'input' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Inputs</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileArea('canvas')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
+              mobileArea === 'canvas' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Report ({project.cards.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileArea('inspector')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
+              mobileArea === 'inspector' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Inspect</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Three-Area Workspace (Desktop: 3 columns, Mobile: selected area) */}
+      <main className="flex-1 flex overflow-hidden">
+        {/* AREA 1: INPUT PANEL */}
+        <section
+          aria-label="Source Inputs"
+          className={`w-full lg:w-[320px] xl:w-[360px] h-[calc(100vh-3.5rem)] shrink-0 ${
+            mobileArea === 'input' ? 'block' : 'hidden lg:block'
+          } no-print`}
+        >
+          <InputPanel
+            rawNotes={project.rawNotes}
+            metrics={project.metrics}
+            images={project.images}
+            onNotesChange={handleNotesChange}
+            onMetricsChange={handleMetricsChange}
+            onImagesChange={handleImagesChange}
+            onGenerateReport={handleGenerateReport}
+            highlightPassage={highlightPassage}
+          />
+        </section>
+
+        {/* AREA 2: REPORT COMPOSITION & PREVIEW */}
+        <section
+          aria-label="Report Composition and Preview"
+          className={`flex-1 h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden bg-[#F5F5F7] ${
+            mobileArea === 'canvas' ? 'block' : 'hidden lg:flex'
+          }`}
+        >
+          <ReportCanvas
+            title={project.title}
+            reportingPeriod={project.reportingPeriod}
+            cards={project.cards}
+            selectedCardIds={selectedCardIds}
+            inspectedCardId={inspectedCardId}
+            onUpdateTitle={(title) => setProject((prev) => ({ ...prev, title, isDirty: true }))}
+            onUpdatePeriod={(reportingPeriod) =>
+              setProject((prev) => ({ ...prev, reportingPeriod, isDirty: true }))
+            }
+            onToggleSelectCard={handleToggleSelectCard}
+            onSelectAllCards={handleSelectAllCards}
+            onDeselectAllCards={handleDeselectAllCards}
+            onInspectCard={(id) => {
+              setInspectedCardId(id);
+              const card = project.cards.find(c => c.id === id);
+              if (card?.sourceRef) {
+                setHighlightPassage({ text: card.sourceRef.passageText });
+              }
+              if (window.innerWidth < 1024) {
+                setMobileArea('inspector');
+              }
+            }}
+            onMoveCard={handleMoveCard}
+            onDuplicateCard={handleDuplicateCard}
+            onDeleteCard={handleDeleteCard}
+            onDeleteSelectedCards={handleDeleteSelectedCards}
+            onCopyCard={handleCopyCard}
+            onCopySelectedCards={handleCopySelectedCards}
+            onOpenMessageToolsForSelected={handleOpenMessageToolsForSelected}
+            onShareCard={handleShareCard}
+            onUpdateCard={handleUpdateCard}
+            onAddCard={handleAddCard}
+          />
+        </section>
+
+        {/* AREA 3: CONTEXTUAL CARD INSPECTOR & SETTINGS */}
+        <section
+          aria-label="Card Inspector and Executive Diagnostics"
+          className={`w-full lg:w-[340px] xl:w-[380px] h-[calc(100vh-3.5rem)] shrink-0 ${
+            mobileArea === 'inspector' ? 'block' : 'hidden lg:block'
+          } no-print`}
+        >
+          <CardInspector
+            activeCard={activeCard}
+            onUpdateCard={handleUpdateCard}
+            onDeleteCard={handleDeleteCard}
+            onDuplicateCard={handleDuplicateCard}
+            readinessScore={readinessScore}
+            onFixReadinessItem={(cardId) => {
+              if (cardId) setInspectedCardId(cardId);
+            }}
+            onApplyQuickFix={handleApplyQuickFix}
+            onApplyAllFixes={handleApplyAllFixes}
+            snapshotDiff={snapshotDiff}
+            onHighlightSource={(text) => {
+              setHighlightPassage(text ? { text } : null);
+              if (window.innerWidth < 1024) {
+                setMobileArea('input');
+              }
+            }}
+            onOpenSnapshotModal={() => setIsSnapshotModalOpen(true)}
+          />
+        </section>
+      </main>
+
+      {/* 4. Guided Tour Controller */}
+      <GuidedTour
+        currentStepIndex={tourStepIndex}
+        isOpen={isGuidedTourOpen}
+        onClose={() => setIsGuidedTourOpen(false)}
+        onNext={() => setTourStepIndex((prev) => Math.min(prev + 1, tourSteps.length - 1))}
+        onPrev={() => setTourStepIndex((prev) => Math.max(prev - 1, 0))}
+        onJumpToStep={(idx) => setTourStepIndex(idx)}
+        steps={tourSteps}
+      />
+
+      {/* 5. Keyboard Shortcuts Cheat-Sheet Modal */}
+      <ShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+      />
+
+      {/* 6. Snapshot Diff Modal ("What's Changed?") */}
+      <SnapshotComparisonModal
+        currentCards={project.cards}
+        initialCards={baselineCards}
+        isOpen={isSnapshotModalOpen}
+        onClose={() => setIsSnapshotModalOpen(false)}
+        onNotify={addToast}
+      />
+
+      {/* 7. Destination-Aware Export & Message Tools Modal */}
+      <ExportModal
+        project={project}
+        selectedCards={project.cards.filter((c) => selectedCardIds.has(c.id))}
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        onNotify={addToast}
+        initialMode={exportInitialMode}
+        initialTool={exportInitialTool}
+      />
+
+      {/* 8. Toast Feedback */}
+      <Toast toasts={toasts} onDismiss={dismissToast} />
+    </div>
+  );
+}

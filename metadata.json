@@ -1,0 +1,6 @@
+{
+  "name": "Project Reporting Builder",
+  "description": "Transform project updates, numeric metrics, and visual assets into modular, polished executive Snippet Cards for email, messaging, and project reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
