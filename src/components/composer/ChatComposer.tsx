@@ -17,9 +17,11 @@ import {
   ChartPie,
   TrendingUp,
   Hash,
+  StickyNote,
+  FileText,
 } from 'lucide-react';
 import { MetricInput, ImageAssetInput, MetricChartStyle } from '../../types/report';
-import { CHART_STYLE_OPTIONS } from '../cards/MetricChart';
+import { MetricChart, CHART_STYLE_OPTIONS } from '../cards/MetricChart';
 
 const ChartStyleIcon: React.FC<{ id: MetricChartStyle; className?: string }> = ({ id, className }) => {
   const Icon = id === 'bar' ? ChartColumn : id === 'donut' ? ChartPie : id === 'trend' ? TrendingUp : Hash;
@@ -47,6 +49,7 @@ const ChartStyleIconButton: React.FC<{
 );
 
 interface Props {
+  projectId: string;
   rawNotes: string;
   metrics: MetricInput[];
   images: ImageAssetInput[];
@@ -54,7 +57,9 @@ interface Props {
   onNotesChange: (notes: string) => void;
   onMetricsChange: (metrics: MetricInput[]) => void;
   onImagesChange: (images: ImageAssetInput[]) => void;
-  onGenerateReport: () => void;
+  onImagesAppend: (images: ImageAssetInput[]) => void;
+  hasCards: boolean;
+  onGenerateReport: (notes?: string) => void;
   onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -62,6 +67,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 
 export const ChatComposer: React.FC<Props> = ({
+  projectId,
   rawNotes,
   metrics,
   images,
@@ -69,10 +75,18 @@ export const ChatComposer: React.FC<Props> = ({
   onNotesChange,
   onMetricsChange,
   onImagesChange,
+  onImagesAppend,
+  hasCards,
   onGenerateReport,
   onNotify,
 }) => {
   const [showMetrics, setShowMetrics] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [showSources, setShowSources] = useState(false);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    try { setDraft(sessionStorage.getItem(`reporting-composer:${projectId}`) ?? ''); } catch { /* keep editing in memory */ }
+  }, [projectId]);
   const [newMetricStyle, setNewMetricStyle] = useState<MetricChartStyle>('bar');
   const [showAttach, setShowAttach] = useState(false);
   const [showMetricForms, setShowMetricForms] = useState(false);
@@ -81,7 +95,11 @@ export const ChatComposer: React.FC<Props> = ({
   const [metricValue, setMetricValue] = useState('');
   const [metricUnit, setMetricUnit] = useState('');
   const [metricTarget, setMetricTarget] = useState('');
+  const [metricPrev, setMetricPrev] = useState('');
+  const [metricNote, setMetricNote] = useState('');
+  const [metricDirection, setMetricDirection] = useState<MetricInput['direction']>('neutral');
   const [metricError, setMetricError] = useState<string | null>(null);
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,6 +115,18 @@ export const ChatComposer: React.FC<Props> = ({
     if (showAttach) document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [showAttach]);
+
+  useEffect(() => {
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowMetrics(false);
+        setShowAttach(false);
+        setShowMetricForms(false);
+      }
+    };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, []);
 
   // Rapid entry: focus the name field whenever the metrics sheet opens
   useEffect(() => {
@@ -117,12 +147,17 @@ export const ChatComposer: React.FC<Props> = ({
       setMetricError('Metric name is required');
       return;
     }
-    const val = parseFloat(metricValue);
-    if (isNaN(val)) {
+    const val = metricValue.trim() ? Number(metricValue) : NaN;
+    if (!Number.isFinite(val)) {
       setMetricError('Value must be a valid number');
       return;
     }
-    const targetNum = metricTarget.trim() ? parseFloat(metricTarget) : undefined;
+    const targetNum = metricTarget.trim() ? Number(metricTarget) : undefined;
+    const prevNum = metricPrev.trim() ? Number(metricPrev) : undefined;
+    if ((targetNum !== undefined && !Number.isFinite(targetNum)) || (prevNum !== undefined && !Number.isFinite(prevNum))) {
+      setMetricError('Target and previous value must be valid numbers');
+      return;
+    }
     onMetricsChange([
       ...metrics,
       {
@@ -131,13 +166,18 @@ export const ChatComposer: React.FC<Props> = ({
         value: val,
         unit: metricUnit.trim(),
         target: targetNum !== undefined && !isNaN(targetNum) ? targetNum : undefined,
+        previousValue: prevNum !== undefined && !isNaN(prevNum) ? prevNum : undefined,
+        explanation: metricNote.trim() || undefined,
         chartStyle: newMetricStyle,
+        direction: metricDirection,
       },
     ]);
     setMetricName('');
     setMetricValue('');
     setMetricUnit('');
     setMetricTarget('');
+    setMetricPrev('');
+    setMetricNote('');
     setMetricError(null);
     notify(`Metric added (${metrics.length + 1} total)`);
     // Stay ready for the next entry: keep panel + style, refocus name
@@ -184,8 +224,7 @@ export const ChatComposer: React.FC<Props> = ({
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
-      onImagesChange([
-        ...images,
+      onImagesAppend([
         {
           id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           name: file.name,
@@ -195,7 +234,6 @@ export const ChatComposer: React.FC<Props> = ({
           fileType: file.type,
         },
       ]);
-      notify(`Photo attached (${images.length + 1} total)`);
     };
     reader.onerror = () => {
       setMediaError('Failed to read image file.');
@@ -212,13 +250,28 @@ export const ChatComposer: React.FC<Props> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
-      onGenerateReport();
+      e.stopPropagation();
+      submitUpdate();
     }
   };
 
+  const submitUpdate = () => {
+    setShowSources(false);
+    onGenerateReport(draft);
+    setDraft('');
+    try { sessionStorage.removeItem(`reporting-composer:${projectId}`); } catch { /* session storage may be unavailable */ }
+  };
+
+  useEffect(() => {
+    const field = draftRef.current;
+    if (!field) return;
+    field.style.height = 'auto';
+    field.style.height = `${Math.min(field.scrollHeight, 160)}px`;
+  }, [draft]);
+
   return (
-    <div className="no-print px-4 sm:px-8 pb-4 pt-2 bg-gradient-to-t from-[#F5F5F7] via-[#F5F5F7]/85 to-transparent">
-      <div className="max-w-3xl mx-auto">
+    <div className="no-print shrink-0 px-5 sm:px-10 pb-[max(16px,env(safe-area-inset-bottom))] pt-2 bg-gradient-to-t from-[#F5F5F7] via-[#F5F5F7]/85 to-transparent">
+      <div className="max-w-[740px] mx-auto">
         {/* Chatbot card */}
         <div
           className={`relative rounded-[26px] border bg-white shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-colors ${
@@ -267,9 +320,9 @@ export const ChatComposer: React.FC<Props> = ({
               <>
               {metrics.length > 0 ? (
                 <div className="rounded-xl border border-black/[0.08] bg-white overflow-x-auto mb-2">
-                  <div className="min-w-[460px]">
+                  <div className="min-w-[540px]">
                   {/* Table header */}
-                  <div className="grid grid-cols-[28px_minmax(0,1fr)_64px_48px_52px_78px_28px] items-center gap-1 px-2 py-1.5 bg-black/[0.03] text-[10px] font-semibold tracking-wide uppercase text-[#86868B]">
+                  <div className="grid grid-cols-[28px_minmax(0,1fr)_64px_44px_52px_52px_78px_44px] items-center gap-1 px-2 py-1.5 bg-black/[0.03] text-[10px] font-semibold tracking-wide uppercase text-[#86868B]">
                     <input
                       type="checkbox"
                       checked={allMetricsSelected}
@@ -283,14 +336,15 @@ export const ChatComposer: React.FC<Props> = ({
                     <span>Value</span>
                     <span>Unit</span>
                     <span>Target</span>
+                    <span>Prev</span>
                     <span>Graph</span>
                     <span />
                   </div>
                   {/* Table rows: tap checkbox to select, tap fields to edit */}
                   {metrics.map((m) => (
+                    <React.Fragment key={m.id}>
                     <div
-                      key={m.id}
-                      className={`grid grid-cols-[28px_minmax(0,1fr)_64px_48px_52px_78px_28px] items-center gap-1 px-2 py-1 border-t border-black/[0.05] transition-colors ${
+                      className={`grid grid-cols-[28px_minmax(0,1fr)_64px_44px_52px_52px_78px_44px] items-center gap-1 px-2 py-1 border-t border-black/[0.05] transition-colors ${
                         selectedMetricIds.has(m.id) ? 'bg-[#0071E3]/[0.06]' : 'hover:bg-black/[0.02]'
                       }`}
                     >
@@ -340,6 +394,19 @@ export const ChatComposer: React.FC<Props> = ({
                         className="min-w-0 text-xs text-[#1D1D1F] bg-transparent border-b border-transparent hover:border-black/20 focus:border-[#0071E3] focus:outline-none py-0.5"
                         aria-label="Metric target"
                       />
+                      <input
+                        type="number"
+                        step="any"
+                        value={m.previousValue ?? ''}
+                        onChange={(e) =>
+                          handleUpdateMetric(m.id, {
+                            previousValue: e.target.value === '' ? undefined : parseFloat(e.target.value),
+                          })
+                        }
+                        placeholder="—"
+                        className="min-w-0 text-xs text-[#1D1D1F] bg-transparent border-b border-transparent hover:border-black/20 focus:border-[#0071E3] focus:outline-none py-0.5"
+                        aria-label="Metric previous value"
+                      />
                       <select
                         value={m.chartStyle ?? 'number'}
                         onChange={(e) => handleUpdateMetric(m.id, { chartStyle: e.target.value as MetricChartStyle })}
@@ -352,15 +419,50 @@ export const ChatComposer: React.FC<Props> = ({
                           </option>
                         ))}
                       </select>
-                      <button
-                        type="button"
-                        onClick={() => onMetricsChange(metrics.filter((x) => x.id !== m.id))}
-                        className="p-0.5 text-[#86868B] hover:text-rose-600 rounded justify-self-center"
-                        aria-label={`Remove metric ${m.name}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center justify-self-center">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedNoteId(expandedNoteId === m.id ? null : m.id)}
+                          className={`p-0.5 rounded transition-colors ${
+                            expandedNoteId === m.id || m.explanation
+                              ? 'text-[#0071E3]'
+                              : 'text-[#86868B] hover:text-[#1D1D1F]'
+                          }`}
+                          title={m.explanation || 'Add a context note'}
+                          aria-label={`Context note for ${m.name}`}
+                          aria-expanded={expandedNoteId === m.id}
+                        >
+                          <StickyNote className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onMetricsChange(metrics.filter((x) => x.id !== m.id))}
+                          className="p-0.5 text-[#86868B] hover:text-rose-600 rounded"
+                          aria-label={`Remove metric ${m.name}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
+                    {expandedNoteId === m.id && (
+                      <div className="px-2 py-1.5 border-t border-black/[0.05] bg-[#FAFAFA]">
+                        <input
+                          autoFocus
+                          type="text"
+                          value={m.explanation ?? ''}
+                          onChange={(e) =>
+                            handleUpdateMetric(m.id, { explanation: e.target.value || undefined })
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === 'Escape') setExpandedNoteId(null);
+                          }}
+                          placeholder="Context note, e.g. On track against sprint commitment…"
+                          className="w-full text-xs p-1.5 bg-white border border-black/10 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
+                          aria-label={`Context note for ${m.name}`}
+                        />
+                      </div>
+                    )}
+                    </React.Fragment>
                   ))}
                   </div>
                 </div>
@@ -382,8 +484,13 @@ export const ChatComposer: React.FC<Props> = ({
                     onClick={() => setNewMetricStyle(opt.id)}
                   />
                 ))}
+                <select aria-label="Metric success direction" value={metricDirection} onChange={(e) => setMetricDirection(e.target.value as MetricInput['direction'])} className="ml-auto min-w-0 bg-white border border-black/10 rounded-lg text-xs p-1.5">
+                  <option value="neutral">No status judgement</option>
+                  <option value="higher">Higher is better</option>
+                  <option value="lower">Lower is better</option>
+                </select>
               </div>
-              <form onSubmit={handleAddMetric} className="flex flex-col sm:flex-row gap-2">
+              <form onSubmit={handleAddMetric} className="flex flex-wrap gap-2">
                 <input
                   ref={metricNameRef}
                   type="text"
@@ -393,7 +500,7 @@ export const ChatComposer: React.FC<Props> = ({
                     if (e.key === 'Escape') setShowMetrics(false);
                   }}
                   placeholder="Metric name *"
-                  className="flex-1 text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
+                  className="flex-[2_1_140px] min-w-0 text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <input
                   type="number"
@@ -401,14 +508,14 @@ export const ChatComposer: React.FC<Props> = ({
                   value={metricValue}
                   onChange={(e) => setMetricValue(e.target.value)}
                   placeholder="Value *"
-                  className="w-full sm:w-24 text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
+                  className="flex-1 min-w-[84px] text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <input
                   type="text"
                   value={metricUnit}
                   onChange={(e) => setMetricUnit(e.target.value)}
                   placeholder="Unit"
-                  className="w-full sm:w-20 text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
+                  className="flex-1 min-w-[64px] text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <input
                   type="number"
@@ -416,7 +523,22 @@ export const ChatComposer: React.FC<Props> = ({
                   value={metricTarget}
                   onChange={(e) => setMetricTarget(e.target.value)}
                   placeholder="Target"
-                  className="w-full sm:w-24 text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
+                  className="flex-1 min-w-[84px] text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
+                />
+                <input
+                  type="number"
+                  step="any"
+                  value={metricPrev}
+                  onChange={(e) => setMetricPrev(e.target.value)}
+                  placeholder="Previous"
+                  className="flex-1 min-w-[84px] text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
+                />
+                <input
+                  type="text"
+                  value={metricNote}
+                  onChange={(e) => setMetricNote(e.target.value)}
+                  placeholder="Context note (optional)"
+                  className="flex-[3_1_160px] min-w-0 text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <button
                   type="submit"
@@ -426,9 +548,10 @@ export const ChatComposer: React.FC<Props> = ({
                   <Check className="w-3.5 h-3.5" /> Add ⏎
                 </button>
                 {metricError && (
-                  <div className="sm:basis-full text-[11px] text-rose-600 bg-rose-50 px-2 py-1 rounded-lg">{metricError}</div>
+                  <div className="basis-full text-[11px] text-rose-600 bg-rose-50 px-2 py-1 rounded-lg">{metricError}</div>
                 )}
               </form>
+              {(metricValue.trim() && Number.isFinite(Number(metricValue))) && <div className="mt-3 rounded-xl bg-white border border-black/[0.06] p-3"><div className="text-[11px] text-[#6E6E73] mb-2">Preview · {metricName || 'Your metric'}</div>{newMetricStyle === 'number' ? <span className="text-2xl font-semibold">{metricValue}{metricUnit}</span> : <MetricChart datum={{ value: Number(metricValue), unit: metricUnit, target: metricTarget.trim() ? Number(metricTarget) : undefined, previousValue: metricPrev.trim() ? Number(metricPrev) : undefined }} style={newMetricStyle} />}</div>}
               <div className="text-[10px] text-[#86868B] pt-1">
                 Tip: press Enter to add, then keep typing the next metric — graph stays on {CHART_STYLE_OPTIONS.find((o) => o.id === newMetricStyle)?.label}.
               </div>
@@ -512,15 +635,21 @@ export const ChatComposer: React.FC<Props> = ({
             </div>
           )}
 
+          {showSources && <div className="mx-4 mt-3 rounded-xl bg-[#F5F5F7] p-3 max-h-40 overflow-y-auto"><div className="text-[11px] font-medium text-[#6E6E73] mb-2">Project source notes</div><textarea aria-label="Edit project source notes" value={rawNotes} onChange={(e) => onNotesChange(e.target.value)} rows={4} className="w-full bg-transparent text-[13px] leading-relaxed resize-y focus:outline-none" /></div>}
           {/* Main text field */}
           <div className="px-4 pt-3">
             <textarea
-              value={rawNotes}
-              onChange={(e) => onNotesChange(e.target.value)}
+              ref={draftRef}
+              aria-label="Add a project update"
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                try { sessionStorage.setItem(`reporting-composer:${projectId}`, e.target.value); } catch { /* keep editing in memory */ }
+              }}
               onKeyDown={handleKeyDown}
-              rows={3}
-              placeholder="Describe updates, blockers, next steps…"
-              className="w-full bg-transparent text-[14px] leading-relaxed text-[#1D1D1F] placeholder:text-black/30 focus:outline-none resize-none min-h-[64px] max-h-[180px]"
+              rows={2}
+              placeholder="Add an update. Attach data or photos."
+              className="w-full bg-transparent text-[15px] leading-relaxed text-[#1D1D1F] placeholder:text-[#76767B] focus:outline-none resize-none min-h-[52px] max-h-[160px]"
             />
           </div>
 
@@ -552,11 +681,8 @@ export const ChatComposer: React.FC<Props> = ({
                   >
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowMetrics(true);
-                        setShowAttach(false);
-                        setShowMetricForms(false);
-                      }}
+                      onKeyDown={(e) => { if (e.key === 'ArrowRight') { e.preventDefault(); setShowMetricForms(true); } }}
+                      onClick={() => setShowMetricForms(!showMetricForms)}
                       className="w-full flex items-center gap-2.5 px-3.5 py-2 hover:bg-black/[0.04] text-[#1D1D1F] transition-colors text-left"
                       aria-haspopup="menu"
                       aria-expanded={showMetricForms}
@@ -572,7 +698,7 @@ export const ChatComposer: React.FC<Props> = ({
                       <div
                         role="menu"
                         aria-label="Pick a graph form"
-                        className="absolute left-full bottom-0 z-30 ml-2 w-52 bg-white/95 backdrop-blur-xl rounded-2xl border border-black/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.14)] py-1.5 text-[13px] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:content-['']"
+                        className="absolute left-0 bottom-full mb-1 sm:mb-0 sm:left-full sm:bottom-0 z-30 sm:ml-2 w-52 bg-white/95 backdrop-blur-xl rounded-2xl border border-black/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.14)] py-1.5 text-[13px] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:content-['']"
                       >
                         <div className="px-3.5 pt-1 pb-1 text-[10px] font-semibold tracking-wide uppercase text-[#86868B]">
                           Graph form
@@ -618,35 +744,39 @@ export const ChatComposer: React.FC<Props> = ({
             {rawNotes && (
               <button
                 type="button"
-                onClick={() => onNotesChange('')}
+                onClick={() => setShowSources(!showSources)}
                 className="p-2 text-[#86868B] hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors"
-                title="Clear text"
+                title="Project source notes"
+                aria-label="Toggle project source notes"
+                aria-expanded={showSources}
               >
-                <Trash2 className="w-4 h-4" />
+                <FileText className="w-4 h-4" />
               </button>
             )}
 
             <div className="flex-1" />
 
             <span className="text-[11px] text-[#86868B] hidden sm:block pr-1">
-              {rawNotes.length > 0 ? `${rawNotes.length} chars` : '⌘⏎ to generate'}
+              {draft.length > 0 ? `${draft.length} characters` : '⌘ Enter'}
               {(metrics.length > 0 || images.length > 0) && ` · ${metrics.length} metrics · ${images.length} images`}
               {highlightPassage?.text ? ' · trace linked' : ''}
             </span>
 
             <button
               type="button"
-              onClick={onGenerateReport}
-              aria-label="Generate report"
-              className="w-9 h-9 flex items-center justify-center bg-[#0071E3] hover:bg-[#0077ED] text-white rounded-full shadow-[0_1px_2px_rgba(0,113,227,0.3)] transition-all active:scale-95 disabled:opacity-40"
+              onClick={submitUpdate}
+              disabled={!draft.trim() && !rawNotes.trim() && !metrics.length && !images.length}
+              aria-label={hasCards ? 'Update report' : 'Build report'}
+              className="h-9 px-3.5 gap-2 flex items-center justify-center bg-[#0071E3] hover:bg-[#0077ED] text-white rounded-full shadow-sm text-[12px] font-medium transition-all active:scale-95 disabled:opacity-40"
             >
+              <span>{hasCards ? 'Update report' : 'Build report'}</span>
               <Send className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         <p className="text-[10px] text-center text-[#86868B] mt-1.5">
-          Deterministic facts · No AI hallucinations
+          Your updates stay on this device. Click any card text to edit.
         </p>
       </div>
     </div>

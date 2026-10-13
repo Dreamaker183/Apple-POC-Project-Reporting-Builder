@@ -28,6 +28,8 @@ export interface BaseCard {
   createdAt: string;
   updatedAt: string;
   sourceRef?: SourceReference;
+  sourceKey?: string;
+  manuallyEdited?: boolean;
 }
 
 export interface ExecutiveSummaryCardData extends BaseCard {
@@ -47,6 +49,7 @@ export interface KpiMetricCardData extends BaseCard {
   trend?: 'improving' | 'neutral' | 'declining';
   explanation?: string;
   chartStyle?: MetricChartStyle;
+  direction?: 'higher' | 'lower' | 'neutral';
 }
 
 export interface RiskBlockerCardData extends BaseCard {
@@ -104,6 +107,7 @@ export interface MetricInput {
   previousValue?: number;
   explanation?: string;
   chartStyle?: MetricChartStyle;
+  direction?: 'higher' | 'lower' | 'neutral';
 }
 
 export interface ImageAssetInput {
@@ -119,12 +123,37 @@ export interface ReportProject {
   id: string;
   title: string;
   reportingPeriod: string;
+  folderId?: string;
   rawNotes: string;
   metrics: MetricInput[];
   images: ImageAssetInput[];
   cards: SnippetCard[];
   lastSavedAt: string;
   isDirty: boolean;
+}
+
+export interface ProjectFolder {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface PeriodSnapshot {
+  id: string;
+  projectId: string;
+  label: string;
+  createdAt: string;
+  cards: SnippetCard[];
+  origin: 'auto' | 'manual';
+  project?: ReportProject;
+}
+
+export interface ProjectLibrary {
+  version: 1;
+  folders: ProjectFolder[];
+  projects: ReportProject[];
+  snapshots: PeriodSnapshot[];
+  activeProjectId: string;
 }
 
 export interface ReadinessItem {

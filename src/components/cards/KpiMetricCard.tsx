@@ -4,9 +4,14 @@
  */
 
 import React from 'react';
+import { EditableText } from '../common/EditableText';
 import { KpiMetricCardData } from '../../types/report';
 import { TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
-import { MetricChart } from './MetricChart';
+import { MetricChart, CHART_STYLE_OPTIONS } from './MetricChart';
+
+const editInput =
+  'w-full text-[13px] p-2 bg-neutral-50 border border-black/[0.1] rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0071E3] text-[#1F1F1F]';
+const editLabel = 'text-[11px] font-medium text-[#86868B] block mb-1';
 
 interface Props {
   card: KpiMetricCardData;
@@ -22,7 +27,7 @@ export const KpiMetricCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-[11px] font-semibold text-[#727272] tracking-wider uppercase">
-        <span>KPI Metric</span>
+        <span>Metric</span>
         {card.sourceRef && (
           <span className="text-[11px] font-normal normal-case text-[#727272]">
             Source verified
@@ -31,16 +36,105 @@ export const KpiMetricCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
       </div>
 
       <div className="flex items-baseline justify-between gap-4">
-        <div>
-          <h3 className="text-[13px] font-medium text-[#727272]">{card.label}</h3>
+        <div className="flex-1 min-w-0">
+          {isInlineEditing ? (
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <div>
+                <label className={editLabel}>Label</label>
+                <input
+                  type="text"
+                  value={card.label}
+                  onChange={(e) => onUpdate?.({ label: e.target.value, title: e.target.value })}
+                  className={editInput}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className={editLabel}>Value</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={card.value}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v)) onUpdate?.({ value: v });
+                    }}
+                    className={editInput}
+                  />
+                </div>
+                <div>
+                  <label className={editLabel}>Unit</label>
+                  <input
+                    type="text"
+                    value={card.unit}
+                    onChange={(e) => onUpdate?.({ unit: e.target.value })}
+                    className={editInput}
+                  />
+                </div>
+                <div>
+                  <label className={editLabel}>Target</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={card.target ?? ''}
+                    onChange={(e) =>
+                      onUpdate?.({ target: e.target.value === '' ? undefined : parseFloat(e.target.value) })
+                    }
+                    placeholder="—"
+                    className={editInput}
+                  />
+                </div>
+                <div>
+                  <label className={editLabel}>Previous</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={card.previousValue ?? ''}
+                    onChange={(e) =>
+                      onUpdate?.({ previousValue: e.target.value === '' ? undefined : parseFloat(e.target.value) })
+                    }
+                    placeholder="—"
+                    className={editInput}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={editLabel}>Graph form</label>
+                <select
+                  value={card.chartStyle ?? 'number'}
+                  onChange={(e) => onUpdate?.({ chartStyle: e.target.value as KpiMetricCardData['chartStyle'] })}
+                  className={`${editInput} capitalize cursor-pointer`}
+                >
+                  {CHART_STYLE_OPTIONS.map((o) => (
+                    <option key={o.id} value={o.id} className="capitalize">
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={editLabel}>Explanation</label>
+                <textarea
+                  value={card.explanation || ''}
+                  onChange={(e) => onUpdate?.({ explanation: e.target.value })}
+                  rows={2}
+                  className={editInput}
+                />
+              </div>
+            </div>
+          ) : (
+          <>
+          <h3 className="text-[13px] font-medium text-[#727272]"><EditableText value={card.label} label="metric label" onCommit={(label) => onUpdate?.({ label, title: label })} /></h3>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-3xl font-semibold tracking-tight text-[#1F1F1F]">
-              {card.value}
+              <EditableText value={String(card.value)} label="metric value" onCommit={(text) => { const value = Number(text); if (Number.isFinite(value)) onUpdate?.({ value }); }} />
             </span>
             <span className="text-base font-medium text-[#727272]">
-              {card.unit}
+              <EditableText value={card.unit} label="metric unit" placeholder="unit" onCommit={(unit) => onUpdate?.({ unit })} />
             </span>
           </div>
+          </>
+          )}
         </div>
 
         {card.trend && (
@@ -99,7 +193,7 @@ export const KpiMetricCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
 
       {card.explanation && (
         <p className="text-xs text-[#727272] leading-relaxed pt-1">
-          {card.explanation}
+          <EditableText value={card.explanation} label="metric explanation" multiline onCommit={(explanation) => onUpdate?.({ explanation })} />
         </p>
       )}
     </div>

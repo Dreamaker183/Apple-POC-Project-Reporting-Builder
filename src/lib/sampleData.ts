@@ -47,10 +47,10 @@ export const SAMPLE_IMAGE_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
     
     <!-- Nav items -->
     <rect x="12" y="86" width="156" height="28" rx="6" fill="#EFF6FF"/>
-    <text x="32" y="104" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="600" fill="#0071E3">Account & Profile</text>
+    <text x="32" y="104" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="600" fill="#0071E3">Account &amp; Profile</text>
     
-    <text x="32" y="140" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#64748B">Billing & Invoices</text>
-    <text x="32" y="176" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#64748B">Security & SSO</text>
+    <text x="32" y="140" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#64748B">Billing &amp; Invoices</text>
+    <text x="32" y="176" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#64748B">Security &amp; SSO</text>
     <text x="32" y="212" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#64748B">API Keys</text>
     <text x="32" y="248" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#64748B">Audit Logs</text>
     

@@ -2,7 +2,14 @@
 
 @layer base {
   :root {
-    --font-sans: 'Figtree', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --surface: #FFFFFF;
+    --canvas: #F5F5F7;
+    --text: #1D1D1F;
+    --muted: #6E6E73;
+    --accent: #0071E3;
+    --separator: rgba(0, 0, 0, .07);
+    --shadow-menu: 0 12px 40px rgba(0, 0, 0, .13);
   }
 
   body {
@@ -12,9 +19,34 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  button, input, textarea, select { font: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; }
+  :focus-visible { outline: 3px solid #0071E3; outline-offset: 3px; }
+  input, textarea, select { accent-color: var(--accent); }
+  ::selection { background: #0071E326; }
+}
+
+.editable-text { display: inline-block; width: 100%; text-align: left; border-radius: 6px; white-space: pre-wrap; transition: background .15s ease; }
+.editable-text:hover { background: #0071E308; box-shadow: 0 0 0 4px #0071E308; }
+.inline-edit-field { display: block; width: 100%; border-radius: 6px; padding: 4px 6px; background: #F5F5F7; outline: 2px solid #0071E3; outline-offset: 2px; resize: vertical; }
+.workspace-sidebar button { min-height: 28px; }
+.workspace-sidebar input { font-size: 13px; }
+.workspace-report article { break-inside: avoid; }
+.workspace-report article > div:first-child { border-bottom-color: transparent; margin-bottom: 8px; padding-bottom: 8px; }
+.workspace-report article:focus-visible { outline: 3px solid #0071E3; outline-offset: 3px; }
+@media (pointer: coarse) {
+  button { min-height: 40px; }
+  input, textarea, select { font-size: 16px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 
 @media print {
+  .workspace-shell, .workspace-main, .workspace-report { display: block !important; height: auto !important; overflow: visible !important; }
+  .report-canvas, .report-scroll { height: auto !important; overflow: visible !important; max-width: none !important; }
+  .editable-text { background: none !important; box-shadow: none !important; }
   body {
     background-color: #FFFFFF !important;
     color: #000000 !important;
@@ -41,4 +73,3 @@
     border: none !important;
   }
 }
-

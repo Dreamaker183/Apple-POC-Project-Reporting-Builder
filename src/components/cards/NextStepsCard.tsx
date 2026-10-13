@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
+import { EditableText } from '../common/EditableText';
 import { NextStepsCardData } from '../../types/report';
-import { ListTodo, Check, Circle, User, Calendar } from 'lucide-react';
+import { ListTodo, Check, Circle, User, Calendar, Plus, X } from 'lucide-react';
 
 interface Props {
   card: NextStepsCardData;
@@ -65,32 +66,109 @@ export const NextStepsCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
               </button>
 
               <div className="flex-1 min-w-0">
+                {isInlineEditing ? (
+                  <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={item.action}
+                      onChange={(e) => {
+                        const updated = [...card.items];
+                        updated[idx] = { ...item, action: e.target.value };
+                        onUpdate?.({ items: updated });
+                      }}
+                      placeholder="Action item"
+                      aria-label="Action item"
+                      className="w-full text-xs p-1.5 bg-neutral-50 border border-black/[0.1] rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0071E3] text-[#1F1F1F]"
+                    />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="text"
+                        value={item.owner || ''}
+                        onChange={(e) => {
+                          const updated = [...card.items];
+                          updated[idx] = { ...item, owner: e.target.value };
+                          onUpdate?.({ items: updated });
+                        }}
+                        placeholder="Owner"
+                        aria-label="Owner"
+                        className="w-full text-xs p-1.5 bg-neutral-50 border border-black/[0.1] rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0071E3] text-[#1F1F1F]"
+                      />
+                      <input
+                        type="text"
+                        value={item.dueDate || ''}
+                        onChange={(e) => {
+                          const updated = [...card.items];
+                          updated[idx] = { ...item, dueDate: e.target.value };
+                          onUpdate?.({ items: updated });
+                        }}
+                        placeholder="Due date"
+                        aria-label="Due date"
+                        className="w-full text-xs p-1.5 bg-neutral-50 border border-black/[0.1] rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0071E3] text-[#1F1F1F]"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                <>
                 <div className={`text-xs font-medium leading-snug ${isDone ? 'line-through text-[#727272]' : 'text-[#1F1F1F]'}`}>
-                  {item.action}
+                  <EditableText value={item.action} label="action" multiline onCommit={(action) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, action } : it) })} />
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-[11px] text-[#727272]">
                   {item.owner ? (
                     <span className="flex items-center gap-1 text-[#1F1F1F] font-medium">
                       <User className="w-3 h-3 text-[#727272]" />
-                      @{item.owner}
+                      <EditableText value={item.owner} label="step owner" onCommit={(owner) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, owner } : it) })} />
                     </span>
                   ) : (
-                    <span className="text-amber-700 font-medium">Unassigned</span>
+                    <EditableText value="" placeholder="Add owner" label="step owner" onCommit={(owner) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, owner } : it) })} className="text-[#6E6E73]" />
                   )}
                   {item.dueDate && (
                     <>
                       <span>·</span>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-[#727272]" />
-                        {item.dueDate}
+                        <EditableText value={item.dueDate} label="step due date" onCommit={(dueDate) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, dueDate } : it) })} />
                       </span>
                     </>
                   )}
                 </div>
+                </>
+                )}
               </div>
+
+              {isInlineEditing && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpdate?.({ items: card.items.filter((it) => it.id !== item.id) });
+                  }}
+                  className="p-1 text-[#86868B] hover:text-rose-600 rounded shrink-0"
+                  aria-label={`Remove "${item.action}"`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           );
         })}
+        {isInlineEditing && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdate?.({
+                items: [
+                  ...card.items,
+                  { id: `step-${Date.now()}`, action: '', status: 'planned' as const },
+                ],
+              });
+            }}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-[#0071E3] hover:bg-[#0071E3]/10 rounded-lg transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add step</span>
+          </button>
+        )}
       </div>
     </div>
   );

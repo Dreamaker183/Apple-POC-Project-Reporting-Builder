@@ -14,11 +14,13 @@ import { VisualUpdateCard } from './VisualUpdateCard';
 import { 
   ChevronUp, 
   ChevronDown, 
-  Copy, 
   Trash2, 
   CopyPlus, 
   Send,
-  MoreHorizontal
+  MoreHorizontal,
+  Check,
+  Pencil,
+  Link2
 } from 'lucide-react';
 
 interface Props {
@@ -55,7 +57,15 @@ export const CardRenderer: React.FC<Props> = ({
   onUpdateCard,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [showSource, setShowSource] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') { setShowMenu(false); setShowSource(false); } };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -69,9 +79,17 @@ export const CardRenderer: React.FC<Props> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showMenu]);
 
+  // Clicking the card body text enters inline edit mode.
+  // Interactive elements (buttons, inputs, images, menus) keep their own behavior.
+  const handleBodyClick = (e: React.MouseEvent) => {
+    if (!editing) onInspect(card.id);
+  };
+
+  const stopEditing = () => setEditing(false);
+
   const cardTypeNames: Record<string, string> = {
     executive_summary: 'Executive Summary',
-    kpi_metric: 'KPI Metric',
+    kpi_metric: 'Metric',
     risk_blocker: 'Risk or Blocker',
     next_steps: 'Next Steps',
     milestone: 'Milestone',
@@ -83,9 +101,22 @@ export const CardRenderer: React.FC<Props> = ({
       tabIndex={0}
       role="article"
       aria-label={`${card.title} card`}
-      onClick={() => onInspect(card.id)}
+      onClick={() => {
+        if (!editing) onInspect(card.id);
+      }}
+      onKeyDown={(e) => {
+        if ((e.altKey && e.key === 'ArrowUp') || (e.altKey && e.key === 'ArrowDown')) {
+          e.preventDefault();
+          if (e.key === 'ArrowUp' && canMoveUp) onMoveUp(card.id);
+          if (e.key === 'ArrowDown' && canMoveDown) onMoveDown(card.id);
+        }
+        if (e.key === 'Escape') {
+          setEditing(false);
+          setShowMenu(false);
+        }
+      }}
       className={`group relative bg-white rounded-2xl border p-5 sm:p-6 transition-all duration-200 cursor-pointer outline-none ${
-        isInspected
+        editing
           ? 'border-[#0071E3] ring-2 ring-[#0071E3]/20 shadow-[0_6px_24px_rgba(0,113,227,0.08)]'
           : isSelected
           ? 'border-[#0071E3]/50 ring-1 ring-[#0071E3]/20 bg-blue-50/[0.12] shadow-xs'
@@ -119,15 +150,17 @@ export const CardRenderer: React.FC<Props> = ({
 
         {/* Clean Hover Actions */}
         <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-          {/* Quick Copy */}
+          <button type="button" onClick={() => setEditing(!editing)} aria-label="Edit card details" title="Edit details" className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg"><Pencil className="w-3.5 h-3.5" /></button>
+          {card.sourceRef && <button type="button" onClick={() => setShowSource(!showSource)} aria-label="Show source reference" aria-expanded={showSource} className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg"><Link2 className="w-3.5 h-3.5" /></button>}
+          {/* Quick Duplicate (immediately appends a copy below) */}
           <button
             type="button"
             onClick={() => onCopyCard(card)}
-            title="Copy card"
-            aria-label="Copy card to clipboard"
+            title="Duplicate card"
+            aria-label="Duplicate card"
             className="p-1.5 text-[#86868B] hover:text-[#1D1D1F] rounded-lg hover:bg-black/[0.04] transition-colors"
           >
-            <Copy className="w-3.5 h-3.5" />
+            <CopyPlus className="w-3.5 h-3.5" />
           </button>
 
           {/* More Menu (•••) */}
@@ -157,18 +190,6 @@ export const CardRenderer: React.FC<Props> = ({
                     <span>Send to Chat / Email</span>
                   </button>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMenu(false);
-                    onDuplicate(card.id);
-                  }}
-                  className="w-full text-left px-3.5 py-1.5 hover:bg-black/[0.04] text-[#1D1D1F] flex items-center gap-2 transition-colors"
-                >
-                  <CopyPlus className="w-3.5 h-3.5 text-[#86868B]" />
-                  <span>Duplicate</span>
-                </button>
 
                 <button
                   type="button"
@@ -215,11 +236,14 @@ export const CardRenderer: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Specific Card Content */}
+      {showSource && card.sourceRef && <div className="no-print mb-4 rounded-xl bg-[#F5F5F7] p-3 text-[12px] leading-relaxed text-[#6E6E73]"><span className="block text-[#1D1D1F] font-medium mb-1">Source reference</span>{card.sourceRef.passageText}</div>}
+      {/* Specific Card Content (click text to edit inline) */}
+      <div onClick={handleBodyClick} className={editing ? 'cursor-text' : ''}>
       {card.type === 'executive_summary' && (
         <ExecutiveSummaryCard
           card={card}
           onInspect={() => onInspect(card.id)}
+          isInlineEditing={editing}
           onUpdate={(up) => onUpdateCard({ ...card, ...up })}
         />
       )}
@@ -227,6 +251,7 @@ export const CardRenderer: React.FC<Props> = ({
         <KpiMetricCard
           card={card}
           onInspect={() => onInspect(card.id)}
+          isInlineEditing={editing}
           onUpdate={(up) => onUpdateCard({ ...card, ...up })}
         />
       )}
@@ -234,6 +259,7 @@ export const CardRenderer: React.FC<Props> = ({
         <RiskBlockerCard
           card={card}
           onInspect={() => onInspect(card.id)}
+          isInlineEditing={editing}
           onUpdate={(up) => onUpdateCard({ ...card, ...up })}
         />
       )}
@@ -241,6 +267,7 @@ export const CardRenderer: React.FC<Props> = ({
         <NextStepsCard
           card={card}
           onInspect={() => onInspect(card.id)}
+          isInlineEditing={editing}
           onUpdate={(up) => onUpdateCard({ ...card, ...up })}
         />
       )}
@@ -248,6 +275,7 @@ export const CardRenderer: React.FC<Props> = ({
         <MilestoneCard
           card={card}
           onInspect={() => onInspect(card.id)}
+          isInlineEditing={editing}
           onUpdate={(up) => onUpdateCard({ ...card, ...up })}
         />
       )}
@@ -255,8 +283,28 @@ export const CardRenderer: React.FC<Props> = ({
         <VisualUpdateCard
           card={card}
           onInspect={() => onInspect(card.id)}
+          isInlineEditing={editing}
           onUpdate={(up) => onUpdateCard({ ...card, ...up })}
         />
+      )}
+      </div>
+
+      {/* Done editing bar */}
+      {editing && (
+        <div className="no-print mt-3 pt-3 border-t border-black/[0.06] flex items-center justify-between">
+          <span className="text-[11px] text-[#86868B]">Editing — click Done or press Esc</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              stopEditing();
+            }}
+            className="flex items-center gap-1 px-3 py-1.5 bg-[#0071E3] hover:bg-[#0077ED] text-white text-xs font-medium rounded-full transition-colors"
+          >
+            <Check className="w-3.5 h-3.5" />
+            <span>Done</span>
+          </button>
+        </div>
       )}
     </div>
   );

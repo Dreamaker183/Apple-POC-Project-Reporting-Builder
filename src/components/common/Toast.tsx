@@ -20,8 +20,8 @@ interface ToastProps {
 
 export const Toast: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full no-print">
-      {toasts.map((toast) => (
+    <div className="fixed top-20 left-4 right-4 sm:left-auto sm:right-5 z-50 flex flex-col gap-2 pointer-events-none sm:max-w-sm no-print">
+      {toasts.slice(-1).map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}
     </div>
@@ -52,7 +52,7 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
     <div
       role="status"
       aria-live="polite"
-      className={`pointer-events-auto flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border shadow-[0_4px_16px_rgba(0,0,0,0.08)] text-[13px] text-[#1F1F1F] transition-all duration-200 ${bgStyles[toast.type]}`}
+       className={`pointer-events-auto flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border shadow-[0_4px_16px_rgba(0,0,0,0.08)] text-[13px] text-[#1F1F1F] transition-all duration-200 ${bgStyles[toast.type]}`}
     >
       <div className="flex items-center gap-2.5">
         {icons[toast.type]}

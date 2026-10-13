@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 interface Props {
+  projectId: string;
   title: string;
   reportingPeriod: string;
   cards: SnippetCard[];
@@ -50,11 +51,13 @@ interface Props {
   onNotesChange: (notes: string) => void;
   onMetricsChange: (metrics: MetricInput[]) => void;
   onImagesChange: (images: ImageAssetInput[]) => void;
-  onGenerateReport: () => void;
+  onImagesAppend: (images: ImageAssetInput[]) => void;
+  onGenerateReport: (notes?: string) => void;
   onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const ReportCanvas: React.FC<Props> = ({
+  projectId,
   title,
   reportingPeriod,
   cards,
@@ -83,6 +86,7 @@ export const ReportCanvas: React.FC<Props> = ({
   onNotesChange,
   onMetricsChange,
   onImagesChange,
+  onImagesAppend,
   onGenerateReport,
   onNotify,
 }) => {
@@ -105,7 +109,7 @@ export const ReportCanvas: React.FC<Props> = ({
 
   const cardTypeOptions: Array<{ type: CardType; label: string }> = [
     { type: 'executive_summary', label: 'Executive Summary' },
-    { type: 'kpi_metric', label: 'KPI Metric' },
+    { type: 'kpi_metric', label: 'Metric / Data chart' },
     { type: 'risk_blocker', label: 'Risk or Blocker' },
     { type: 'next_steps', label: 'Next Steps & Commitments' },
     { type: 'milestone', label: 'Milestone' },
@@ -131,9 +135,8 @@ export const ReportCanvas: React.FC<Props> = ({
       }
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const matchesTitle = card.title.toLowerCase().includes(query);
-        const matchesType = card.type.toLowerCase().includes(query);
-        return matchesTitle || matchesType;
+        const content = JSON.stringify(card).toLowerCase();
+        return content.includes(query);
       }
       return true;
     });
@@ -143,26 +146,28 @@ export const ReportCanvas: React.FC<Props> = ({
   const someSelected = selectedCardIds.size > 0;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 max-w-3xl mx-auto w-full space-y-6">
+    <div className="report-canvas flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="report-scroll flex-1 min-h-0 overflow-y-auto px-5 sm:px-10 py-8 sm:py-12 max-w-[820px] mx-auto w-full space-y-6">
       {/* Document Header (Minimalist Apple Document Style) */}
       <div className="space-y-2">
         <input
+          aria-label="Project title"
           type="text"
           value={title}
           onChange={(e) => onUpdateTitle(e.target.value)}
           placeholder="Untitled Report"
-          className="w-full text-2xl sm:text-3xl font-bold tracking-tight text-[#1D1D1F] bg-transparent border-none focus:outline-none placeholder:text-black/20"
+           className="w-full text-3xl sm:text-[36px] font-semibold tracking-tight text-[#1D1D1F] bg-transparent border-none focus:outline-none placeholder:text-black/20"
         />
 
         <div className="flex items-center gap-2 text-xs text-[#86868B]">
           <Calendar className="w-3.5 h-3.5 text-[#86868B]" />
           <input
+            aria-label="Reporting period"
             type="text"
             value={reportingPeriod}
             onChange={(e) => onUpdatePeriod(e.target.value)}
             placeholder="Add reporting period (e.g. Oct 5–9, 2026)"
-            className="bg-transparent border-none focus:outline-none placeholder:text-black/30 font-normal text-[#1D1D1F] w-64 hover:text-[#0071E3] transition-colors"
+            className="bg-transparent border-none focus:outline-none placeholder:text-black/30 font-normal text-[#1D1D1F] min-w-0 flex-1 hover:text-[#0071E3] transition-colors"
           />
           <span className="text-black/10">|</span>
           <span>{cards.length} {cards.length === 1 ? 'card' : 'cards'}</span>
@@ -194,7 +199,7 @@ export const ReportCanvas: React.FC<Props> = ({
                   : 'text-[#86868B] hover:text-[#1D1D1F]'
               }`}
             >
-              KPIs
+              Metrics
             </button>
           )}
           {counts.risk_blocker > 0 && (
@@ -349,12 +354,12 @@ export const ReportCanvas: React.FC<Props> = ({
             <Layers className="w-5 h-5 text-[#86868B]" />
           </div>
           <h3 className="text-sm font-medium text-[#1D1D1F]">
-            {searchQuery ? 'No matching cards' : 'No report cards yet'}
+            {searchQuery || filterType !== 'all' ? 'No matching cards' : 'Your next report starts here'}
           </h3>
           <p className="text-xs text-[#86868B] max-w-xs mx-auto">
-            {searchQuery 
+            {searchQuery || filterType !== 'all'
               ? 'Try a different keyword or clear the search filter.'
-              : 'Add updates in the composer below or click "+ Card" above to build manually.'
+              : 'Add a project update below, attach your data or photos, then build your report. You can edit every card directly.'
             }
           </p>
         </div>
@@ -379,8 +384,8 @@ export const ReportCanvas: React.FC<Props> = ({
                   card={card}
                   isSelected={selectedCardIds.has(card.id)}
                   isInspected={inspectedCardId === card.id}
-                  canMoveUp={idx > 0}
-                  canMoveDown={idx < filteredCards.length - 1}
+                  canMoveUp={cards.findIndex((c) => c.id === card.id) > 0}
+                  canMoveDown={cards.findIndex((c) => c.id === card.id) < cards.length - 1}
                   onToggleSelect={onToggleSelectCard}
                   onInspect={onInspectCard}
                   onMoveUp={(id) => onMoveCard(id, 'up')}
@@ -400,6 +405,7 @@ export const ReportCanvas: React.FC<Props> = ({
 
       {/* Bottom chatbot-style composer: text, metrics, table, media */}
       <ChatComposer
+        projectId={projectId}
         rawNotes={rawNotes}
         metrics={metrics}
         images={images}
@@ -407,6 +413,8 @@ export const ReportCanvas: React.FC<Props> = ({
         onNotesChange={onNotesChange}
         onMetricsChange={onMetricsChange}
         onImagesChange={onImagesChange}
+        onImagesAppend={onImagesAppend}
+        hasCards={cards.length > 0}
         onGenerateReport={onGenerateReport}
         onNotify={onNotify}
       />

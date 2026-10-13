@@ -44,16 +44,21 @@ export const MetricChart: React.FC<Props> = ({ datum, style, idSuffix = 'c' }) =
   const accent = accentFor(trend);
 
   if (style === 'bar') {
-    const scale = Math.max(Math.abs(value), Math.abs(target ?? 0), Math.abs(previousValue ?? 0)) || 1;
-    const fillPct = clamp01(value / scale) * 100;
-    const targetPct = target !== undefined ? clamp01(target / scale) * 100 : undefined;
-    const prevPct = previousValue !== undefined ? clamp01(previousValue / scale) * 100 : undefined;
+    const values = [0, value, target ?? 0, previousValue ?? 0];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const scale = max - min || 1;
+    const position = (n: number) => ((n - min) / scale) * 100;
+    const zero = position(0);
+    const fillPct = Math.abs(position(value) - zero);
+    const targetPct = target !== undefined ? position(target) : undefined;
+    const prevPct = previousValue !== undefined ? position(previousValue) : undefined;
     return (
       <div role="img" aria-label={`Bar chart: ${value}${unit}${target !== undefined ? `, target ${target}${unit}` : ''}`}>
         <div className="relative h-2.5 rounded-full bg-black/[0.07]">
           <div
             className="absolute left-0 top-0 h-full rounded-full transition-all"
-            style={{ width: `${fillPct}%`, backgroundColor: accent }}
+            style={{ left: `${Math.min(zero, position(value))}%`, width: `${fillPct}%`, backgroundColor: accent }}
           />
           {targetPct !== undefined && (
             <div
@@ -72,7 +77,7 @@ export const MetricChart: React.FC<Props> = ({ datum, style, idSuffix = 'c' }) =
         </div>
         <div className="mt-1 flex items-center justify-between text-[10px] text-[#86868B]">
           <span>
-            0{unit}
+             {min}{unit}
           </span>
           <span className="flex items-center gap-2">
             {previousValue !== undefined && <span>Prev {previousValue}{unit}</span>}
@@ -84,7 +89,8 @@ export const MetricChart: React.FC<Props> = ({ datum, style, idSuffix = 'c' }) =
   }
 
   if (style === 'donut') {
-    const denom = target !== undefined && target > 0 ? target : Math.max(value, previousValue ?? 0, 1);
+    if (target === undefined || target <= 0 || value < 0) return <p className="text-[12px] text-[#6E6E73]">Add a positive target and a non-negative value to show progress.</p>;
+    const denom = target;
     const progress = clamp01(value / denom);
     const size = 84;
     const stroke = 9;
@@ -112,7 +118,7 @@ export const MetricChart: React.FC<Props> = ({ datum, style, idSuffix = 'c' }) =
             <span className="text-xs font-medium text-[#727272] ml-0.5">{unit}</span>
           </div>
           <div className="text-[10px] text-[#86868B]">
-            {Math.round(progress * 100)}% of {denom}{unit}
+             {Math.round((value / denom) * 100)}% of target {denom}{unit}
           </div>
         </div>
       </div>
@@ -134,8 +140,8 @@ export const MetricChart: React.FC<Props> = ({ datum, style, idSuffix = 'c' }) =
       );
     }
     const max = Math.max(Math.abs(value), Math.abs(previousValue), 1);
-    const prevH = Math.max(6, (Math.abs(previousValue) / max) * 64);
-    const curH = Math.max(6, (Math.abs(value) / max) * 64);
+    const prevH = (Math.abs(previousValue) / max) * 64;
+    const curH = (Math.abs(value) / max) * 64;
     const delta = previousValue !== 0 ? Math.round(((value - previousValue) / Math.abs(previousValue)) * 100) : null;
     return (
       <div className="flex items-end gap-3" role="img" aria-label={`Trend chart: previous ${previousValue}${unit}, now ${value}${unit}`}>

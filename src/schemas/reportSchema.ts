@@ -19,6 +19,8 @@ export const BaseCardSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   sourceRef: SourceReferenceSchema.optional(),
+  sourceKey: z.string().optional(),
+  manuallyEdited: z.boolean().optional(),
 });
 
 export const ExecutiveSummaryCardSchema = BaseCardSchema.extend({
@@ -40,6 +42,7 @@ export const KpiMetricCardSchema = BaseCardSchema.extend({
   trend: z.enum(['improving', 'neutral', 'declining']).optional(),
   explanation: z.string().optional(),
   chartStyle: MetricChartStyleSchema.optional(),
+  direction: z.enum(['higher', 'lower', 'neutral']).optional(),
 });
 
 export const RiskBlockerCardSchema = BaseCardSchema.extend({
@@ -100,6 +103,7 @@ export const MetricInputSchema = z.object({
   previousValue: z.number().optional(),
   explanation: z.string().optional(),
   chartStyle: MetricChartStyleSchema.optional(),
+  direction: z.enum(['higher', 'lower', 'neutral']).optional(),
 });
 
 export const ImageAssetInputSchema = z.object({
@@ -117,10 +121,35 @@ export const ReportProjectSchema = z.object({
   id: z.string(),
   title: z.string().min(1, 'Report title is required'),
   reportingPeriod: z.string(),
+  folderId: z.string().optional(),
   rawNotes: z.string(),
   metrics: z.array(MetricInputSchema),
   images: z.array(ImageAssetInputSchema),
   cards: z.array(SnippetCardSchema),
   lastSavedAt: z.string(),
   isDirty: z.boolean().optional(),
+});
+
+export const ProjectFolderSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1, 'Folder name is required'),
+  createdAt: z.string(),
+});
+
+export const PeriodSnapshotSchema = z.object({
+  id: z.string().min(1),
+  projectId: z.string().min(1),
+  label: z.string().min(1),
+  createdAt: z.string(),
+  cards: z.array(SnippetCardSchema),
+  origin: z.enum(['auto', 'manual']),
+  project: ReportProjectSchema.optional(),
+});
+
+export const ProjectLibrarySchema = z.object({
+  version: z.literal(1),
+  folders: z.array(ProjectFolderSchema),
+  projects: z.array(ReportProjectSchema),
+  snapshots: z.array(PeriodSnapshotSchema),
+  activeProjectId: z.string(),
 });

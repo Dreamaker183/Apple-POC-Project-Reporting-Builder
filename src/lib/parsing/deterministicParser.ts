@@ -175,9 +175,9 @@ export function generateSnippetCards(
       );
 
       let trend: 'improving' | 'neutral' | 'declining' | undefined;
-      if (m.target !== undefined) {
+      if (m.target !== undefined && m.direction !== 'neutral') {
         // If lower is better (e.g. defects, response time) vs higher is better (e.g. completion)
-        const isLowerBetter = /defect|bug|time|latency|delay|ms|second/i.test(m.name + m.unit);
+        const isLowerBetter = m.direction ? m.direction === 'lower' : /defect|bug|time|latency|delay|ms|second/i.test(m.name + m.unit);
         if (isLowerBetter) {
           trend = m.value <= m.target ? 'improving' : 'declining';
         } else {
@@ -188,6 +188,7 @@ export function generateSnippetCards(
       const metricCard: KpiMetricCardData = {
         id: `card-metric-${Date.now()}-${idx + 1}`,
         type: 'kpi_metric',
+        sourceKey: `metric:${m.id}`,
         title: m.name,
         label: m.name,
         value: m.value,
@@ -196,6 +197,7 @@ export function generateSnippetCards(
         previousValue: m.previousValue,
         trend,
         chartStyle: m.chartStyle,
+        direction: m.direction,
         explanation: m.explanation || (matchedPassage ? matchedPassage.sentence : undefined),
         createdAt: now,
         updatedAt: now,
@@ -302,6 +304,7 @@ export function generateSnippetCards(
       const visualCard: VisualUpdateCardData = {
         id: `card-visual-${Date.now()}-${idx + 1}`,
         type: 'visual_update',
+        sourceKey: `image:${img.id}`,
         title: `Visual Update: ${img.name.replace(/\.[^/.]+$/, '')}`,
         imageUrl: img.dataUrl,
         altText: img.altText || `Preview asset for ${projectTitle}`,
@@ -319,5 +322,8 @@ export function generateSnippetCards(
     });
   }
 
-  return cards;
+  return cards.map((card) => ({
+    ...card,
+    sourceKey: card.sourceKey ?? `${card.type}:${card.sourceRef?.passageText ?? card.title}`,
+  }));
 }

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useDialogFocus } from './useDialogFocus';
 import { X, Command, Keyboard } from 'lucide-react';
 
 interface Props {
@@ -12,14 +13,16 @@ interface Props {
 }
 
 export const ShortcutsModal: React.FC<Props> = ({ isOpen, onClose }) => {
+  useDialogFocus(isOpen, onClose);
   if (!isOpen) return null;
 
   const shortcuts = [
-    { key: '⌘ + Z / Ctrl + Z', description: 'Undo most recent card deletion or generation' },
+    { key: '⌘ + Z / Ctrl + Z', description: 'Undo report changes' },
+    { key: '⇧ + ⌘ + Z', description: 'Redo report changes' },
     { key: '⌘ + E / Ctrl + E', description: 'Open Destination-Aware Export dialog' },
     { key: '⌘ + P / Ctrl + P', description: 'Open Print-to-PDF layout' },
-    { key: '⌘ + Enter', description: 'Trigger Magic Transform (Generate Report)' },
-    { key: '↑ / ↓ or Alt + ↑ / ↓', description: 'Reorder card position up or down' },
+    { key: '⌘ + Enter', description: 'Build or update report' },
+    { key: 'Alt + ↑ / ↓', description: 'Move focused card' },
     { key: 'Esc', description: 'Close active modal dialog' },
     { key: '?', description: 'Show keyboard shortcuts cheat-sheet' },
   ];
@@ -33,6 +36,7 @@ export const ShortcutsModal: React.FC<Props> = ({ isOpen, onClose }) => {
         className="bg-white rounded-2xl border border-black/10 shadow-2xl max-w-md w-full p-5 space-y-4"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-labelledby="shortcuts-title"
       >
         <div className="flex items-center justify-between pb-3 border-b border-black/[0.06]">

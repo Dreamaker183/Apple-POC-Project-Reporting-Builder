@@ -3,52 +3,75 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   ReportProject, 
   SnippetCard, 
   CardType, 
   MetricInput, 
-  ImageAssetInput 
+  ImageAssetInput,
+  ProjectLibrary,
 } from './types/report';
-import { 
-  createSampleProject, 
-  WEEK_40_BASELINE_SNAPSHOT
-} from './lib/sampleData';
 import { generateSnippetCards } from './lib/parsing/deterministicParser';
-import { saveLocalDraft, loadLocalDraft, clearLocalDraft } from './lib/persistence/localDraft';
+import { mergeGeneratedCards } from './lib/composition/mergeCards';
+import { createSampleProject } from './lib/sampleData';
+import {
+  loadLibrary,
+  saveLibrary,
+  createBlankProject,
+  createFolder,
+  ensureDefaultFolder,
+  makeSnapshot,
+  addSnapshot,
+  snapshotsForProject,
+  latestSnapshotForProject,
+  snapshotLabelFor,
+  uid,
+} from './lib/persistence/projectLibrary';
 import { calculateExecutiveScore, applyQuickFixToProject } from './lib/analysis/executiveScore';
-import { compareReportSnapshots } from './lib/analysis/snapshotDiff';
 import { copyToClipboard } from './lib/export/clipboard';
 import { formatCardToMarkdown } from './lib/export/markdownExport';
 import { formatCardToHtml } from './lib/export/htmlExport';
 
 import { Header } from './components/layout/Header';
 import { ReportCanvas } from './components/composition/ReportCanvas';
-import { CardInspector } from './components/composition/CardInspector';
-import { ExportModal, MessageToolId } from './components/export/ExportModal';
+import { ProjectSidebar } from './components/projects/ProjectSidebar';
+import { TimeFlow } from './components/projects/TimeFlow';
+import type { MessageToolId } from './components/export/ExportModal';
+const ExportModal = lazy(() => import('./components/export/ExportModal').then((module) => ({ default: module.ExportModal })));
 import { SnapshotComparisonModal } from './components/composition/SnapshotComparisonModal';
 import { GuidedTour, TourStep } from './components/guided-demo/GuidedTour';
 import { ShortcutsModal } from './components/common/ShortcutsModal';
 import { Toast, ToastMessage } from './components/common/Toast';
-import { Eye, SlidersHorizontal } from 'lucide-react';
+import { Eye, Folder } from 'lucide-react';
 
 export default function App() {
-  // 1. Initialize project from local storage or sample data
-  const [project, setProject] = useState<ReportProject>(() => {
-    const saved = loadLocalDraft();
-    if (saved && saved.cards && saved.cards.length > 0) {
-      return saved;
-    }
-    return createSampleProject();
-  });
+  // 1. Project library (folders + projects + time-flow snapshots), local-only.
+  //    First run migrates the legacy single draft or seeds the sample workspace.
+  const [library, setLibrary] = useState<ProjectLibrary>(() => loadLibrary());
+
+  // Active project derived from the library (invariant: at least one project exists)
+  const project: ReportProject =
+    library.projects.find((p) => p.id === library.activeProjectId) ?? library.projects[0];
+
+  const updateActiveProject = (updater: (prev: ReportProject) => ReportProject) => {
+    setLibrary((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === prev.activeProjectId ? { ...updater(p), lastSavedAt: new Date().toISOString() } : p)),
+    }));
+  };
 
   // 2. Undo stack (stores previous snapshots of cards)
-  const [historyStack, setHistoryStack] = useState<SnippetCard[][]>([]);
+  const [historyStack, setHistoryStack] = useState<ReportProject[]>([]);
+  const [redoStack, setRedoStack] = useState<ReportProject[]>([]);
+  const [savedLibrary, setSavedLibrary] = useState<ProjectLibrary | null>(null);
+  const [saveError, setSaveError] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
 
-  // 3. Baseline snapshot for What's Changed diff
+  // 3. Baseline snapshot for What's Changed diff (per active project)
   const [baselineCards, setBaselineCards] = useState<SnippetCard[]>(() => {
-    return WEEK_40_BASELINE_SNAPSHOT;
+    const latest = latestSnapshotForProject(library.snapshots, library.activeProjectId);
+    return latest ? latest.cards : [];
   });
 
   // 4. UI interaction states
@@ -68,7 +91,7 @@ export default function App() {
   const [highlightPassage, setHighlightPassage] = useState<{ start?: number; end?: number; text?: string } | null>(null);
 
   // 5. Mobile workspace area view
-  const [mobileArea, setMobileArea] = useState<'canvas' | 'inspector'>('canvas');
+  const [mobileArea, setMobileArea] = useState<'projects' | 'canvas'>('canvas');
 
   // Push toast helper
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -77,56 +100,99 @@ export default function App() {
       type,
       message,
     };
-    setToasts((prev) => [...prev, newToast]);
+    setToasts([newToast]);
   }, []);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Save draft locally whenever project changes (debounced)
+  // Save library locally whenever it changes (debounced, quota-safe)
+  const saveFailedNotified = useRef(false);
   useEffect(() => {
     const timer = setTimeout(() => {
-      saveLocalDraft(project);
+      const ok = saveLibrary(library);
+      setSaveError(!ok);
+      if (!ok && !saveFailedNotified.current) {
+        saveFailedNotified.current = true;
+        addToast('Local storage is full — try deleting old projects or photos.', 'error');
+      } else if (ok) {
+        saveFailedNotified.current = false;
+        setSavedLibrary(library);
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [project]);
+  }, [library, addToast]);
+
+  useEffect(() => {
+    const flush = () => saveLibrary(library);
+    window.addEventListener('pagehide', flush);
+    return () => window.removeEventListener('pagehide', flush);
+  }, [library]);
 
   // Record undo state before destructive operations
   const recordHistory = useCallback(() => {
-    setHistoryStack((prev) => [...prev.slice(-15), project.cards]);
-  }, [project.cards]);
+    setHistoryStack((prev) => [...prev.slice(-19), structuredClone(project)]);
+    setRedoStack([]);
+  }, [project]);
 
   // Undo function
   const handleUndo = useCallback(() => {
     if (historyStack.length === 0) return;
-    const previousCards = historyStack[historyStack.length - 1];
+    const previousProject = historyStack[historyStack.length - 1];
+    setRedoStack((prev) => [...prev, project]);
     setHistoryStack((prev) => prev.slice(0, -1));
-    setProject((prev) => ({
+    updateActiveProject((prev) => ({
       ...prev,
-      cards: previousCards,
+      ...previousProject,
       isDirty: true,
       lastSavedAt: new Date().toISOString(),
     }));
     addToast('Reverted most recent action', 'info');
-  }, [historyStack, addToast]);
+  }, [historyStack, project, addToast]);
 
-  // Generate cards via deterministic parser
-  const handleGenerateReport = useCallback(() => {
+  const handleRedo = () => {
+    if (!redoStack.length) return;
+    const next = redoStack[redoStack.length - 1];
+    setHistoryStack((prev) => [...prev, project]);
+    setRedoStack((prev) => prev.slice(0, -1));
+    updateActiveProject(() => ({ ...next, isDirty: true }));
+  };
+
+  // Generate cards via deterministic parser (+ auto time-flow snapshot per period)
+  const handleGenerateReport = useCallback((newNotes?: string) => {
+    const rawNotes = newNotes?.trim() ? [project.rawNotes, newNotes.trim()].filter(Boolean).join('\n\n') : project.rawNotes;
+    if (!rawNotes.trim() && !project.metrics.length && !project.images.length) return;
     recordHistory();
-    const generatedCards = generateSnippetCards(
-      project.rawNotes,
+    const generatedCards = mergeGeneratedCards(project.cards, generateSnippetCards(
+      rawNotes,
       project.metrics,
       project.images,
       project.title
-    );
+    ));
 
-    setProject((prev) => ({
-      ...prev,
-      cards: generatedCards,
-      isDirty: true,
-      lastSavedAt: new Date().toISOString(),
-    }));
+    const label = snapshotLabelFor(project);
+    const projectId = project.id;
+    setLibrary((prev) => {
+      const active = prev.projects.find((p) => p.id === projectId);
+      if (!active) return prev;
+      const updated: ReportProject = {
+        ...active,
+        rawNotes,
+        cards: generatedCards,
+        isDirty: true,
+        lastSavedAt: new Date().toISOString(),
+      };
+      let snapshots = prev.snapshots;
+      if (!prev.snapshots.some((s) => s.projectId === active.id && s.origin === 'auto' && s.label === label)) {
+        snapshots = addSnapshot(prev.snapshots, makeSnapshot(active.id, label, generatedCards, 'auto', updated));
+      }
+      return {
+        ...prev,
+        projects: prev.projects.map((p) => (p.id === active.id ? updated : p)),
+        snapshots,
+      };
+    });
 
     if (generatedCards.length > 0) {
       setInspectedCardId(generatedCards[0].id);
@@ -136,16 +202,20 @@ export default function App() {
     }
     setMobileArea('canvas');
     addToast(`Generated ${generatedCards.length} verified snippet cards`, 'success');
-  }, [project.rawNotes, project.metrics, project.images, project.title, recordHistory, addToast]);
+  }, [project, recordHistory, addToast]);
 
   // Keyboard shortcut listener (Cmd+Z, Cmd+E, Cmd+Enter, ?)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       // Ignore if typing in text inputs
       const target = e.target as HTMLElement;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      const isInput = !!target.closest('input, textarea, select, [contenteditable="true"]');
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !isInput && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !isInput) {
         if (historyStack.length > 0) {
           e.preventDefault();
           handleUndo();
@@ -163,26 +233,43 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [historyStack, handleUndo, handleGenerateReport]);
+  }, [historyStack, redoStack, handleUndo, handleGenerateReport]);
 
   // Handlers for inputs
   const handleNotesChange = (rawNotes: string) => {
-    setProject((prev) => ({ ...prev, rawNotes, isDirty: true }));
+    updateActiveProject((prev) => ({ ...prev, rawNotes, isDirty: true }));
   };
 
   const handleMetricsChange = (metrics: MetricInput[]) => {
-    setProject((prev) => ({ ...prev, metrics, isDirty: true }));
+    updateActiveProject((prev) => ({ ...prev, metrics, isDirty: true }));
   };
 
   const handleImagesChange = (images: ImageAssetInput[]) => {
-    setProject((prev) => ({ ...prev, images, isDirty: true }));
+    updateActiveProject((prev) => ({ ...prev, images, isDirty: true }));
   };
 
-  // Load sample project
+  const handleImagesAppend = (images: ImageAssetInput[]) => {
+    const projectId = project.id;
+    setLibrary((prev) => ({ ...prev, projects: prev.projects.map((p) => p.id === projectId ? {
+      ...p, images: [...p.images, ...images], isDirty: true, lastSavedAt: new Date().toISOString(),
+    } : p) }));
+  };
+
+  // Load sample content into the active project (keeps its id + folder)
   const handleLoadSample = (useMessy: boolean = false) => {
     recordHistory();
     const sample = createSampleProject(useMessy);
-    setProject(sample);
+    updateActiveProject((prev) => ({
+      ...prev,
+      title: sample.title,
+      reportingPeriod: sample.reportingPeriod,
+      rawNotes: sample.rawNotes,
+      metrics: sample.metrics,
+      images: sample.images,
+      cards: sample.cards,
+      isDirty: true,
+      lastSavedAt: new Date().toISOString(),
+    }));
     setSelectedCardIds(new Set());
     if (sample.cards.length > 0) {
       setInspectedCardId(sample.cards[0].id);
@@ -190,36 +277,31 @@ export default function App() {
     addToast(useMessy ? 'Loaded messy standup sample' : 'Loaded Customer Portal sample project', 'success');
   };
 
-  // Reset project
+  // Header "New Project": blank project in the active folder + switch to it
   const handleReset = () => {
-    recordHistory();
-    clearLocalDraft();
-    setProject({
-      id: `proj-${Date.now()}`,
-      title: 'New Project Status Report',
-      reportingPeriod: '',
-      rawNotes: '',
-      metrics: [],
-      images: [],
-      cards: [],
-      lastSavedAt: new Date().toISOString(),
-      isDirty: false,
-    });
+    const folders = ensureDefaultFolder(library.folders);
+    const active = library.projects.find((p) => p.id === library.activeProjectId);
+    const folderId = active?.folderId && folders.some((f) => f.id === active.folderId)
+      ? active.folderId
+      : folders[0].id;
+    const blank = createBlankProject(folderId);
+    setLibrary((prev) => ({
+      ...prev,
+      folders: ensureDefaultFolder(prev.folders),
+      projects: [...prev.projects, blank],
+      activeProjectId: blank.id,
+    }));
+    setHistoryStack([]);
+    setRedoStack([]);
     setSelectedCardIds(new Set());
     setInspectedCardId(null);
     setHighlightPassage(null);
-    addToast('Cleared project draft', 'info');
+    setBaselineCards([]);
+    setMobileArea('canvas');
+    addToast('Created new project', 'success');
   };
 
-  // Quick fix application for Executive-Ready Score
-  const handleApplyQuickFix = (checkId: string) => {
-    recordHistory();
-    const updated = applyQuickFixToProject(project, checkId);
-    setProject(updated);
-    addToast('Applied standard quick-fix', 'success');
-  };
-
-  // Fix all outstanding checks in one click
+  // Fix all outstanding checks in one click (used by the guided tour)
   const handleApplyAllFixes = () => {
     recordHistory();
     let current = { ...project };
@@ -229,22 +311,24 @@ export default function App() {
         current = applyQuickFixToProject(current, item.id);
       }
     });
-    setProject(current);
+    const fixed = current;
+    updateActiveProject(() => fixed);
     addToast('All diagnostic readiness checks resolved!', 'success');
   };
 
   // Card modifications
   const handleUpdateCard = (updated: SnippetCard) => {
-    setProject((prev) => ({
+    recordHistory();
+    updateActiveProject((prev) => ({
       ...prev,
-      cards: prev.cards.map((c) => (c.id === updated.id ? updated : c)),
+      cards: prev.cards.map((c) => (c.id === updated.id ? { ...updated, manuallyEdited: true, updatedAt: new Date().toISOString() } : c)),
       isDirty: true,
     }));
   };
 
   const handleDeleteCard = (id: string) => {
     recordHistory();
-    setProject((prev) => ({
+    updateActiveProject((prev) => ({
       ...prev,
       cards: prev.cards.filter((c) => c.id !== id),
       isDirty: true,
@@ -267,7 +351,7 @@ export default function App() {
   const handleDeleteSelectedCards = () => {
     if (selectedCardIds.size === 0) return;
     recordHistory();
-    setProject((prev) => ({
+    updateActiveProject((prev) => ({
       ...prev,
       cards: prev.cards.filter((c) => !selectedCardIds.has(c.id)),
       isDirty: true,
@@ -284,7 +368,9 @@ export default function App() {
     recordHistory();
     const duplicated: SnippetCard = {
       ...target,
-      id: `card-copy-${Date.now()}`,
+      id: uid('card-copy'),
+      sourceKey: undefined,
+      manuallyEdited: true,
       title: `${target.title} (Copy)`,
       updatedAt: new Date().toISOString(),
     };
@@ -292,7 +378,7 @@ export default function App() {
     const newCards = [...project.cards];
     newCards.splice(targetIdx + 1, 0, duplicated);
 
-    setProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
+    updateActiveProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
     setInspectedCardId(duplicated.id);
     addToast('Duplicated card', 'success');
   };
@@ -302,6 +388,7 @@ export default function App() {
     if (idx === -1) return;
     if (direction === 'up' && idx === 0) return;
     if (direction === 'down' && idx === project.cards.length - 1) return;
+    recordHistory();
 
     const newCards = [...project.cards];
     const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
@@ -309,7 +396,7 @@ export default function App() {
     newCards[idx] = newCards[targetIdx];
     newCards[targetIdx] = temp;
 
-    setProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
+    updateActiveProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
   };
 
   const handleAddCard = (type: CardType) => {
@@ -398,7 +485,7 @@ export default function App() {
         break;
     }
 
-    setProject((prev) => ({ ...prev, cards: [...prev.cards, newCard], isDirty: true }));
+    updateActiveProject((prev) => ({ ...prev, cards: [...prev.cards, newCard], isDirty: true }));
     setInspectedCardId(newCard.id);
     addToast(`Added new ${newCard.type.replace('_', ' ')} card`, 'success');
   };
@@ -424,16 +511,9 @@ export default function App() {
     setSelectedCardIds(new Set());
   };
 
-  // Single card copy
-  const handleCopyCard = async (card: SnippetCard) => {
-    const md = formatCardToMarkdown(card);
-    const html = formatCardToHtml(card);
-    const res = await copyToClipboard(md, html);
-    if (res.success) {
-      addToast(`Copied "${card.title}" to clipboard!`, 'success');
-    } else {
-      addToast('Failed to copy card', 'error');
-    }
+  // Duplicate immediately after the original (no clipboard round-trip)
+  const handleCopyCard = (card: SnippetCard) => {
+    handleDuplicateCard(card.id);
   };
 
   // Copy selected cards
@@ -450,10 +530,177 @@ export default function App() {
     }
   };
 
-  // Computed analysis
-  const readinessScore = calculateExecutiveScore(project);
-  const snapshotDiff = compareReportSnapshots(baselineCards, project.cards);
-  const activeCard = project.cards.find((c) => c.id === inspectedCardId) || null;
+  // ---- Project library: switching, folders, time flow ----
+  const resetWorkspaceUI = (cards: SnippetCard[]) => {
+    setHistoryStack([]);
+    setRedoStack([]);
+    setSelectedCardIds(new Set());
+    setInspectedCardId(cards[0]?.id ?? null);
+    setHighlightPassage(null);
+  };
+
+  const handleSelectProject = (id: string) => {
+    if (id === library.activeProjectId) return;
+    const target = library.projects.find((p) => p.id === id);
+    if (!target) return;
+    setLibrary((prev) => ({ ...prev, activeProjectId: id }));
+    resetWorkspaceUI(target.cards);
+    const latest = latestSnapshotForProject(library.snapshots, id);
+    setBaselineCards(latest ? latest.cards : []);
+    setMobileArea('canvas');
+  };
+
+  const handleNewProject = (folderId: string) => {
+    const folders = ensureDefaultFolder(library.folders);
+    const fid = folders.some((f) => f.id === folderId) ? folderId : folders[0].id;
+    const blank = createBlankProject(fid);
+    setLibrary((prev) => ({
+      ...prev,
+      folders: ensureDefaultFolder(prev.folders),
+      projects: [...prev.projects, blank],
+      activeProjectId: blank.id,
+    }));
+    resetWorkspaceUI([]);
+    setBaselineCards([]);
+    setMobileArea('canvas');
+    addToast('Created new project', 'success');
+  };
+
+  const handleRenameProject = (id: string, title: string) => {
+    setLibrary((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) =>
+        p.id === id ? { ...p, title, isDirty: true, lastSavedAt: new Date().toISOString() } : p
+      ),
+    }));
+  };
+
+  const handleDuplicateProject = (id: string) => {
+    const src = library.projects.find((p) => p.id === id);
+    if (!src) return;
+    const copy: ReportProject = {
+      ...src,
+      id: uid('proj'),
+      title: `${src.title} (Copy)`,
+      lastSavedAt: new Date().toISOString(),
+      isDirty: false,
+    };
+    setLibrary((prev) => ({ ...prev, projects: [...prev.projects, copy], activeProjectId: copy.id }));
+    resetWorkspaceUI(copy.cards);
+    setBaselineCards([]);
+    addToast('Project duplicated', 'success');
+  };
+
+  const handleMoveProject = (id: string, folderId: string) => {
+    setLibrary((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, folderId } : p)),
+    }));
+    addToast('Project moved', 'success');
+  };
+
+  const handleDeleteProject = (id: string) => {
+    const remaining = library.projects.filter((p) => p.id !== id);
+    const wasActive = id === library.activeProjectId;
+    let folders = library.folders;
+    let projects = remaining;
+    if (projects.length === 0) {
+      folders = ensureDefaultFolder(folders);
+      projects = [createBlankProject(folders[0].id)];
+    }
+    const nextActive = wasActive ? projects[0].id : library.activeProjectId;
+    const snapshots = library.snapshots.filter((s) => s.projectId !== id);
+    setLibrary({ ...library, folders, projects, snapshots, activeProjectId: nextActive });
+    if (wasActive) {
+      resetWorkspaceUI(projects[0].cards);
+      const latest = latestSnapshotForProject(snapshots, nextActive);
+      setBaselineCards(latest ? latest.cards : []);
+    }
+    addToast('Project deleted', 'info');
+  };
+
+  const handleNewFolder = (name: string) => {
+    const folder = createFolder(name);
+    setLibrary((prev) => ({ ...prev, folders: [...ensureDefaultFolder(prev.folders), folder] }));
+    addToast(`Folder "${folder.name}" created`, 'success');
+  };
+
+  const handleRenameFolder = (id: string, name: string) => {
+    setLibrary((prev) => ({
+      ...prev,
+      folders: prev.folders.map((f) => (f.id === id ? { ...f, name } : f)),
+    }));
+  };
+
+  const handleDeleteFolder = (id: string) => {
+    const remaining = library.folders.filter((f) => f.id !== id);
+    const folders = ensureDefaultFolder(remaining);
+    const fallbackId = folders[0].id;
+    setLibrary((prev) => ({
+      ...prev,
+      folders,
+      projects: prev.projects.map((p) => (p.folderId === id ? { ...p, folderId: fallbackId } : p)),
+    }));
+    addToast('Folder deleted — its projects moved to the first folder', 'info');
+  };
+
+  const handleSaveSnapshot = (name?: string) => {
+    const label = name?.trim() || snapshotLabelFor(project);
+    setLibrary((prev) => ({
+      ...prev,
+      snapshots: addSnapshot(prev.snapshots, makeSnapshot(prev.activeProjectId, label, project.cards, 'manual', project)),
+    }));
+    addToast(`Snapshot saved (${label})`, 'success');
+  };
+
+  const handleRestoreSnapshot = (snapshotId: string) => {
+    const snap = library.snapshots.find(
+      (s) => s.id === snapshotId && s.projectId === library.activeProjectId
+    );
+    if (!snap) return;
+    recordHistory();
+    updateActiveProject((prev) => ({
+      ...prev,
+      ...(snap.project ?? {}),
+      id: prev.id,
+      folderId: prev.folderId,
+      cards: snap.cards,
+      isDirty: true,
+      lastSavedAt: new Date().toISOString(),
+    }));
+    setSelectedCardIds(new Set());
+    setInspectedCardId(snap.cards[0]?.id ?? null);
+    setHighlightPassage(null);
+    addToast(`Restored "${snap.label}" (undoable with ⌘Z)`, 'success');
+  };
+
+  const handleCompareSnapshot = (snapshotId: string) => {
+    const snap = library.snapshots.find(
+      (s) => s.id === snapshotId && s.projectId === library.activeProjectId
+    );
+    if (!snap) return;
+    setBaselineCards(snap.cards);
+    setIsSnapshotModalOpen(true);
+  };
+
+  // Computed per-project readiness (sidebar dots)
+
+  const readinessByProject = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const p of library.projects) {
+      try {
+        map[p.id] = calculateExecutiveScore(p).score;
+      } catch {
+        map[p.id] = 0;
+      }
+    }
+    return map;
+  }, [library.projects]);
+
+  const activeSnapshots = useMemo(
+    () => snapshotsForProject(library.snapshots, library.activeProjectId),
+    [library.snapshots, library.activeProjectId]
+  );
 
   // Guided Tour 5-Step Configuration
   const tourSteps: TourStep[] = [
@@ -492,7 +739,7 @@ export default function App() {
       summary: 'Transparent 6-point checklist auditing missing context, unstated dates, missing KPI targets, and WCAG image alt text with 1-click quick-fixes.',
       actionLabel: 'Audit & Quick-Fix',
       onExecute: () => {
-        setMobileArea('inspector');
+        setMobileArea('canvas');
         handleApplyAllFixes();
         setTourStepIndex(3);
       },
@@ -559,10 +806,19 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F5F7] text-[#1F1F1F]">
+    <div className="workspace-shell h-dvh flex flex-col overflow-hidden bg-[#F5F5F7] text-[#1F1F1F]">
       {/* 1. Universal Apple-Inspired Header */}
       <Header
-        isDirty={project.isDirty}
+        isDirty={savedLibrary !== library}
+        saveError={saveError}
+        projectTitle={project.title}
+        folderName={library.folders.find((f) => f.id === project.folderId)?.name ?? 'Projects'}
+        onToggleSidebar={() => {
+          if (window.innerWidth < 1024) setMobileArea(mobileArea === 'projects' ? 'canvas' : 'projects');
+          else setSidebarVisible((v) => !v);
+        }}
+        canRedo={redoStack.length > 0}
+        onRedo={handleRedo}
         lastSavedAt={project.lastSavedAt}
         canUndo={historyStack.length > 0}
         onUndo={handleUndo}
@@ -584,6 +840,17 @@ export default function App() {
         <div className="flex items-center p-0.5 bg-black/[0.05] rounded-full text-xs font-medium w-full max-w-sm">
           <button
             type="button"
+            onClick={() => setMobileArea('projects')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
+              mobileArea === 'projects' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
+            }`}
+          >
+            <Folder className="w-3.5 h-3.5" />
+            <span>Projects</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setMobileArea('canvas')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
               mobileArea === 'canvas' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
@@ -592,38 +859,59 @@ export default function App() {
             <Eye className="w-3.5 h-3.5" />
             <span>Report ({project.cards.length})</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setMobileArea('inspector')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
-              mobileArea === 'inspector' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
-            }`}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Inspect</span>
-          </button>
         </div>
       </div>
 
       {/* 3. Two-Area Workspace (Desktop: 2 columns, Mobile: selected area) */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="workspace-main flex-1 min-h-0 flex overflow-hidden">
+        {/* AREA 0: PROJECT LIBRARY (folders + time flow) */}
+        <section
+          aria-label="Projects and Time Flow"
+          className={`workspace-sidebar w-full lg:w-[272px] h-full shrink-0 ${
+            mobileArea === 'projects' ? 'block' : sidebarVisible ? 'hidden lg:block' : 'hidden'
+          } no-print`}
+        >
+          <ProjectSidebar
+            library={library}
+            activeProjectId={library.activeProjectId}
+            scores={readinessByProject}
+            onSelectProject={handleSelectProject}
+            onNewProject={handleNewProject}
+            onNewFolder={handleNewFolder}
+            onRenameProject={handleRenameProject}
+            onDuplicateProject={handleDuplicateProject}
+            onMoveProject={handleMoveProject}
+            onDeleteProject={handleDeleteProject}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={handleDeleteFolder}
+          >
+            <TimeFlow
+              snapshots={activeSnapshots}
+              onSaveSnapshot={handleSaveSnapshot}
+              onRestoreSnapshot={handleRestoreSnapshot}
+              onCompareSnapshot={handleCompareSnapshot}
+            />
+          </ProjectSidebar>
+        </section>
+
         {/* AREA 1: REPORT COMPOSITION + BOTTOM COMPOSER */}
         <section
           aria-label="Report Composition and Preview"
-          className={`flex-1 h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden bg-[#F5F5F7] ${
-            mobileArea === 'canvas' ? 'block' : 'hidden lg:flex'
+          className={`workspace-report flex-1 min-w-0 h-full flex-col overflow-hidden bg-[#F5F5F7] ${
+            mobileArea === 'canvas' ? 'flex' : 'hidden lg:flex'
           }`}
         >
           <ReportCanvas
+            key={project.id}
+            projectId={project.id}
             title={project.title}
             reportingPeriod={project.reportingPeriod}
             cards={project.cards}
             selectedCardIds={selectedCardIds}
             inspectedCardId={inspectedCardId}
-            onUpdateTitle={(title) => setProject((prev) => ({ ...prev, title, isDirty: true }))}
+            onUpdateTitle={(title) => updateActiveProject((prev) => ({ ...prev, title, isDirty: true }))}
             onUpdatePeriod={(reportingPeriod) =>
-              setProject((prev) => ({ ...prev, reportingPeriod, isDirty: true }))
+              updateActiveProject((prev) => ({ ...prev, reportingPeriod, isDirty: true }))
             }
             onToggleSelectCard={handleToggleSelectCard}
             onSelectAllCards={handleSelectAllCards}
@@ -635,9 +923,6 @@ export default function App() {
                 setHighlightPassage({ text: card.sourceRef.passageText });
               } else {
                 setHighlightPassage(null);
-              }
-              if (window.innerWidth < 1024) {
-                setMobileArea('inspector');
               }
             }}
             onMoveCard={handleMoveCard}
@@ -657,40 +942,9 @@ export default function App() {
             onNotesChange={handleNotesChange}
             onMetricsChange={handleMetricsChange}
             onImagesChange={handleImagesChange}
+            onImagesAppend={handleImagesAppend}
             onGenerateReport={handleGenerateReport}
             onNotify={addToast}
-          />
-        </section>
-
-        {/* AREA 2: CONTEXTUAL CARD INSPECTOR & SETTINGS */}
-        <section
-          aria-label="Card Inspector and Executive Diagnostics"
-          className={`w-full lg:w-[340px] xl:w-[380px] h-[calc(100vh-3.5rem)] shrink-0 ${
-            mobileArea === 'inspector' ? 'block' : 'hidden lg:block'
-          } no-print`}
-        >
-          <CardInspector
-            activeCard={activeCard}
-            onUpdateCard={handleUpdateCard}
-            onDeleteCard={handleDeleteCard}
-            onDuplicateCard={handleDuplicateCard}
-            readinessScore={readinessScore}
-            onFixReadinessItem={(cardId) => {
-              if (cardId) setInspectedCardId(cardId);
-            }}
-            onApplyQuickFix={handleApplyQuickFix}
-            onApplyAllFixes={handleApplyAllFixes}
-            snapshotDiff={snapshotDiff}
-            onHighlightSource={(text) => {
-              setHighlightPassage(text ? { text } : null);
-              if (window.innerWidth < 1024) {
-                setMobileArea('canvas');
-              }
-            }}
-            onOpenSnapshotModal={() => setIsSnapshotModalOpen(true)}
-            highlightPassage={highlightPassage}
-            metrics={project.metrics}
-            images={project.images}
           />
         </section>
       </main>
@@ -722,7 +976,7 @@ export default function App() {
       />
 
       {/* 7. Destination-Aware Export & Message Tools Modal */}
-      <ExportModal
+      {isExportOpen && <Suspense fallback={<div role="status" className="fixed bottom-8 right-8 z-50 rounded-xl bg-white p-4 shadow-lg text-sm">Opening share preview…</div>}><ExportModal
         project={project}
         selectedCards={project.cards.filter((c) => selectedCardIds.has(c.id))}
         isOpen={isExportOpen}
@@ -730,7 +984,7 @@ export default function App() {
         onNotify={addToast}
         initialMode={exportInitialMode}
         initialTool={exportInitialTool}
-      />
+      /></Suspense>}
 
       {/* 8. Toast Feedback */}
       <Toast toasts={toasts} onDismiss={dismissToast} />

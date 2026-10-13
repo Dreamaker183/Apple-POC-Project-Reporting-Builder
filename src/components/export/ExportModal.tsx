@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useDialogFocus } from '../common/useDialogFocus';
 import { ReportProject, SnippetCard, ExportDestination } from '../../types/report';
 import { exportReportToMarkdown } from '../../lib/export/markdownExport';
 import { exportReportToJson } from '../../lib/export/jsonExport';
@@ -80,6 +81,7 @@ export const ExportModal: React.FC<Props> = ({
   initialMode = 'formats',
   initialTool = 'email',
 }) => {
+  useDialogFocus(isOpen, onClose);
   const [modalMode, setModalMode] = useState<'formats' | 'tools'>(initialMode);
   const [destination, setDestination] = useState<ExportDestination>('executive_email');
   const [exportScope, setExportScope] = useState<'all' | 'selected'>(
@@ -409,6 +411,7 @@ export const ExportModal: React.FC<Props> = ({
       <div 
         className="bg-white rounded-2xl border border-black/10 shadow-2xl max-w-4xl w-full flex flex-col max-h-[92vh] overflow-hidden"
         role="dialog"
+        aria-modal="true"
         aria-labelledby="export-dialog-title"
       >
         {/* Modal Header */}

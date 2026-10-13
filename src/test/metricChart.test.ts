@@ -42,4 +42,22 @@ describe('Metric graph forms (chartStyle)', () => {
     expect(byLabel.get('Uptime')).toMatchObject({ chartStyle: 'donut' });
     expect(byLabel.get('Headcount')).toMatchObject({ chartStyle: undefined });
   });
+
+  it('preserves manually entered previous values and context notes on cards', () => {
+    const metrics: MetricInput[] = [
+      {
+        id: 'm-full', name: 'Sprint completion', value: 85, unit: '%',
+        target: 100, previousValue: 70,
+        explanation: '85% of planned work, ahead of last sprint',
+        chartStyle: 'trend',
+      },
+    ];
+    const cards = generateSnippetCards('Sprint update notes.', metrics, [], 'Test');
+    const card = cards.find(c => c.type === 'kpi_metric');
+    expect(card).toMatchObject({
+      previousValue: 70,
+      explanation: '85% of planned work, ahead of last sprint',
+      chartStyle: 'trend',
+    });
+  });
 });

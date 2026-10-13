@@ -6,7 +6,6 @@
 import React, { useState } from 'react';
 import { SnippetCard } from '../../types/report';
 import { compareReportSnapshots, DiffReport } from '../../lib/analysis/snapshotDiff';
-import { WEEK_40_BASELINE_SNAPSHOT } from '../../lib/sampleData';
 import { 
   X, 
   GitCompare, 
@@ -21,6 +20,7 @@ import {
   Layers
 } from 'lucide-react';
 import { copyToClipboard } from '../../lib/export/clipboard';
+import { useDialogFocus } from '../common/useDialogFocus';
 
 interface Props {
   currentCards: SnippetCard[];
@@ -37,19 +37,19 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
   onClose,
   onNotify,
 }) => {
-  const [baselineSource, setBaselineSource] = useState<'week40' | 'initial'>('week40');
+  useDialogFocus(isOpen, onClose);
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
-  const baselineCards = baselineSource === 'week40' ? WEEK_40_BASELINE_SNAPSHOT : initialCards;
+  const baselineCards = initialCards;
   const diff: DiffReport = compareReportSnapshots(baselineCards, currentCards);
 
   const formatDiffSummaryText = (): string => {
     const lines: string[] = [];
     lines.push(`WHAT'S CHANGED: REPORT SNAPSHOT COMPARISON`);
-    lines.push(`Baseline: ${baselineSource === 'week40' ? 'Week 40 Sprint Review' : 'Initial Draft'}`);
-    lines.push(`Target: Week 41 Current Status`);
+    lines.push(`Baseline: Selected saved snapshot`);
+    lines.push(`Target: Current working report`);
     lines.push(`──────────────────────────────────────────`);
 
     if (diff.metricChanges.length > 0) {
@@ -94,6 +94,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
       <div 
         className="bg-white rounded-2xl border border-black/10 shadow-2xl max-w-3xl w-full flex flex-col max-h-[88vh] overflow-hidden"
         role="dialog"
+        aria-modal="true"
         aria-labelledby="diff-dialog-title"
       >
         {/* Header */}
@@ -125,30 +126,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
         <div className="px-5 py-3 bg-[#FAFAFA] border-b border-black/[0.06] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-[#727272]">Compare Against:</span>
-            <div className="flex items-center p-0.5 bg-neutral-200/70 rounded-lg text-xs font-medium">
-              <button
-                type="button"
-                onClick={() => setBaselineSource('week40')}
-                className={`px-3 py-1 rounded-md transition-all ${
-                  baselineSource === 'week40'
-                    ? 'bg-white text-[#1F1F1F] shadow-xs font-semibold'
-                    : 'text-[#727272] hover:text-[#1F1F1F]'
-                }`}
-              >
-                Week 40 Baseline (Prior Sprint)
-              </button>
-              <button
-                type="button"
-                onClick={() => setBaselineSource('initial')}
-                className={`px-3 py-1 rounded-md transition-all ${
-                  baselineSource === 'initial'
-                    ? 'bg-white text-[#1F1F1F] shadow-xs font-semibold'
-                    : 'text-[#727272] hover:text-[#1F1F1F]'
-                }`}
-              >
-                Initial Generated State
-              </button>
-            </div>
+            <span className="text-xs text-[#6E6E73]">Saved snapshot → Working draft</span>
           </div>
 
           <button
