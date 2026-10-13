@@ -6,6 +6,7 @@
 import React from 'react';
 import { KpiMetricCardData } from '../../types/report';
 import { TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
+import { MetricChart } from './MetricChart';
 
 interface Props {
   card: KpiMetricCardData;
@@ -78,6 +79,21 @@ export const KpiMetricCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
               Previous: <strong className="font-semibold text-[#1F1F1F]">{card.previousValue}{card.unit}</strong>
             </span>
           )}
+        </div>
+      )}
+
+      {(card.chartStyle ?? 'number') !== 'number' && (
+        <div className="pt-1">
+          <MetricChart
+            datum={{
+              value: card.value,
+              unit: card.unit,
+              target: card.target,
+              previousValue: card.previousValue,
+              trend: card.trend,
+            }}
+            style={card.chartStyle ?? 'number'}
+          />
         </div>
       )}
 

@@ -13,22 +13,17 @@ import {
 } from './types/report';
 import { 
   createSampleProject, 
-  SAMPLE_SOURCE_TEXT, 
-  SAMPLE_MESSY_SOURCE_TEXT,
-  SAMPLE_METRICS, 
-  SAMPLE_IMAGES,
   WEEK_40_BASELINE_SNAPSHOT
 } from './lib/sampleData';
 import { generateSnippetCards } from './lib/parsing/deterministicParser';
 import { saveLocalDraft, loadLocalDraft, clearLocalDraft } from './lib/persistence/localDraft';
 import { calculateExecutiveScore, applyQuickFixToProject } from './lib/analysis/executiveScore';
-import { compareReportSnapshots, DiffReport } from './lib/analysis/snapshotDiff';
+import { compareReportSnapshots } from './lib/analysis/snapshotDiff';
 import { copyToClipboard } from './lib/export/clipboard';
 import { formatCardToMarkdown } from './lib/export/markdownExport';
 import { formatCardToHtml } from './lib/export/htmlExport';
 
 import { Header } from './components/layout/Header';
-import { InputPanel } from './components/input/InputPanel';
 import { ReportCanvas } from './components/composition/ReportCanvas';
 import { CardInspector } from './components/composition/CardInspector';
 import { ExportModal, MessageToolId } from './components/export/ExportModal';
@@ -36,7 +31,7 @@ import { SnapshotComparisonModal } from './components/composition/SnapshotCompar
 import { GuidedTour, TourStep } from './components/guided-demo/GuidedTour';
 import { ShortcutsModal } from './components/common/ShortcutsModal';
 import { Toast, ToastMessage } from './components/common/Toast';
-import { FileText, Eye, SlidersHorizontal } from 'lucide-react';
+import { Eye, SlidersHorizontal } from 'lucide-react';
 
 export default function App() {
   // 1. Initialize project from local storage or sample data
@@ -73,7 +68,7 @@ export default function App() {
   const [highlightPassage, setHighlightPassage] = useState<{ start?: number; end?: number; text?: string } | null>(null);
 
   // 5. Mobile workspace area view
-  const [mobileArea, setMobileArea] = useState<'input' | 'canvas' | 'inspector'>('canvas');
+  const [mobileArea, setMobileArea] = useState<'canvas' | 'inspector'>('canvas');
 
   // Push toast helper
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -262,6 +257,9 @@ export default function App() {
     if (inspectedCardId === id) {
       const remaining = project.cards.filter((c) => c.id !== id);
       setInspectedCardId(remaining[0]?.id || null);
+      if (remaining.length === 0) {
+        setHighlightPassage(null);
+      }
     }
     addToast('Card removed', 'info');
   };
@@ -276,6 +274,7 @@ export default function App() {
     }));
     setSelectedCardIds(new Set());
     setInspectedCardId(null);
+    setHighlightPassage(null);
     addToast(`Deleted ${selectedCardIds.size} cards`, 'info');
   };
 
@@ -339,6 +338,7 @@ export default function App() {
           value: 90,
           unit: '%',
           target: 100,
+          chartStyle: 'bar',
           createdAt: now,
           updatedAt: now,
         };
@@ -459,12 +459,12 @@ export default function App() {
   const tourSteps: TourStep[] = [
     {
       title: '1. Ingest Messy, Unstructured Notes',
-      badge: 'Input Ingestion',
-      summary: 'Demonstrates handling conversational, informal sprint updates with run-on bullets and unconfirmed dates without hallucinating.',
+      badge: 'Composer Input',
+      summary: 'Use the bottom composer to paste conversational sprint updates, add metrics, paste tables, or attach images — without hallucinating.',
       actionLabel: 'Load Messy Notes',
       onExecute: () => {
         handleLoadSample(true);
-        setMobileArea('input');
+        setMobileArea('canvas');
         setTourStepIndex(1);
       },
     },
@@ -584,17 +584,6 @@ export default function App() {
         <div className="flex items-center p-0.5 bg-black/[0.05] rounded-full text-xs font-medium w-full max-w-sm">
           <button
             type="button"
-            onClick={() => setMobileArea('input')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
-              mobileArea === 'input' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Inputs</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setMobileArea('canvas')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
               mobileArea === 'canvas' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
@@ -617,28 +606,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* 3. Three-Area Workspace (Desktop: 3 columns, Mobile: selected area) */}
+      {/* 3. Two-Area Workspace (Desktop: 2 columns, Mobile: selected area) */}
       <main className="flex-1 flex overflow-hidden">
-        {/* AREA 1: INPUT PANEL */}
-        <section
-          aria-label="Source Inputs"
-          className={`w-full lg:w-[320px] xl:w-[360px] h-[calc(100vh-3.5rem)] shrink-0 ${
-            mobileArea === 'input' ? 'block' : 'hidden lg:block'
-          } no-print`}
-        >
-          <InputPanel
-            rawNotes={project.rawNotes}
-            metrics={project.metrics}
-            images={project.images}
-            onNotesChange={handleNotesChange}
-            onMetricsChange={handleMetricsChange}
-            onImagesChange={handleImagesChange}
-            onGenerateReport={handleGenerateReport}
-            highlightPassage={highlightPassage}
-          />
-        </section>
-
-        {/* AREA 2: REPORT COMPOSITION & PREVIEW */}
+        {/* AREA 1: REPORT COMPOSITION + BOTTOM COMPOSER */}
         <section
           aria-label="Report Composition and Preview"
           className={`flex-1 h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden bg-[#F5F5F7] ${
@@ -663,6 +633,8 @@ export default function App() {
               const card = project.cards.find(c => c.id === id);
               if (card?.sourceRef) {
                 setHighlightPassage({ text: card.sourceRef.passageText });
+              } else {
+                setHighlightPassage(null);
               }
               if (window.innerWidth < 1024) {
                 setMobileArea('inspector');
@@ -678,10 +650,19 @@ export default function App() {
             onShareCard={handleShareCard}
             onUpdateCard={handleUpdateCard}
             onAddCard={handleAddCard}
+            rawNotes={project.rawNotes}
+            metrics={project.metrics}
+            images={project.images}
+            highlightPassage={highlightPassage}
+            onNotesChange={handleNotesChange}
+            onMetricsChange={handleMetricsChange}
+            onImagesChange={handleImagesChange}
+            onGenerateReport={handleGenerateReport}
+            onNotify={addToast}
           />
         </section>
 
-        {/* AREA 3: CONTEXTUAL CARD INSPECTOR & SETTINGS */}
+        {/* AREA 2: CONTEXTUAL CARD INSPECTOR & SETTINGS */}
         <section
           aria-label="Card Inspector and Executive Diagnostics"
           className={`w-full lg:w-[340px] xl:w-[380px] h-[calc(100vh-3.5rem)] shrink-0 ${
@@ -703,10 +684,13 @@ export default function App() {
             onHighlightSource={(text) => {
               setHighlightPassage(text ? { text } : null);
               if (window.innerWidth < 1024) {
-                setMobileArea('input');
+                setMobileArea('canvas');
               }
             }}
             onOpenSnapshotModal={() => setIsSnapshotModalOpen(true)}
+            highlightPassage={highlightPassage}
+            metrics={project.metrics}
+            images={project.images}
           />
         </section>
       </main>

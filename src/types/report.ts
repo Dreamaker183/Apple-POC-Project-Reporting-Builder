@@ -11,6 +11,8 @@ export type CardType =
   | 'milestone'
   | 'visual_update';
 
+export type MetricChartStyle = 'number' | 'bar' | 'donut' | 'trend';
+
 export interface SourceReference {
   passageText: string;
   startIndex?: number;
@@ -44,6 +46,7 @@ export interface KpiMetricCardData extends BaseCard {
   previousValue?: number;
   trend?: 'improving' | 'neutral' | 'declining';
   explanation?: string;
+  chartStyle?: MetricChartStyle;
 }
 
 export interface RiskBlockerCardData extends BaseCard {
@@ -100,6 +103,7 @@ export interface MetricInput {
   target?: number;
   previousValue?: number;
   explanation?: string;
+  chartStyle?: MetricChartStyle;
 }
 
 export interface ImageAssetInput {

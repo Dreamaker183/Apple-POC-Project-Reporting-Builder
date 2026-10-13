@@ -195,6 +195,7 @@ export function generateSnippetCards(
         target: m.target,
         previousValue: m.previousValue,
         trend,
+        chartStyle: m.chartStyle,
         explanation: m.explanation || (matchedPassage ? matchedPassage.sentence : undefined),
         createdAt: now,
         updatedAt: now,

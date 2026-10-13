@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { SnippetCard, ReadinessScore } from '../../types/report';
+import { SnippetCard, ReadinessScore, MetricInput, ImageAssetInput } from '../../types/report';
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -32,6 +32,9 @@ interface Props {
   snapshotDiff: DiffReport | null;
   onHighlightSource: (text?: string) => void;
   onOpenSnapshotModal?: () => void;
+  highlightPassage?: { start?: number; end?: number; text?: string } | null;
+  metrics?: MetricInput[];
+  images?: ImageAssetInput[];
 }
 
 export const CardInspector: React.FC<Props> = ({
@@ -46,6 +49,9 @@ export const CardInspector: React.FC<Props> = ({
   snapshotDiff,
   onHighlightSource,
   onOpenSnapshotModal,
+  highlightPassage,
+  metrics = [],
+  images = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'inspector' | 'readiness' | 'diff'>('inspector');
 
@@ -226,6 +232,25 @@ export const CardInspector: React.FC<Props> = ({
                       className="w-full text-xs p-2 bg-white border border-black/[0.08] rounded-xl focus:border-[#0071E3] focus:outline-none text-[#1D1D1F]"
                     />
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#86868B]">Graph form</label>
+                    <div className="grid grid-cols-4 gap-1 p-0.5 bg-black/[0.04] rounded-xl text-[11px] font-medium">
+                      {(['number', 'bar', 'donut', 'trend'] as const).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => onUpdateCard({ ...activeCard, chartStyle: s })}
+                          className={`py-1 rounded-lg capitalize transition-all ${
+                            (activeCard.chartStyle ?? 'number') === s
+                              ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold'
+                              : 'text-[#86868B] hover:text-[#1D1D1F]'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -389,8 +414,67 @@ export const CardInspector: React.FC<Props> = ({
               </div>
             </div>
           ) : (
-            <div className="p-8 text-center text-xs text-[#86868B]">
-              Select any card to edit fields or trace source sentences.
+            <div className="space-y-3.5">
+              <div className="p-4 text-center text-xs text-[#86868B] bg-white rounded-xl border border-black/[0.06] space-y-1">
+                <div className="font-medium text-[#1D1D1F]">No card selected</div>
+                <div>Select any card to edit fields or trace source sentences.</div>
+              </div>
+
+              {/* Sources overview: trace passage + attachments stay visible with no selection */}
+              {highlightPassage?.text && (
+                <div className="p-3 bg-white rounded-xl border border-[#0071E3]/20 space-y-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase text-[#0071E3]">
+                    <Link2 className="w-3 h-3" />
+                    <span>Last traced passage</span>
+                  </div>
+                  <p className="text-xs text-[#1D1D1F] italic leading-relaxed">
+                    "{highlightPassage.text}"
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onHighlightSource(highlightPassage.text)}
+                    className="w-full py-1 text-xs text-[#0071E3] hover:underline flex items-center justify-center gap-1"
+                  >
+                    <span>Show in composer</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              {metrics.length > 0 && (
+                <div className="p-3 bg-white rounded-xl border border-black/[0.06] space-y-1.5">
+                  <div className="text-[11px] font-semibold text-[#86868B] uppercase tracking-wider">
+                    Metrics ({metrics.length})
+                  </div>
+                  {metrics.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between text-xs py-1 border-b border-black/[0.04] last:border-none">
+                      <span className="text-[#1D1D1F] truncate">{m.name}</span>
+                      <span className="font-medium text-[#1D1D1F] shrink-0">
+                        {m.value}{m.unit}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {images.length > 0 && (
+                <div className="p-3 bg-white rounded-xl border border-black/[0.06] space-y-2">
+                  <div className="text-[11px] font-semibold text-[#86868B] uppercase tracking-wider">
+                    Media ({images.length})
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {images.map((img) => (
+                      <img
+                        key={img.id}
+                        src={img.dataUrl}
+                        alt={img.altText}
+                        title={img.name}
+                        className="w-full h-14 rounded-lg object-cover border border-black/10"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )
         )}

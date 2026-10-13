@@ -115,6 +115,7 @@ export const SAMPLE_METRICS: MetricInput[] = [
     target: 100,
     previousValue: 70,
     explanation: '85% of planned sprint work completed on schedule',
+    chartStyle: 'bar',
   },
   {
     id: 'sample-metric-2',
@@ -124,6 +125,7 @@ export const SAMPLE_METRICS: MetricInput[] = [
     target: 0,
     previousValue: 5,
     explanation: 'Includes 1 payment callback issue blocking validation',
+    chartStyle: 'trend',
   },
   {
     id: 'sample-metric-3',
@@ -133,6 +135,7 @@ export const SAMPLE_METRICS: MetricInput[] = [
     target: 200,
     previousValue: 260,
     explanation: 'Currently 240 ms vs 200 ms target SLA',
+    chartStyle: 'donut',
   },
 ];
 

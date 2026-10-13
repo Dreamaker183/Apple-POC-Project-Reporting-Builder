@@ -28,6 +28,8 @@ export const ExecutiveSummaryCardSchema = BaseCardSchema.extend({
   statusNote: z.string().optional(),
 });
 
+export const MetricChartStyleSchema = z.enum(['number', 'bar', 'donut', 'trend']);
+
 export const KpiMetricCardSchema = BaseCardSchema.extend({
   type: z.literal('kpi_metric'),
   label: z.string().min(1, 'Metric label is required'),
@@ -37,6 +39,7 @@ export const KpiMetricCardSchema = BaseCardSchema.extend({
   previousValue: z.number().optional(),
   trend: z.enum(['improving', 'neutral', 'declining']).optional(),
   explanation: z.string().optional(),
+  chartStyle: MetricChartStyleSchema.optional(),
 });
 
 export const RiskBlockerCardSchema = BaseCardSchema.extend({
@@ -96,6 +99,7 @@ export const MetricInputSchema = z.object({
   target: z.number().optional(),
   previousValue: z.number().optional(),
   explanation: z.string().optional(),
+  chartStyle: MetricChartStyleSchema.optional(),
 });
 
 export const ImageAssetInputSchema = z.object({

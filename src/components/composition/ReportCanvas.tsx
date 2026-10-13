@@ -5,8 +5,9 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SnippetCard, CardType } from '../../types/report';
+import { SnippetCard, CardType, MetricInput, ImageAssetInput } from '../../types/report';
 import { CardRenderer } from '../cards/CardRenderer';
+import { ChatComposer } from '../composer/ChatComposer';
 import { 
   Plus, 
   Trash2, 
@@ -42,6 +43,15 @@ interface Props {
   onShareCard?: (card: SnippetCard) => void;
   onUpdateCard: (updated: SnippetCard) => void;
   onAddCard: (type: CardType) => void;
+  rawNotes: string;
+  metrics: MetricInput[];
+  images: ImageAssetInput[];
+  highlightPassage?: { start?: number; end?: number; text?: string } | null;
+  onNotesChange: (notes: string) => void;
+  onMetricsChange: (metrics: MetricInput[]) => void;
+  onImagesChange: (images: ImageAssetInput[]) => void;
+  onGenerateReport: () => void;
+  onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const ReportCanvas: React.FC<Props> = ({
@@ -66,6 +76,15 @@ export const ReportCanvas: React.FC<Props> = ({
   onShareCard,
   onUpdateCard,
   onAddCard,
+  rawNotes,
+  metrics,
+  images,
+  highlightPassage,
+  onNotesChange,
+  onMetricsChange,
+  onImagesChange,
+  onGenerateReport,
+  onNotify,
 }) => {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
@@ -124,7 +143,8 @@ export const ReportCanvas: React.FC<Props> = ({
   const someSelected = selectedCardIds.size > 0;
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 max-w-3xl mx-auto w-full space-y-6">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 max-w-3xl mx-auto w-full space-y-6">
       {/* Document Header (Minimalist Apple Document Style) */}
       <div className="space-y-2">
         <input
@@ -334,7 +354,7 @@ export const ReportCanvas: React.FC<Props> = ({
           <p className="text-xs text-[#86868B] max-w-xs mx-auto">
             {searchQuery 
               ? 'Try a different keyword or clear the search filter.'
-              : 'Synthesize updates in the left panel or click "+ Card" above to build manually.'
+              : 'Add updates in the composer below or click "+ Card" above to build manually.'
             }
           </p>
         </div>
@@ -376,6 +396,20 @@ export const ReportCanvas: React.FC<Props> = ({
           </AnimatePresence>
         </div>
       )}
+      </div>
+
+      {/* Bottom chatbot-style composer: text, metrics, table, media */}
+      <ChatComposer
+        rawNotes={rawNotes}
+        metrics={metrics}
+        images={images}
+        highlightPassage={highlightPassage}
+        onNotesChange={onNotesChange}
+        onMetricsChange={onMetricsChange}
+        onImagesChange={onImagesChange}
+        onGenerateReport={onGenerateReport}
+        onNotify={onNotify}
+      />
     </div>
   );
 };

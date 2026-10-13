@@ -25,6 +25,7 @@ export function exportReportToJson(project: ReportProject, selectedCards?: Snipp
       target: m.target,
       previousValue: m.previousValue,
       explanation: m.explanation,
+      chartStyle: m.chartStyle,
     })),
     cards: cardsToExport.map(card => {
       // Clean unnecessary UI transients if any
@@ -88,6 +89,7 @@ export function importReportFromJson(jsonString: string): { success: boolean; da
           target: m.target !== undefined ? Number(m.target) : undefined,
           previousValue: m.previousValue !== undefined ? Number(m.previousValue) : undefined,
           explanation: m.explanation,
+          chartStyle: ['number', 'bar', 'donut', 'trend'].includes(m.chartStyle) ? m.chartStyle : undefined,
         })) : [],
         images: [],
         cards: reconstructedCards,
