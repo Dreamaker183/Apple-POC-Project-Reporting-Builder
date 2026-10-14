@@ -3,24 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { 
-  Sparkles, 
-  ChevronRight, 
-  ChevronLeft, 
-  X, 
-  CheckCircle2, 
-  Wand2, 
-  GitCompare, 
-  Share2, 
-  ShieldCheck, 
-  FileText 
-} from 'lucide-react';
+import React, { useEffect } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Sparkles, ChevronRight, ChevronLeft, X, Check, Lightbulb } from 'lucide-react';
+import { TourCharacter } from './TourCharacter';
 
 export interface TourStep {
   title: string;
   badge: string;
   summary: string;
+  tip: string;
   actionLabel: string;
   onExecute: () => void;
 }
@@ -36,100 +28,87 @@ interface Props {
 }
 
 export const GuidedTour: React.FC<Props> = ({
-  currentStepIndex,
-  isOpen,
-  onClose,
-  onNext,
-  onPrev,
-  onJumpToStep,
-  steps,
+  currentStepIndex, isOpen, onClose, onNext, onPrev, onJumpToStep, steps,
 }) => {
-  if (!isOpen) return null;
-
+  const reduceMotion = useReducedMotion();
   const currentStep = steps[currentStepIndex];
+  const isLastStep = currentStepIndex === steps.length - 1;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      // Let an open export/comparison dialog handle its own Escape key.
+      if (event.key === 'Escape' && !document.querySelector('[aria-modal="true"]')) onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[92%] bg-white/95 backdrop-blur-md rounded-2xl border border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] p-4 text-[#1F1F1F] no-print transition-all duration-200">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-black/[0.06]">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-[#0071E3] text-white flex items-center justify-center font-bold text-xs">
-            <Sparkles className="w-3.5 h-3.5" />
-          </div>
-          <div>
-            <span className="text-xs font-bold text-[#1F1F1F]">
-              POC Guided Tour
-            </span>
-            <span className="text-[11px] text-[#727272] ml-2 font-medium">
-              Step {currentStepIndex + 1} of {steps.length} · {currentStep.badge}
-            </span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1 text-[#727272] hover:text-[#1F1F1F] rounded-md hover:bg-black/[0.04] transition-colors"
-          aria-label="Dismiss guided tour"
+    <AnimatePresence>
+      {isOpen && currentStep && (
+        <motion.aside
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: reduceMotion ? 0 : 16 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2 }}
+          aria-label="Guided tour with Pip"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-[calc(100%-2rem)] sm:w-[440px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-black/[0.08] bg-white/95 backdrop-blur-xl shadow-[0_12px_48px_rgba(0,0,0,0.16)] text-[#1D1D1F] no-print"
         >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Step description */}
-      <div className="space-y-2 mb-3">
-        <h3 className="text-sm font-semibold text-[#1F1F1F]">
-          {currentStep.title}
-        </h3>
-        <p className="text-xs text-[#727272] leading-relaxed">
-          {currentStep.summary}
-        </p>
-      </div>
-
-      {/* Actions Bar */}
-      <div className="flex items-center justify-between pt-2 border-t border-black/[0.04]">
-        {/* Progress pills */}
-        <div className="flex items-center gap-1.5">
-          {steps.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onJumpToStep(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === currentStepIndex
-                  ? 'w-6 bg-[#0071E3]'
-                  : i < currentStepIndex
-                  ? 'w-2 bg-emerald-600'
-                  : 'w-2 bg-neutral-200'
-              }`}
-              aria-label={`Go to step ${i + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* Step controls */}
-        <div className="flex items-center gap-2">
-          {currentStepIndex > 0 && (
-            <button
-              type="button"
-              onClick={onPrev}
-              className="p-1.5 text-xs text-[#727272] hover:text-[#1F1F1F] rounded-lg hover:bg-neutral-100 transition-colors flex items-center gap-1"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
+          <div className="flex items-center justify-between px-5 pt-4">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#0071E3]">
+              <Sparkles className="w-3.5 h-3.5" /> YOUR LITTLE WORKSPACE GUIDE
+            </span>
+            <button type="button" onClick={onClose} aria-label="Dismiss guided tour" className="p-2 -mr-2 rounded-full text-[#86868B] hover:bg-black/[0.04] hover:text-[#1D1D1F] transition-colors">
+              <X className="w-4 h-4" />
             </button>
-          )}
+          </div>
 
-          <button
-            type="button"
-            onClick={currentStep.onExecute}
-            className="px-3.5 py-1.5 bg-[#0071E3] text-white text-xs font-semibold rounded-lg hover:bg-[#0071E3]/90 transition-all flex items-center gap-1.5 shadow-xs"
-          >
-            <span>{currentStep.actionLabel}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-    </div>
+          <div className="flex items-center gap-3 px-5 pt-1 pb-3">
+            <TourCharacter celebrating={isLastStep} />
+            <div className="relative flex-1 rounded-2xl rounded-bl-sm bg-[#F0F7FF] px-4 py-3">
+              <p className="text-sm font-semibold">{isLastStep ? 'You’ve got this!' : currentStepIndex === 0 ? 'Hi, I’m Pip! 👋' : 'Let’s keep going!'}</p>
+              <p className="mt-1 text-xs leading-relaxed text-[#52677D]">
+                {isLastStep ? 'One last stop: send your update to the team. I’m always here if you want another tour.' : currentStepIndex === 0 ? 'I’ll help you turn everyday updates into a polished report. Try each step, or just have a look around.' : `Next up: ${currentStep.badge.toLowerCase()}. I’ll show you what to do.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="px-5 pb-5">
+            <div className="flex flex-wrap items-center justify-between gap-1 mb-3">
+              <span className="text-[11px] font-medium text-[#6E6E73]">Step {currentStepIndex + 1} of {steps.length} · {currentStep.badge}</span>
+              <nav aria-label="Tour steps" className="flex items-center gap-0.5 shrink-0">
+                {steps.map((step, index) => (
+                  <button key={step.title} type="button" onClick={() => onJumpToStep(index)} aria-label={`Step ${index + 1}: ${step.title}`} aria-current={index === currentStepIndex ? 'step' : undefined} title={step.title} className="flex items-center justify-center w-6 h-6 rounded-full hover:bg-black/[0.04]">
+                    <span className={`h-1.5 rounded-full transition-all ${index === currentStepIndex ? 'w-5 bg-[#0071E3]' : 'w-1.5 bg-[#D2D2D7]'}`} />
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            <div aria-live="polite" aria-atomic="true">
+              <h3 className="text-base font-semibold tracking-tight">{currentStep.title}</h3>
+              <p className="mt-2 text-[13px] text-[#6E6E73] leading-relaxed">{currentStep.summary}</p>
+              <div className="flex items-start gap-2 mt-3 mb-4 rounded-xl bg-[#FFF8E8] p-3">
+                <Lightbulb className="w-4 h-4 text-[#B67B13] shrink-0 mt-0.5" />
+                <p className="text-xs text-[#806126] leading-relaxed"><span className="font-semibold">Pip’s tip: </span>{currentStep.tip}</p>
+              </div>
+            </div>
+
+            <button type="button" onClick={currentStep.onExecute} className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 bg-[#0071E3] hover:bg-[#0077ED] active:scale-[0.98] text-white text-xs font-semibold transition-all">
+              {currentStep.actionLabel}<ChevronRight className="w-4 h-4" />
+            </button>
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-black/[0.06]">
+              <button type="button" onClick={onPrev} disabled={currentStepIndex === 0} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[#6E6E73] hover:bg-black/[0.04] disabled:opacity-35 disabled:hover:bg-transparent">
+                <ChevronLeft className="w-3.5 h-3.5" />Back
+              </button>
+              <button type="button" onClick={isLastStep ? onClose : onNext} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#0071E3] hover:bg-[#0071E3]/[0.06]">
+                {isLastStep ? 'Finish tour' : 'Next step'}{isLastStep ? <Check className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
   );
 };

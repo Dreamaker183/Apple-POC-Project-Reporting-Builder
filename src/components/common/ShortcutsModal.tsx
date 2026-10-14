@@ -17,6 +17,7 @@ export const ShortcutsModal: React.FC<Props> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const shortcuts = [
+    { key: '⌘ + \\ / Ctrl + \\', description: 'Show or hide projects sidebar' },
     { key: '⌘ + Z / Ctrl + Z', description: 'Undo report changes' },
     { key: '⇧ + ⌘ + Z', description: 'Redo report changes' },
     { key: '⌘ + E / Ctrl + E', description: 'Open Destination-Aware Export dialog' },

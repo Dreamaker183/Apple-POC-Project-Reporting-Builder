@@ -8,21 +8,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SnippetCard, CardType, MetricInput, ImageAssetInput } from '../../types/report';
 import { CardRenderer } from '../cards/CardRenderer';
 import { ChatComposer } from '../composer/ChatComposer';
+import { MagnifierSearchButton } from '../common/MagnifierSearchButton';
 import { 
   Plus, 
   Trash2, 
   Copy, 
   CheckSquare, 
   Square, 
-  Calendar, 
-  Layers, 
-  Search,
+  Calendar,
+  Layers,
   Send,
   X
 } from 'lucide-react';
 
 interface Props {
   projectId: string;
+  projectTitle: string;
   title: string;
   reportingPeriod: string;
   cards: SnippetCard[];
@@ -53,11 +54,13 @@ interface Props {
   onImagesChange: (images: ImageAssetInput[]) => void;
   onImagesAppend: (images: ImageAssetInput[]) => void;
   onGenerateReport: (notes?: string) => void;
+  onApplyFindings: (notes: string, cards: SnippetCard[], metrics: MetricInput[]) => void;
   onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const ReportCanvas: React.FC<Props> = ({
   projectId,
+  projectTitle,
   title,
   reportingPeriod,
   cards,
@@ -88,6 +91,7 @@ export const ReportCanvas: React.FC<Props> = ({
   onImagesChange,
   onImagesAppend,
   onGenerateReport,
+  onApplyFindings,
   onNotify,
 }) => {
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -247,7 +251,7 @@ export const ReportCanvas: React.FC<Props> = ({
         <div className="flex items-center gap-2">
           {/* Subtle Search */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-[#86868B] absolute left-2.5 top-2" />
+            <MagnifierSearchButton />
             <input
               type="text"
               placeholder="Filter..."
@@ -406,6 +410,7 @@ export const ReportCanvas: React.FC<Props> = ({
       {/* Bottom chatbot-style composer: text, metrics, table, media */}
       <ChatComposer
         projectId={projectId}
+        projectTitle={projectTitle}
         rawNotes={rawNotes}
         metrics={metrics}
         images={images}
@@ -416,6 +421,7 @@ export const ReportCanvas: React.FC<Props> = ({
         onImagesAppend={onImagesAppend}
         hasCards={cards.length > 0}
         onGenerateReport={onGenerateReport}
+        onApplyFindings={onApplyFindings}
         onNotify={onNotify}
       />
     </div>

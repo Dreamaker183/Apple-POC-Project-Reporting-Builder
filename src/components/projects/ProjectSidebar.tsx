@@ -5,7 +5,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Search,
   Plus,
   FolderPlus,
   Folder,
@@ -20,6 +19,7 @@ import {
   FolderInput,
 } from 'lucide-react';
 import { ProjectLibrary, ReportProject } from '../../types/report';
+import { MagnifierSearchButton } from '../common/MagnifierSearchButton';
 
 interface Props {
   library: ProjectLibrary;
@@ -185,7 +185,7 @@ export const ProjectSidebar: React.FC<Props> = ({
         )}
 
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-[#86868B] absolute left-2.5 top-2" />
+          <MagnifierSearchButton />
           <input
             aria-label="Search projects"
             type="text"

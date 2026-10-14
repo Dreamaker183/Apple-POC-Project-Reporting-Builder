@@ -14,6 +14,7 @@ import {
 } from './types/report';
 import { generateSnippetCards } from './lib/parsing/deterministicParser';
 import { mergeGeneratedCards } from './lib/composition/mergeCards';
+import { mergeReviewedCards } from './lib/composition/mergeReviewedCards';
 import { createSampleProject } from './lib/sampleData';
 import {
   loadLibrary,
@@ -34,6 +35,7 @@ import { formatCardToMarkdown } from './lib/export/markdownExport';
 import { formatCardToHtml } from './lib/export/htmlExport';
 
 import { Header } from './components/layout/Header';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ReportCanvas } from './components/composition/ReportCanvas';
 import { ProjectSidebar } from './components/projects/ProjectSidebar';
 import { TimeFlow } from './components/projects/TimeFlow';
@@ -43,6 +45,7 @@ import { SnapshotComparisonModal } from './components/composition/SnapshotCompar
 import { GuidedTour, TourStep } from './components/guided-demo/GuidedTour';
 import { ShortcutsModal } from './components/common/ShortcutsModal';
 import { Toast, ToastMessage } from './components/common/Toast';
+import { BrandedCursor } from './components/common/BrandedCursor';
 import { Eye, Folder } from 'lucide-react';
 
 export default function App() {
@@ -67,6 +70,26 @@ export default function App() {
   const [savedLibrary, setSavedLibrary] = useState<ProjectLibrary | null>(null);
   const [saveError, setSaveError] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const reduceMotion = useReducedMotion();
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    setIsDesktop(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      setSidebarVisible((v) => !v);
+    } else {
+      setMobileArea((a) => (a === 'projects' ? 'canvas' : 'projects'));
+    }
+  }, []);
 
   // 3. Baseline snapshot for What's Changed diff (per active project)
   const [baselineCards, setBaselineCards] = useState<SnippetCard[]>(() => {
@@ -204,7 +227,7 @@ export default function App() {
     addToast(`Generated ${generatedCards.length} verified snippet cards`, 'success');
   }, [project, recordHistory, addToast]);
 
-  // Keyboard shortcut listener (Cmd+Z, Cmd+E, Cmd+Enter, ?)
+  // Keyboard shortcut listener (Cmd+Z, Cmd+E, Cmd+Enter, Cmd+\, ?)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
@@ -212,7 +235,10 @@ export default function App() {
       const target = e.target as HTMLElement;
       const isInput = !!target.closest('input, textarea, select, [contenteditable="true"]');
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !isInput && e.shiftKey) {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\' && !isInput) {
+        e.preventDefault();
+        toggleSidebar();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !isInput && e.shiftKey) {
         e.preventDefault();
         handleRedo();
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !isInput) {
@@ -233,7 +259,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [historyStack, redoStack, handleUndo, handleGenerateReport]);
+  }, [historyStack, redoStack, handleUndo, handleGenerateReport, toggleSidebar]);
 
   // Handlers for inputs
   const handleNotesChange = (rawNotes: string) => {
@@ -253,6 +279,17 @@ export default function App() {
     setLibrary((prev) => ({ ...prev, projects: prev.projects.map((p) => p.id === projectId ? {
       ...p, images: [...p.images, ...images], isDirty: true, lastSavedAt: new Date().toISOString(),
     } : p) }));
+  };
+
+  const handleApplyFindings = (notes: string, cards: SnippetCard[], metrics: MetricInput[]) => {
+    recordHistory();
+    const combinedNotes = [project.rawNotes, notes.trim()].filter(Boolean).join('\n\n');
+    const updatedCards = mergeReviewedCards(project.cards, cards);
+    updateActiveProject((prev) => ({ ...prev, rawNotes: combinedNotes, metrics, cards: updatedCards, isDirty: true }));
+    const firstNew = updatedCards.find((card) => cards.some((created) => created.sourceKey === card.sourceKey));
+    if (firstNew) setInspectedCardId(firstNew.id);
+    setMobileArea('canvas');
+    addToast(`Added ${cards.length} reviewed findings to the report`, 'success');
   };
 
   // Load sample content into the active project (keeps its id + folder)
@@ -702,13 +739,14 @@ export default function App() {
     [library.snapshots, library.activeProjectId]
   );
 
-  // Guided Tour 5-Step Configuration
+  // Guided tour: six stops from notes to sharing.
   const tourSteps: TourStep[] = [
     {
-      title: '1. Ingest Messy, Unstructured Notes',
-      badge: 'Composer Input',
-      summary: 'Use the bottom composer to paste conversational sprint updates, add metrics, paste tables, or attach images — without hallucinating.',
-      actionLabel: 'Load Messy Notes',
+      title: 'Start with your everyday updates',
+      badge: 'Notes & assets',
+      summary: 'Paste your notes into the composer at the bottom of the report. Add numbers or images too. Try the sample to see how it all fits together.',
+      tip: 'The sample loads into the active project. You can use Undo to return to your previous draft.',
+      actionLabel: 'Try the sample notes',
       onExecute: () => {
         handleLoadSample(true);
         setMobileArea('canvas');
@@ -716,10 +754,11 @@ export default function App() {
       },
     },
     {
-      title: '2. Magic Transform with Source Traceability',
-      badge: 'Deterministic Extraction',
-      summary: 'Transforms raw updates into typed Snippet Cards. Click any card to inspect the exact underlying sentence with truth-preserving confidence.',
-      actionLabel: 'Synthesize & Inspect',
+      title: 'Turn your notes into report cards',
+      badge: 'Build your report',
+      summary: 'Generate a report to organize your updates into summaries, metrics, risks, and next steps. Select a card to explore where its information came from.',
+      tip: 'Start with some notes, metrics, or an image. You can edit the resulting cards to make the report your own.',
+      actionLabel: 'Generate report cards',
       onExecute: () => {
         handleGenerateReport();
         const blocker = project.cards.find(c => c.type === 'risk_blocker');
@@ -734,10 +773,11 @@ export default function App() {
       },
     },
     {
-      title: '3. Executive-Ready Diagnostic Score',
-      badge: 'Readiness Audit',
-      summary: 'Transparent 6-point checklist auditing missing context, unstated dates, missing KPI targets, and WCAG image alt text with 1-click quick-fixes.',
-      actionLabel: 'Audit & Quick-Fix',
+      title: 'Give your report a little polish',
+      badge: 'Readiness check',
+      summary: 'The readiness check looks for useful details such as dates, metric targets, and image descriptions. Apply the available quick fixes to tidy up your report.',
+      tip: 'Review suggested details before sharing. You know your project best, and Undo is there if you need it.',
+      actionLabel: 'Apply quick fixes',
       onExecute: () => {
         setMobileArea('canvas');
         handleApplyAllFixes();
@@ -745,20 +785,22 @@ export default function App() {
       },
     },
     {
-      title: '4. What\'s Changed? (Snapshot Diff)',
-      badge: 'Comparator',
-      summary: 'Compare Week 40 baseline vs Week 41 current state: surfaces metric shifts (completion +15%, defects -2), resolved blockers, and new milestones.',
-      actionLabel: 'Open Snapshot Diff',
+      title: 'See what changed since last time',
+      badge: 'Compare updates',
+      summary: 'Open the comparison view to spot changes between your baseline and current report, including metric updates, new milestones, and resolved blockers.',
+      tip: 'Close the comparison window when you’re ready to continue. Saved snapshots also let you revisit earlier updates.',
+      actionLabel: 'Compare report versions',
       onExecute: () => {
         setIsSnapshotModalOpen(true);
         setTourStepIndex(4);
       },
     },
     {
-      title: '5. Destination-Aware Presentation Export',
-      badge: 'Destination Export',
-      summary: 'Formats the single source of truth into Outlook/Gmail tables, Slack mrkdwn, Teams, or formal Weekly Memo with rich clipboard copy and PDF print.',
-      actionLabel: 'Preview Formats',
+      title: 'Choose the right look for your audience',
+      badge: 'Preview & export',
+      summary: 'Preview your report as an executive email, Slack message, Teams update, or weekly memo. Copy the formatted content, download a file, or print to PDF.',
+      tip: 'Switch destinations to see each format. Close the preview window to come back to me.',
+      actionLabel: 'Explore export formats',
       onExecute: () => {
         setIsSnapshotModalOpen(false);
         setExportInitialMode('formats');
@@ -767,10 +809,11 @@ export default function App() {
       },
     },
     {
-      title: '6. Live Message Tool Integration & Audit Trail',
-      badge: 'Tool Integration',
-      summary: 'Directly deliver reports into Slack, Microsoft Teams, Google Chat, Discord, or Email with live webhooks, payload inspectors, and persistent audit logs.',
-      actionLabel: 'Open Message Dispatcher',
+      title: 'Share your update with the team',
+      badge: 'Message tools',
+      summary: 'Open message tools to compose an email or configure a team channel webhook. The delivery history helps you keep track of your dispatch attempts.',
+      tip: 'Try a simulated delivery to explore the flow. For email, copy the formatted content into your message body to include graphs.',
+      actionLabel: 'Open message tools',
       onExecute: () => {
         setIsSnapshotModalOpen(false);
         setExportInitialMode('tools');
@@ -813,10 +856,8 @@ export default function App() {
         saveError={saveError}
         projectTitle={project.title}
         folderName={library.folders.find((f) => f.id === project.folderId)?.name ?? 'Projects'}
-        onToggleSidebar={() => {
-          if (window.innerWidth < 1024) setMobileArea(mobileArea === 'projects' ? 'canvas' : 'projects');
-          else setSidebarVisible((v) => !v);
-        }}
+        sidebarOpen={isDesktop ? sidebarVisible : mobileArea === 'projects'}
+        onToggleSidebar={toggleSidebar}
         canRedo={redoStack.length > 0}
         onRedo={handleRedo}
         lastSavedAt={project.lastSavedAt}
@@ -865,45 +906,111 @@ export default function App() {
       {/* 3. Two-Area Workspace (Desktop: 2 columns, Mobile: selected area) */}
       <main className="workspace-main flex-1 min-h-0 flex overflow-hidden">
         {/* AREA 0: PROJECT LIBRARY (folders + time flow) */}
-        <section
-          aria-label="Projects and Time Flow"
-          className={`workspace-sidebar w-full lg:w-[272px] h-full shrink-0 ${
-            mobileArea === 'projects' ? 'block' : sidebarVisible ? 'hidden lg:block' : 'hidden'
-          } no-print`}
-        >
-          <ProjectSidebar
-            library={library}
-            activeProjectId={library.activeProjectId}
-            scores={readinessByProject}
-            onSelectProject={handleSelectProject}
-            onNewProject={handleNewProject}
-            onNewFolder={handleNewFolder}
-            onRenameProject={handleRenameProject}
-            onDuplicateProject={handleDuplicateProject}
-            onMoveProject={handleMoveProject}
-            onDeleteProject={handleDeleteProject}
-            onRenameFolder={handleRenameFolder}
-            onDeleteFolder={handleDeleteFolder}
+        {isDesktop ? (
+          <motion.aside
+            aria-label="Projects and Time Flow"
+            aria-hidden={!sidebarVisible}
+            inert={!sidebarVisible}
+            initial={false}
+            animate={{ width: sidebarVisible ? 272 : 0 }}
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : { duration: 0.34, ease: [0.32, 0.72, 0, 1] }
+            }
+            style={{ willChange: 'width' }}
+            className={`workspace-sidebar hidden lg:block h-full shrink-0 overflow-hidden no-print ${
+              sidebarVisible ? '' : 'pointer-events-none'
+            }`}
           >
-            <TimeFlow
-              snapshots={activeSnapshots}
-              onSaveSnapshot={handleSaveSnapshot}
-              onRestoreSnapshot={handleRestoreSnapshot}
-              onCompareSnapshot={handleCompareSnapshot}
-            />
-          </ProjectSidebar>
-        </section>
+            <motion.div
+              initial={false}
+              animate={{
+                x: sidebarVisible ? 0 : -24,
+                opacity: sidebarVisible ? 1 : 0,
+              }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : sidebarVisible
+                    ? { duration: 0.3, ease: [0.32, 0.72, 0, 1], delay: 0.04 }
+                    : { duration: 0.22, ease: [0.32, 0.72, 0, 1] }
+              }
+              style={{ willChange: 'transform, opacity' }}
+              className="w-[272px] h-full overflow-hidden"
+            >
+              <ProjectSidebar
+                library={library}
+                activeProjectId={library.activeProjectId}
+                scores={readinessByProject}
+                onSelectProject={handleSelectProject}
+                onNewProject={handleNewProject}
+                onNewFolder={handleNewFolder}
+                onRenameProject={handleRenameProject}
+                onDuplicateProject={handleDuplicateProject}
+                onMoveProject={handleMoveProject}
+                onDeleteProject={handleDeleteProject}
+                onRenameFolder={handleRenameFolder}
+                onDeleteFolder={handleDeleteFolder}
+              >
+                <TimeFlow
+                  snapshots={activeSnapshots}
+                  onSaveSnapshot={handleSaveSnapshot}
+                  onRestoreSnapshot={handleRestoreSnapshot}
+                  onCompareSnapshot={handleCompareSnapshot}
+                />
+              </ProjectSidebar>
+            </motion.div>
+          </motion.aside>
+        ) : (
+          mobileArea === 'projects' && (
+            <motion.section
+              aria-label="Projects and Time Flow"
+              initial={{ x: -24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.28, ease: [0.32, 0.72, 0, 1] }
+              }
+              className="workspace-sidebar w-full h-full shrink-0 no-print"
+            >
+              <ProjectSidebar
+                library={library}
+                activeProjectId={library.activeProjectId}
+                scores={readinessByProject}
+                onSelectProject={handleSelectProject}
+                onNewProject={handleNewProject}
+                onNewFolder={handleNewFolder}
+                onRenameProject={handleRenameProject}
+                onDuplicateProject={handleDuplicateProject}
+                onMoveProject={handleMoveProject}
+                onDeleteProject={handleDeleteProject}
+                onRenameFolder={handleRenameFolder}
+                onDeleteFolder={handleDeleteFolder}
+              >
+                <TimeFlow
+                  snapshots={activeSnapshots}
+                  onSaveSnapshot={handleSaveSnapshot}
+                  onRestoreSnapshot={handleRestoreSnapshot}
+                  onCompareSnapshot={handleCompareSnapshot}
+                />
+              </ProjectSidebar>
+            </motion.section>
+          )
+        )}
 
         {/* AREA 1: REPORT COMPOSITION + BOTTOM COMPOSER */}
         <section
           aria-label="Report Composition and Preview"
           className={`workspace-report flex-1 min-w-0 h-full flex-col overflow-hidden bg-[#F5F5F7] ${
-            mobileArea === 'canvas' ? 'flex' : 'hidden lg:flex'
+            isDesktop ? 'flex' : mobileArea === 'canvas' ? 'flex' : 'hidden'
           }`}
         >
           <ReportCanvas
             key={project.id}
             projectId={project.id}
+            projectTitle={project.title}
             title={project.title}
             reportingPeriod={project.reportingPeriod}
             cards={project.cards}
@@ -944,6 +1051,7 @@ export default function App() {
             onImagesChange={handleImagesChange}
             onImagesAppend={handleImagesAppend}
             onGenerateReport={handleGenerateReport}
+            onApplyFindings={handleApplyFindings}
             onNotify={addToast}
           />
         </section>
@@ -988,6 +1096,9 @@ export default function App() {
 
       {/* 8. Toast Feedback */}
       <Toast toasts={toasts} onDismiss={dismissToast} />
+
+      {/* 9. Branded dot + ring cursor (fine pointers only) */}
+      <BrandedCursor />
     </div>
   );
 }

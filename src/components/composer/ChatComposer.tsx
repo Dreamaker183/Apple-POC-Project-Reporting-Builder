@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { MetricInput, ImageAssetInput, MetricChartStyle } from '../../types/report';
 import { MetricChart, CHART_STYLE_OPTIONS } from '../cards/MetricChart';
+import { ClassificationFinding, FindingCategory, cardsFromFindings, classifyPassages } from '../../lib/parsing/classifier';
+import { SnippetCard } from '../../types/report';
 
 const ChartStyleIcon: React.FC<{ id: MetricChartStyle; className?: string }> = ({ id, className }) => {
   const Icon = id === 'bar' ? ChartColumn : id === 'donut' ? ChartPie : id === 'trend' ? TrendingUp : Hash;
@@ -50,6 +52,7 @@ const ChartStyleIconButton: React.FC<{
 
 interface Props {
   projectId: string;
+  projectTitle: string;
   rawNotes: string;
   metrics: MetricInput[];
   images: ImageAssetInput[];
@@ -60,6 +63,7 @@ interface Props {
   onImagesAppend: (images: ImageAssetInput[]) => void;
   hasCards: boolean;
   onGenerateReport: (notes?: string) => void;
+  onApplyFindings: (notes: string, cards: SnippetCard[], metrics: MetricInput[], selectedCount?: number) => void;
   onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -68,6 +72,7 @@ const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
 
 export const ChatComposer: React.FC<Props> = ({
   projectId,
+  projectTitle,
   rawNotes,
   metrics,
   images,
@@ -78,11 +83,13 @@ export const ChatComposer: React.FC<Props> = ({
   onImagesAppend,
   hasCards,
   onGenerateReport,
+  onApplyFindings,
   onNotify,
 }) => {
   const [showMetrics, setShowMetrics] = useState(false);
   const [draft, setDraft] = useState('');
   const [showSources, setShowSources] = useState(false);
+  const [reviewFindings, setReviewFindings] = useState<ClassificationFinding[] | null>(null);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     try { setDraft(sessionStorage.getItem(`reporting-composer:${projectId}`) ?? ''); } catch { /* keep editing in memory */ }
@@ -256,10 +263,53 @@ export const ChatComposer: React.FC<Props> = ({
   };
 
   const submitUpdate = () => {
+    if (draft.trim()) {
+      setReviewFindings(classifyPassages(draft));
+      return;
+    }
     setShowSources(false);
     onGenerateReport(draft);
     setDraft('');
     try { sessionStorage.removeItem(`reporting-composer:${projectId}`); } catch { /* session storage may be unavailable */ }
+  };
+
+  const setFinding = (id: string, updates: Partial<ClassificationFinding>) => {
+    setReviewFindings((prev) => prev?.map((finding) => finding.id === id ? { ...finding, ...updates } : finding) ?? null);
+  };
+
+  const applyReviewedFindings = () => {
+    if (!reviewFindings) return;
+    const selected = reviewFindings.filter(f => f.selected);
+    const additions = selected.flatMap(f => f.category === 'metric' && f.metric ? [f.metric] : []);
+    const updatedMetrics = [...metrics];
+    for (const metric of additions) {
+      const match = updatedMetrics.findIndex(m => m.name.toLowerCase() === metric.name.toLowerCase());
+      if (match >= 0) updatedMetrics[match] = { ...updatedMetrics[match], ...metric, id: updatedMetrics[match].id };
+      else updatedMetrics.push(metric);
+    }
+    const cards = cardsFromFindings(reviewFindings, metrics, images, projectTitle);
+    onApplyFindings(draft, cards, updatedMetrics, selected.length);
+    setShowSources(false);
+    setDraft('');
+    setReviewFindings(null);
+    try { sessionStorage.removeItem(`reporting-composer:${projectId}`); } catch { /* optional storage */ }
+  };
+
+  const keepAsContext = () => {
+    if (!draft.trim()) return;
+    onGenerateReport(draft);
+    setDraft('');
+    setReviewFindings(null);
+    try { sessionStorage.removeItem(`reporting-composer:${projectId}`); } catch { /* optional storage */ }
+  };
+
+  const categoryLabels: Record<FindingCategory, string> = {
+    accomplishment: 'Accomplishment',
+    metric: 'Metric',
+    risk: 'Risk / blocker',
+    action: 'Action',
+    milestone: 'Milestone',
+    context: 'Context',
   };
 
   useEffect(() => {
@@ -288,6 +338,57 @@ export const ChatComposer: React.FC<Props> = ({
             if (e.dataTransfer.files?.length) Array.from(e.dataTransfer.files).forEach(processFile);
           }}
         >
+        {reviewFindings && <div className="absolute inset-x-0 bottom-0 z-40 max-h-[68vh] overflow-y-auto rounded-[26px] border border-black/[0.08] bg-[#FAFAFA] p-4 sm:p-5 shadow-[0_16px_48px_rgba(0,0,0,0.18)]">
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div><h2 className="text-[16px] font-semibold text-[#1D1D1F]">Review findings</h2><p className="mt-0.5 text-xs text-[#6E6E73]">Check the category and evidence. Nothing is added until you confirm.</p></div>
+            <button type="button" onClick={() => setReviewFindings(null)} aria-label="Close review" className="p-1.5 rounded-full hover:bg-black/[0.06]"><X className="w-4 h-4" /></button>
+          </div>
+          {reviewFindings.length === 0 ? <div className="rounded-xl border border-black/[0.08] bg-white p-4 text-sm text-[#6E6E73]">No clear facts found. You can keep the note as source context without creating cards.</div> : <div className="space-y-2 max-h-[min(46vh,380px)] overflow-y-auto">
+            {reviewFindings.map((finding) => <div key={finding.id} className={`rounded-xl border bg-white p-3 ${finding.selected ? 'border-[#0071E3]/25' : 'border-black/[0.08] opacity-70'}`}>
+              <div className="flex items-start gap-2.5">
+                <input type="checkbox" checked={finding.selected} onChange={(e) => setFinding(finding.id, { selected: e.target.checked })} aria-label={`Include ${finding.title}`} className="mt-1 accent-[#0071E3]" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <strong className="text-[13px] text-[#1D1D1F]">{finding.title}</strong>
+                    <select
+                      aria-label={`Category for ${finding.title}`}
+                      value={finding.category}
+                      onChange={(e) => {
+                        const nextCat = e.target.value as FindingCategory;
+                        const fallbackMetric: MetricInput | undefined =
+                          nextCat === 'metric' && !finding.metric
+                            ? {
+                                id: `metric-source-${finding.sourceStart}`,
+                                name: finding.title,
+                                value: 0,
+                                unit: '',
+                                explanation: finding.evidence,
+                                chartStyle: 'bar',
+                                direction: 'neutral',
+                              }
+                            : finding.metric;
+                        setFinding(finding.id, { category: nextCat, metric: fallbackMetric });
+                      }}
+                      className="text-[11px] bg-[#F5F5F7] rounded-full px-2 py-1"
+                    >
+                      {(Object.keys(categoryLabels) as FindingCategory[]).map(c => <option key={c} value={c}>{categoryLabels[c]}</option>)}
+                    </select>
+                    {finding.confidence === 'review' && <span className="text-[10px] rounded-full bg-amber-50 text-amber-800 px-2 py-1">Check extracted numbers</span>}
+                  </div>
+                  <p className="text-xs text-[#424245] mt-1">{finding.detail}</p>
+                  <blockquote className="mt-2 border-l-2 border-[#0071E3]/40 pl-2 text-[11px] leading-relaxed text-[#6E6E73]">“{finding.evidence}”</blockquote>
+                  {finding.metric && finding.category === 'metric' && <div className="mt-2 grid grid-cols-4 gap-1.5">
+                    <input aria-label="Extracted metric name" value={finding.metric.name} onChange={(e) => setFinding(finding.id, { title: e.target.value, metric: { ...finding.metric!, name: e.target.value } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                    <input aria-label="Extracted metric value" type="number" value={finding.metric.value} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, value: Number(e.target.value) } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                    <input aria-label="Extracted metric unit" value={finding.metric.unit} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, unit: e.target.value } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                    <input aria-label="Extracted metric target" type="number" placeholder="Target" value={finding.metric.target ?? ''} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, target: e.target.value ? Number(e.target.value) : undefined } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                  </div>}
+                </div>
+              </div>
+            </div>)}
+          </div>}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-3 border-t border-black/[0.06]"><span className="text-[11px] text-[#6E6E73]">Analyzed locally · passage sent nowhere</span><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => setReviewFindings(null)} className="px-3 py-2 text-xs text-[#6E6E73]">Back</button><button type="button" onClick={keepAsContext} className="px-3 py-2 rounded-full border border-black/10 text-[#424245] text-xs">Keep as context</button><button type="button" disabled={!reviewFindings.some(f => f.selected)} onClick={applyReviewedFindings} className="px-4 py-2 rounded-full bg-[#0071E3] text-white text-xs font-medium disabled:opacity-40">Add {reviewFindings.filter(f => f.selected).length} findings</button></div></div>
+        </div>}
         {/* Metrics sheet: placed directly on the chatbot when open, content-sized like before */}
         {showMetrics && (
           <div className="absolute inset-x-0 bottom-0 z-30 max-h-[62vh] overflow-y-auto rounded-[26px] border border-black/[0.08] bg-[#FAFAFA] p-3 shadow-[0_16px_48px_rgba(0,0,0,0.18)]">

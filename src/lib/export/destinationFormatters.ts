@@ -5,11 +5,17 @@
 
 import { ReportProject, SnippetCard } from '../../types/report';
 import { escapeHtml } from './htmlExport';
+import { executiveEmailHtml } from './executiveEmail';
+import { metricGraphText, metricStatus } from './metricGraphs';
 
 /**
  * Executive Email representation (Table-based clean inline CSS, optimized for Outlook/Gmail).
  */
 export function formatForExecutiveEmail(project: ReportProject, cards?: SnippetCard[]): string {
+  return executiveEmailHtml(project, cards);
+}
+
+function legacyExecutiveEmail(project: ReportProject, cards?: SnippetCard[]): string {
   const cardsToUse = cards && cards.length > 0 ? cards : project.cards;
   const execCard = cardsToUse.find(c => c.type === 'executive_summary');
   const metricCards = cardsToUse.filter(c => c.type === 'kpi_metric');
@@ -126,6 +132,7 @@ export function formatForSlack(project: ReportProject, cards?: SnippetCard[]): s
       case 'kpi_metric': {
         const trendEmoji = card.trend === 'declining' ? ':warning:' : ':white_check_mark:';
         lines.push(`${trendEmoji} *${card.label}:* \`${card.value}${card.unit}\`${card.target !== undefined ? ` (Target: \`${card.target}${card.unit}\`)` : ''}`);
+        if (metricGraphText(card)) lines.push(metricGraphText(card));
         if (card.explanation) {
           lines.push(`  ↳ _${card.explanation}_`);
         }
@@ -198,6 +205,7 @@ export function formatForTeams(project: ReportProject, cards?: SnippetCard[]): s
 
       case 'kpi_metric':
         lines.push(`- **${card.label}**: **${card.value}${card.unit}** ${card.target !== undefined ? `*(Target: ${card.target}${card.unit})*` : ''}`);
+        if (metricGraphText(card)) lines.push(metricGraphText(card));
         break;
 
       case 'risk_blocker':
@@ -339,17 +347,17 @@ export function formatSlackWebhookPayload(project: ReportProject, cards?: Snippe
   if (metrics.length > 0) {
     const fields = metrics.map(m => {
       if (m.type !== 'kpi_metric') return { type: 'mrkdwn', text: '' };
-      const icon = m.trend === 'declining' ? '⚠️' : '✅';
+      const icon = m.trend === 'declining' ? '⚠️' : m.trend === 'improving' ? '✅' : '📊';
       const targetStr = m.target !== undefined ? ` (Target: ${m.target}${m.unit})` : '';
       return {
         type: 'mrkdwn',
-        text: `${icon} *${m.label}:* \`${m.value}${m.unit}\`${targetStr}`,
+        text: `${icon} *${m.label}:* \`${m.value}${m.unit}\`${targetStr}${metricGraphText(m) ? '\n' + metricGraphText(m) : ''}`.slice(0, 2000),
       };
     });
 
     blocks.push({
       type: 'section',
-      text: { type: 'mrkdwn', text: '*Key Performance Indicators:*' },
+      text: { type: 'mrkdwn', text: '*Metrics & data:*' },
       fields: fields.slice(0, 10),
     });
   }
@@ -390,7 +398,7 @@ export function formatTeamsWebhookPayload(project: ReportProject, cards?: Snippe
   const metrics = cardsToUse.filter(c => c.type === 'kpi_metric');
   metrics.forEach(m => {
     if (m.type === 'kpi_metric') {
-      facts.push({ title: m.label, value: `${m.value}${m.unit}${m.target !== undefined ? ` (Target: ${m.target}${m.unit})` : ''}` });
+      facts.push({ title: m.label, value: `${m.value}${m.unit}${m.target !== undefined ? ` (Target: ${m.target}${m.unit})` : ''}${metricGraphText(m) ? '\n' + metricGraphText(m) : ''}` });
     }
   });
 
@@ -455,9 +463,9 @@ export function formatGoogleChatWebhookPayload(project: ReportProject, cards?: S
       if (m.type === 'kpi_metric') {
         widgets.push({
           decoratedText: {
-            topLabel: 'KPI Metric',
-            text: `<b>${escapeHtml(m.label)}:</b> ${m.value}${m.unit}${m.target !== undefined ? ` (Target: ${m.target}${m.unit})` : ''}`,
-            bottomLabel: m.trend === 'declining' ? 'Status: Attention Required' : 'Status: On Track',
+            topLabel: 'Metric',
+            text: `<b>${escapeHtml(m.label)}:</b> ${m.value}${escapeHtml(m.unit)}${m.target !== undefined ? ` (Target: ${m.target}${escapeHtml(m.unit)})` : ''}${metricGraphText(m) ? '<br>' + escapeHtml(metricGraphText(m)).replace(/\n/g, '<br>') : ''}`,
+            bottomLabel: metricStatus(m),
           },
         });
       }
@@ -514,7 +522,7 @@ export function formatDiscordWebhookPayload(project: ReportProject, cards?: Snip
       const icon = m.trend === 'declining' ? '⚠️' : '📈';
       fields.push({
         name: `${icon} ${m.label}`,
-        value: `**${m.value}${m.unit}**${m.target !== undefined ? ` (Target: ${m.target}${m.unit})` : ''}`,
+        value: `**${m.value}${m.unit}**${m.target !== undefined ? ` (Target: ${m.target}${m.unit})` : ''}${metricGraphText(m) ? '\n' + metricGraphText(m) : ''}`,
         inline: true,
       });
     }
@@ -572,5 +580,3 @@ export function formatSingleCardForSlack(card: SnippetCard): string {
       return (card as any)?.title || 'Report Card';
   }
 }
-
-

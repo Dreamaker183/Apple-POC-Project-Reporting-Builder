@@ -39,8 +39,99 @@
   button { min-height: 40px; }
   input, textarea, select { font-size: 16px !important; }
 }
+
+/* Search-icon magnifier: shake on press, pop on open */
+@keyframes magnifier-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(-1.5px) rotate(-14deg); }
+  40% { transform: translateX(1.5px) rotate(12deg); }
+  60% { transform: translateX(-1px) rotate(-8deg); }
+  80% { transform: translateX(1px) rotate(6deg); }
+}
+.magnifier-shake {
+  animation: magnifier-shake 0.4s ease;
+  transform-origin: center;
+  color: #0071E3;
+}
+@keyframes magnifier-pop {
+  0% { opacity: 0; scale: 0.4; }
+  60% { opacity: 1; scale: 1.05; }
+  100% { opacity: 1; scale: 1; }
+}
+.magnifier-pop {
+  animation: magnifier-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .magnifier-shake, .magnifier-pop { animation: none !important; }
+}
+
+/* Branded dot + ring cursor (fine pointers only, JS-gated via body.branded-cursor) */
+@media (pointer: fine) {
+  body.branded-cursor, body.branded-cursor *:not(input):not(textarea):not(select):not([contenteditable="true"]) { cursor: none !important; }
+  /* Keep the native I-beam over text so typing/selection stays precise;
+     the custom dot hides itself in this state (see BrandedCursor). */
+  body.branded-cursor-text input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]),
+  body.branded-cursor-text textarea,
+  body.branded-cursor-text [contenteditable="true"] { cursor: text !important; }
+  body.branded-cursor-text select { cursor: default !important; }
+}
+/* Never trap users in high-contrast / forced-colors mode or on print. */
+@media (forced-colors: active) {
+  body.branded-cursor, body.branded-cursor * { cursor: auto !important; }
+  .branded-cursor-layer { display: none !important; }
+}
+.branded-cursor-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  overflow: hidden;
+}
+.branded-cursor-dot,
+.branded-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.branded-cursor-dot {
+  border-radius: 9999px;
+  box-shadow: 0 1px 6px rgba(0, 113, 227, 0.45);
+  transition: opacity 0.15s ease, width 0.18s ease, height 0.18s ease, background-color 0.18s ease;
+}
+.branded-cursor-ring {
+  border-radius: 9999px;
+  border: 1.5px solid rgba(29, 29, 31, 0.45);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: opacity 0.18s ease, width 0.22s ease, height 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .branded-cursor-dot, .branded-cursor-ring { transition: opacity 0.01ms !important; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Pip greets users with a little bob, wave, and blink. */
+@keyframes tour-character-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes tour-character-wave {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  78%, 90% { transform: rotate(-14deg); }
+  84%, 96% { transform: rotate(8deg); }
+}
+@keyframes tour-character-blink {
+  0%, 43%, 47%, 100% { transform: scaleY(1); }
+  45% { transform: scaleY(.12); }
+}
+.tour-character-body { animation: tour-character-bob 3s ease-in-out infinite; }
+.tour-character-wave { transform-origin: 90px 69px; animation: tour-character-wave 4s ease-in-out infinite; }
+.tour-character-eyes { transform-box: fill-box; transform-origin: center; animation: tour-character-blink 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .tour-character * { animation: none !important; }
 }
 
 @media print {
@@ -53,6 +144,10 @@
   }
 
   .no-print {
+    display: none !important;
+  }
+
+  .magnifier-ui {
     display: none !important;
   }
 

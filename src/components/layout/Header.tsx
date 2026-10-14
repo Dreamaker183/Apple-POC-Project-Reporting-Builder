@@ -9,6 +9,7 @@ interface Props {
   lastSavedAt: string;
   canUndo: boolean;
   canRedo?: boolean;
+  sidebarOpen?: boolean;
   onUndo: () => void;
   onRedo?: () => void;
   onToggleSidebar?: () => void;
@@ -50,7 +51,14 @@ export function Header(props: Props) {
   return (
     <header className="h-16 shrink-0 bg-white/80 backdrop-blur-xl border-b border-black/[0.06] px-3 sm:px-6 flex items-center justify-between gap-3 z-40 no-print">
       <div className="flex items-center gap-3 min-w-0">
-        <button type="button" className={iconButton} onClick={props.onToggleSidebar} aria-label="Toggle projects sidebar"><PanelLeft className="w-[18px] h-[18px]" /></button>
+        <button
+          type="button"
+          className={`${iconButton} ${props.sidebarOpen ? 'bg-black/[0.06] text-[#1D1D1F]' : ''}`}
+          onClick={props.onToggleSidebar}
+          aria-label={props.sidebarOpen ? 'Hide projects sidebar' : 'Show projects sidebar'}
+          aria-pressed={props.sidebarOpen}
+          title="Toggle sidebar (⌘\)"
+        ><PanelLeft className="w-[18px] h-[18px]" /></button>
         <div className="min-w-0">
           <div className="text-[11px] font-medium text-[#6E6E73] tracking-wide truncate">{props.folderName ?? 'Projects'}</div>
           <h1 className="text-[14px] font-semibold tracking-tight truncate">{props.projectTitle ?? 'Reporting Builder'}</h1>

@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDialogFocus } from '../common/useDialogFocus';
+import { metricGraphText } from '../../lib/export/metricGraphs';
 import { ReportProject, SnippetCard, ExportDestination } from '../../types/report';
 import { exportReportToMarkdown } from '../../lib/export/markdownExport';
 import { exportReportToJson } from '../../lib/export/jsonExport';
@@ -87,7 +88,6 @@ export const ExportModal: React.FC<Props> = ({
   const [exportScope, setExportScope] = useState<'all' | 'selected'>(
     selectedCards.length > 0 ? 'selected' : 'all'
   );
-  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [copied, setCopied] = useState(false);
   const [copiedRawHtml, setCopiedRawHtml] = useState(false);
 
@@ -239,6 +239,13 @@ export const ExportModal: React.FC<Props> = ({
   };
 
   const { plainText, htmlText } = getExportContent();
+  const emailHtml = formatForExecutiveEmail(project, cardsToExport);
+  const emailText = exportReportToMarkdown(project, cardsToExport);
+  const dispatchGraphs = cardsToExport.filter(c => c.type === 'kpi_metric').map(c => ({ label: c.label, graph: metricGraphText(c) })).filter(c => c.graph);
+  const handleCopyEmail = async () => {
+    const result = await copyToClipboard(emailText, emailHtml);
+    onNotify(result.success ? 'Copied email with metric graphs — paste into your email body.' : 'Could not copy email', result.success ? 'success' : 'error');
+  };
 
   const handleCopy = async () => {
     const res = await copyToClipboard(plainText, htmlText);
@@ -266,7 +273,7 @@ export const ExportModal: React.FC<Props> = ({
   const handleDownload = () => {
     const current = destinationsList.find((d) => d.id === destination);
     const filename = `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-report.${current?.ext || 'txt'}`;
-    downloadFile(filename, plainText, current?.mime || 'text/plain');
+    downloadFile(filename, destination === 'executive_email' ? emailHtml : plainText, current?.mime || 'text/plain');
     onNotify(`Downloaded ${filename}`, 'success');
   };
 
@@ -280,21 +287,21 @@ export const ExportModal: React.FC<Props> = ({
   // Tool Dispatches
   const handleOpenMailto = () => {
     handleSaveSettings({ emailTo, emailCc });
-    const link = createMailtoLink(emailTo, emailSubject, plainText, emailCc);
+    const link = createMailtoLink(emailTo, emailSubject, emailText, emailCc);
     window.location.href = link;
     onNotify('Opening default mail client compose draft', 'info');
   };
 
   const handleOpenGmailWeb = () => {
     handleSaveSettings({ emailTo, emailCc });
-    const link = createGmailComposeLink(emailTo, emailSubject, plainText, emailCc);
+    const link = createGmailComposeLink(emailTo, emailSubject, emailText, emailCc);
     window.open(link, '_blank');
     onNotify('Opened Gmail web composer draft', 'info');
   };
 
   const handleOpenOutlookWeb = () => {
     handleSaveSettings({ emailTo });
-    const link = createOutlookComposeLink(emailTo, emailSubject, plainText);
+    const link = createOutlookComposeLink(emailTo, emailSubject, emailText);
     window.open(link, '_blank');
     onNotify('Opened Outlook web composer draft', 'info');
   };
@@ -496,33 +503,6 @@ export const ExportModal: React.FC<Props> = ({
                 </div>
               )}
 
-              {/* Density toggle */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-semibold text-[#727272] uppercase tracking-wider block">
-                  Preview Density
-                </span>
-                <div className="grid grid-cols-2 gap-1 p-1 bg-neutral-200/60 rounded-lg text-xs font-medium">
-                  <button
-                    type="button"
-                    onClick={() => setDensity('comfortable')}
-                    className={`py-1 rounded text-center transition-all ${
-                      density === 'comfortable' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
-                    }`}
-                  >
-                    Comfortable
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDensity('compact')}
-                    className={`py-1 rounded text-center transition-all ${
-                      density === 'compact' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
-                    }`}
-                  >
-                    Compact
-                  </button>
-                </div>
-              </div>
-
               <div className="space-y-1">
                 <span className="text-[11px] font-semibold text-[#727272] uppercase tracking-wider block mb-2">
                   Destinations
@@ -581,7 +561,7 @@ export const ExportModal: React.FC<Props> = ({
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0071E3] text-white text-xs font-semibold rounded-lg hover:bg-[#0071E3]/90 transition-all shadow-sm"
                   >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? 'Copied!' : 'Copy to Clipboard'}</span>
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
                   </button>
 
                   {htmlText && destination === 'executive_email' && (
@@ -607,9 +587,7 @@ export const ExportModal: React.FC<Props> = ({
                 </div>
               </div>
 
-              <div className={`flex-1 overflow-auto bg-[#F8FAFC] border border-black/[0.08] rounded-xl font-mono leading-relaxed select-all ${
-                density === 'compact' ? 'p-3 text-[11px]' : 'p-4 text-xs'
-              }`}>
+              <div className="flex-1 overflow-auto bg-[#F8FAFC] border border-black/[0.08] rounded-xl font-mono leading-relaxed select-all p-4 text-xs">
                 {destination === 'executive_email' && htmlText ? (
                   <div 
                     className="font-sans" 
@@ -789,6 +767,16 @@ export const ExportModal: React.FC<Props> = ({
 
             {/* Tool Active Workspace */}
             <div className="flex-1 p-6 overflow-y-auto bg-white space-y-5">
+              {selectedTool !== 'audit_log' && <details className="rounded-2xl border border-black/[0.08] bg-[#FAFAFA] overflow-hidden" open={selectedTool === 'email'}>
+                <summary className="px-4 py-3 cursor-pointer text-[13px] font-semibold text-[#1D1D1F]">{selectedTool === 'email' ? 'Executive email preview · graphs included' : 'Metric graphs included in this message'}</summary>
+                {selectedTool === 'email' ? <div>
+                  <div className="px-4 pb-3 flex flex-wrap items-center gap-3"><button type="button" onClick={handleCopyEmail} className="rounded-full bg-[#0071E3] text-white px-4 py-2 text-xs font-medium">Copy email with graphs</button><span className="text-[11px] text-[#6E6E73]">Compose links use plain text. Paste the copied email into the message body for graphs.</span></div>
+                  <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: emailHtml }} />
+                </div> : <div className="px-4 pb-4 space-y-3">
+                  <p className="text-[11px] text-[#6E6E73]">Portable text graphs preserve your values in webhook messages without external image hosting.</p>
+                  {dispatchGraphs.length ? dispatchGraphs.map((metric, index) => <div key={index} className="rounded-xl bg-white border border-black/[0.06] p-3"><div className="text-xs font-medium mb-2">{metric.label}</div><pre className="text-[11px] whitespace-pre-wrap text-[#424245] leading-relaxed">{metric.graph}</pre></div>) : <p className="text-xs text-[#6E6E73]">Choose a bar, donut, or comparison form for a metric to include its graph.</p>}
+                </div>}
+              </details>}
               {/* TOOL 1: EMAIL SUITE */}
               {selectedTool === 'email' && (
                 <div className="space-y-4">
