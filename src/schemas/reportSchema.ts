@@ -121,6 +121,13 @@ export const ReportProjectSchema = z.object({
   id: z.string(),
   title: z.string().min(1, 'Report title is required'),
   reportingPeriod: z.string(),
+  sendSchedule: z.object({
+    enabled: z.boolean(),
+    scheduledAt: z.string().datetime(),
+    destination: z.enum(['slack', 'teams', 'googleChat', 'discord']),
+    status: z.enum(['scheduled', 'sending', 'sent', 'error']),
+    message: z.string().optional(),
+  }).optional(),
   folderId: z.string().optional(),
   rawNotes: z.string(),
   metrics: z.array(MetricInputSchema),

@@ -20,8 +20,14 @@ import {
   MoreHorizontal,
   Check,
   Pencil,
-  Link2
+  Link2,
+  GripVertical
 } from 'lucide-react';
+
+interface DragHandleProps {
+  onPointerDown: (e: React.PointerEvent) => void;
+  active: boolean;
+}
 
 interface Props {
   card: SnippetCard;
@@ -29,6 +35,7 @@ interface Props {
   isInspected: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  dragHandle?: DragHandleProps;
   onToggleSelect: (id: string) => void;
   onInspect: (id: string) => void;
   onMoveUp: (id: string) => void;
@@ -46,6 +53,7 @@ export const CardRenderer: React.FC<Props> = ({
   isInspected,
   canMoveUp,
   canMoveDown,
+  dragHandle,
   onToggleSelect,
   onInspect,
   onMoveUp,
@@ -129,6 +137,22 @@ export const CardRenderer: React.FC<Props> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5">
+          {/* Drag handle: immediate drag on press; long-press anywhere else also arms dragging */}
+          {dragHandle && (
+            <button
+              type="button"
+              aria-label={`Drag ${card.title} to reorder`}
+              title="Drag to reorder (or press & hold the card)"
+              onPointerDown={dragHandle.onPointerDown}
+              className={`p-1 -ml-1.5 rounded-lg transition-colors touch-none cursor-grab active:cursor-grabbing ${
+                dragHandle.active
+                  ? 'text-[#0071E3] bg-[#0071E3]/10'
+                  : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.04] opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+              }`}
+            >
+              <GripVertical className="w-4 h-4" />
+            </button>
+          )}
           {/* Subtle Checkbox */}
           <input
             type="checkbox"
@@ -138,12 +162,17 @@ export const CardRenderer: React.FC<Props> = ({
             className="w-3.5 h-3.5 rounded border-black/20 text-[#0071E3] focus:ring-0 focus:outline-none cursor-pointer"
           />
 
-          <span className="text-[11px] font-medium tracking-wide uppercase text-[#86868B]">
+          <span className="text-[11px] font-semibold tracking-wider uppercase text-[#6E6E73]">
             {cardTypeNames[card.type] || card.type}
           </span>
           {card.sourceRef && (
             <span className="text-[11px] text-[#86868B] hidden sm:inline">
-              · Source Verified
+              · Source verified
+            </span>
+          )}
+          {card.type === 'visual_update' && card.altText && card.altText.length > 5 && (
+            <span className="text-[11px] text-emerald-700 hidden sm:inline">
+              · WCAG Alt Text
             </span>
           )}
         </div>

@@ -24,6 +24,7 @@ export const ShortcutsModal: React.FC<Props> = ({ isOpen, onClose }) => {
     { key: '⌘ + P / Ctrl + P', description: 'Open Print-to-PDF layout' },
     { key: '⌘ + Enter', description: 'Build or update report' },
     { key: 'Alt + ↑ / ↓', description: 'Move focused card' },
+    { key: 'Hold + drag', description: 'Press & hold a card (or its grip) to reorder' },
     { key: 'Esc', description: 'Close active modal dialog' },
     { key: '?', description: 'Show keyboard shortcuts cheat-sheet' },
   ];

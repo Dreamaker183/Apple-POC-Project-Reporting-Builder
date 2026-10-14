@@ -119,10 +119,19 @@ export interface ImageAssetInput {
   fileType: string;
 }
 
+export interface SendSchedule {
+  enabled: boolean;
+  scheduledAt: string;
+  destination: 'slack' | 'teams' | 'googleChat' | 'discord';
+  status: 'scheduled' | 'sending' | 'sent' | 'error';
+  message?: string;
+}
+
 export interface ReportProject {
   id: string;
   title: string;
   reportingPeriod: string;
+  sendSchedule?: SendSchedule;
   folderId?: string;
   rawNotes: string;
   metrics: MetricInput[];

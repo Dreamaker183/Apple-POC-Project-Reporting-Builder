@@ -20,21 +20,12 @@ interface Props {
   onUpdate?: (updated: Partial<KpiMetricCardData>) => void;
 }
 
-export const KpiMetricCard: React.FC<Props> = ({ card, onInspect, isInlineEditing, onUpdate }) => {
+export const KpiMetricCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate }) => {
   const isDeclining = card.trend === 'declining';
   const isImproving = card.trend === 'improving';
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-[11px] font-semibold text-[#727272] tracking-wider uppercase">
-        <span>Metric</span>
-        {card.sourceRef && (
-          <span className="text-[11px] font-normal normal-case text-[#727272]">
-            Source verified
-          </span>
-        )}
-      </div>
-
       <div className="flex items-baseline justify-between gap-4">
         <div className="flex-1 min-w-0">
           {isInlineEditing ? (

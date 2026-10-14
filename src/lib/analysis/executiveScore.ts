@@ -215,7 +215,8 @@ export function applyQuickFixToProject(project: ReportProject, checkId: string):
 
   switch (checkId) {
     case 'check-reporting-period':
-      updatedProject.reportingPeriod = '5–9 October 2026';
+       const date = new Date();
+       updatedProject.reportingPeriod = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       break;
 
     case 'check-unconfirmed-release':

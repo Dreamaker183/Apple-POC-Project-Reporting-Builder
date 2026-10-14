@@ -17,9 +17,10 @@ import {
   Trash2,
   Pencil,
   FolderInput,
+  Upload,
+  Search,
 } from 'lucide-react';
 import { ProjectLibrary, ReportProject } from '../../types/report';
-import { MagnifierSearchButton } from '../common/MagnifierSearchButton';
 
 interface Props {
   library: ProjectLibrary;
@@ -34,6 +35,7 @@ interface Props {
   onDeleteProject: (id: string) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
+  onImportProject?: () => void;
   children?: React.ReactNode;
 }
 
@@ -69,6 +71,7 @@ export const ProjectSidebar: React.FC<Props> = ({
   onDeleteProject,
   onRenameFolder,
   onDeleteFolder,
+  onImportProject,
   children,
 }) => {
   const [search, setSearch] = useState('');
@@ -155,9 +158,21 @@ export const ProjectSidebar: React.FC<Props> = ({
               onClick={() => setNewFolderMode((v) => !v)}
               className="p-1.5 text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.05] rounded-lg transition-colors"
               title="New folder"
+              aria-label="New folder"
             >
               <FolderPlus className="w-3.5 h-3.5" />
             </button>
+            {onImportProject && (
+              <button
+                type="button"
+                onClick={onImportProject}
+                className="p-1.5 text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.05] rounded-lg transition-colors"
+                title="Import project (.json)"
+                aria-label="Import project JSON"
+              >
+                <Upload className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -185,7 +200,7 @@ export const ProjectSidebar: React.FC<Props> = ({
         )}
 
         <div className="relative">
-          <MagnifierSearchButton />
+          <Search className="w-3.5 h-3.5 text-[#86868B] absolute left-2.5 top-2 pointer-events-none" />
           <input
             aria-label="Search projects"
             type="text"

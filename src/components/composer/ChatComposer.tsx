@@ -87,6 +87,20 @@ export const ChatComposer: React.FC<Props> = ({
   onNotify,
 }) => {
   const [showMetrics, setShowMetrics] = useState(false);
+  const [submittedAttachments, setSubmittedAttachments] = useState<Set<string>>(() => {
+    try {
+      const saved = sessionStorage.getItem(`reporting-attachments:${projectId}`);
+      if (saved) return new Set(JSON.parse(saved));
+    } catch { /* use current project state */ }
+    return new Set(hasCards ? [...metrics, ...images].map(item => JSON.stringify(item)) : []);
+  });
+  const pendingMetrics = metrics.filter(item => !submittedAttachments.has(JSON.stringify(item)));
+  const pendingImages = images.filter(item => !submittedAttachments.has(JSON.stringify(item)));
+  const clearAttachmentStrip = (submittedMetrics = metrics) => {
+    const signatures = [...submittedMetrics, ...images].map(item => JSON.stringify(item));
+    setSubmittedAttachments(new Set(signatures));
+    try { sessionStorage.setItem(`reporting-attachments:${projectId}`, JSON.stringify(signatures)); } catch { /* optional storage */ }
+  };
   const [draft, setDraft] = useState('');
   const [showSources, setShowSources] = useState(false);
   const [reviewFindings, setReviewFindings] = useState<ClassificationFinding[] | null>(null);
@@ -269,6 +283,7 @@ export const ChatComposer: React.FC<Props> = ({
     }
     setShowSources(false);
     onGenerateReport(draft);
+    clearAttachmentStrip();
     setDraft('');
     try { sessionStorage.removeItem(`reporting-composer:${projectId}`); } catch { /* session storage may be unavailable */ }
   };
@@ -289,6 +304,7 @@ export const ChatComposer: React.FC<Props> = ({
     }
     const cards = cardsFromFindings(reviewFindings, metrics, images, projectTitle);
     onApplyFindings(draft, cards, updatedMetrics, selected.length);
+    clearAttachmentStrip(updatedMetrics);
     setShowSources(false);
     setDraft('');
     setReviewFindings(null);
@@ -298,6 +314,7 @@ export const ChatComposer: React.FC<Props> = ({
   const keepAsContext = () => {
     if (!draft.trim()) return;
     onGenerateReport(draft);
+    clearAttachmentStrip();
     setDraft('');
     setReviewFindings(null);
     try { sessionStorage.removeItem(`reporting-composer:${projectId}`); } catch { /* optional storage */ }
@@ -320,7 +337,7 @@ export const ChatComposer: React.FC<Props> = ({
   }, [draft]);
 
   return (
-    <div className="no-print shrink-0 px-5 sm:px-10 pb-[max(16px,env(safe-area-inset-bottom))] pt-2 bg-gradient-to-t from-[#F5F5F7] via-[#F5F5F7]/85 to-transparent">
+    <div className="no-print shrink-0 px-5 sm:px-10 pb-[max(16px,env(safe-area-inset-bottom))] pt-2 bg-transparent">
       <div className="max-w-[740px] mx-auto">
         {/* Chatbot card */}
         <div
@@ -689,10 +706,10 @@ export const ChatComposer: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Attached metrics + photos strip (always visible when attachments exist) */}
-          {(metrics.length > 0 || images.length > 0) && (
+          {/* Only attachments not yet submitted belong in the composer. */}
+          {(pendingMetrics.length > 0 || pendingImages.length > 0) && (
             <div className="flex gap-1.5 px-4 pt-3 overflow-x-auto items-center">
-              {metrics.map((m) => (
+              {pendingMetrics.map((m) => (
                 <div
                   key={m.id}
                   className="flex items-center gap-1 pl-1.5 pr-1 py-1 bg-[#0071E3]/10 border border-[#0071E3]/20 rounded-full shrink-0"
@@ -720,7 +737,7 @@ export const ChatComposer: React.FC<Props> = ({
                   </button>
                 </div>
               ))}
-              {images.map((img) => (
+              {pendingImages.map((img) => (
                 <div key={img.id} className="relative shrink-0 group">
                   <img src={img.dataUrl} alt={img.altText} className="w-12 h-12 rounded-xl object-cover border border-black/10" />
                   <button
@@ -859,7 +876,7 @@ export const ChatComposer: React.FC<Props> = ({
 
             <span className="text-[11px] text-[#86868B] hidden sm:block pr-1">
               {draft.length > 0 ? `${draft.length} characters` : '⌘ Enter'}
-              {(metrics.length > 0 || images.length > 0) && ` · ${metrics.length} metrics · ${images.length} images`}
+              {(pendingMetrics.length > 0 || pendingImages.length > 0) && ` · ${pendingMetrics.length} metrics · ${pendingImages.length} images`}
               {highlightPassage?.text ? ' · trace linked' : ''}
             </span>
 

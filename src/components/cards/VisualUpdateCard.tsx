@@ -21,19 +21,6 @@ export const VisualUpdateCard: React.FC<Props> = ({ card, isInlineEditing, onUpd
   const editLabel = 'text-[11px] font-medium text-[#86868B] block mb-1';
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between text-[11px] font-semibold text-[#727272] tracking-wider uppercase">
-        <span className="flex items-center gap-1.5">
-          <Image className="w-3.5 h-3.5 text-[#0071E3]" />
-          Visual Asset Update
-        </span>
-        {card.altText && card.altText.length > 5 && (
-          <span className="flex items-center gap-1 text-[11px] font-normal normal-case text-emerald-700">
-            <CheckCircle className="w-3 h-3 text-emerald-600" />
-            WCAG Alt Text
-          </span>
-        )}
-      </div>
-
       <h3 className="text-sm font-semibold text-[#1F1F1F]"><EditableText value={card.title} label="visual title" onCommit={(title) => onUpdate?.({ title })} /></h3>
 
       <div className="relative rounded-lg overflow-hidden border border-black/[0.08] bg-neutral-50 max-h-56 flex items-center justify-center">

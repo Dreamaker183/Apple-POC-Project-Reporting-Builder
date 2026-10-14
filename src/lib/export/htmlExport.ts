@@ -4,6 +4,7 @@
  */
 
 import { ReportProject, SnippetCard } from '../../types/report';
+import { metricGraphHtml } from './metricGraphs';
 
 /**
  * Escapes HTML characters to prevent XSS.
@@ -35,11 +36,9 @@ export function formatCardToHtml(card: SnippetCard): string {
       `;
 
     case 'kpi_metric': {
-      const isDeclining = card.trend === 'declining';
-      const trendColor = isDeclining ? '#DC2626' : '#059669';
       return `
         <div class="snippet-card metric-card">
-          <div class="card-kicker">KEY PERFORMANCE INDICATOR</div>
+          <div class="card-kicker">METRIC &amp; DATA</div>
           <h3 class="card-title">${escapeHtml(card.title)}</h3>
           <div class="metric-display">
             <span class="metric-number">${escapeHtml(String(card.value))}</span>
@@ -49,6 +48,7 @@ export function formatCardToHtml(card: SnippetCard): string {
             ${card.target !== undefined ? `<span>Target: <strong>${escapeHtml(String(card.target))}${escapeHtml(card.unit)}</strong></span>` : ''}
             ${card.previousValue !== undefined ? `<span> · Previous: ${escapeHtml(String(card.previousValue))}${escapeHtml(card.unit)}</span>` : ''}
           </div>
+          ${metricGraphHtml(card)}
           ${card.explanation ? `<p class="metric-explanation">${escapeHtml(card.explanation)}</p>` : ''}
         </div>
       `;

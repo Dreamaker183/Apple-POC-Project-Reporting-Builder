@@ -33,6 +33,8 @@ import { calculateExecutiveScore, applyQuickFixToProject } from './lib/analysis/
 import { copyToClipboard } from './lib/export/clipboard';
 import { formatCardToMarkdown } from './lib/export/markdownExport';
 import { formatCardToHtml } from './lib/export/htmlExport';
+import { importReportFromJson } from './lib/export/jsonExport';
+import { isScheduleDue, sendScheduledReport } from './lib/integrations/scheduledDispatch';
 
 import { Header } from './components/layout/Header';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -45,13 +47,15 @@ import { SnapshotComparisonModal } from './components/composition/SnapshotCompar
 import { GuidedTour, TourStep } from './components/guided-demo/GuidedTour';
 import { ShortcutsModal } from './components/common/ShortcutsModal';
 import { Toast, ToastMessage } from './components/common/Toast';
-import { BrandedCursor } from './components/common/BrandedCursor';
 import { Eye, Folder } from 'lucide-react';
 
 export default function App() {
   // 1. Project library (folders + projects + time-flow snapshots), local-only.
   //    First run migrates the legacy single draft or seeds the sample workspace.
   const [library, setLibrary] = useState<ProjectLibrary>(() => loadLibrary());
+  const libraryRef = useRef(library);
+  libraryRef.current = library;
+  const sendingProjects = useRef(new Set<string>());
 
   // Active project derived from the library (invariant: at least one project exists)
   const project: ReportProject =
@@ -112,6 +116,7 @@ export default function App() {
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [highlightPassage, setHighlightPassage] = useState<{ start?: number; end?: number; text?: string } | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // 5. Mobile workspace area view
   const [mobileArea, setMobileArea] = useState<'projects' | 'canvas'>('canvas');
@@ -129,6 +134,43 @@ export default function App() {
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  useEffect(() => {
+    const tick = async () => {
+      for (const scheduledProject of libraryRef.current.projects) {
+        if (!isScheduleDue(scheduledProject) || sendingProjects.current.has(scheduledProject.id)) continue;
+        const schedule = scheduledProject.sendSchedule!;
+        sendingProjects.current.add(scheduledProject.id);
+        const run = async () => {
+          // Reload saved status under the cross-tab lock to avoid double delivery.
+          const persisted = loadLibrary().projects.find(p => p.id === scheduledProject.id)?.sendSchedule;
+          if (persisted?.scheduledAt === schedule.scheduledAt && (persisted.status === 'sent' || persisted.status === 'sending')) return;
+          const started = { ...libraryRef.current, projects: libraryRef.current.projects.map(p => p.id === scheduledProject.id ? { ...p, sendSchedule: { ...schedule, status: 'sending' as const } } : p) };
+          if (!saveLibrary(started)) return;
+          setLibrary(started);
+          try {
+            const result = await sendScheduledReport(scheduledProject);
+            setLibrary(prev => {
+              const next = { ...prev, projects: prev.projects.map(p => p.id === scheduledProject.id && p.sendSchedule?.scheduledAt === schedule.scheduledAt ? { ...p, sendSchedule: { ...p.sendSchedule, enabled: false, status: result.success ? 'sent' as const : 'error' as const, message: result.message } } : p) };
+              saveLibrary(next);
+              return next;
+            });
+            addToast(result.success ? `Scheduled report sent: ${scheduledProject.title}` : result.message, result.success ? 'success' : 'error');
+          } catch {
+            setLibrary(prev => ({ ...prev, projects: prev.projects.map(p => p.id === scheduledProject.id ? { ...p, sendSchedule: { ...schedule, enabled: false, status: 'error' as const, message: 'Delivery failed. Check the connection and re-enable auto-send.' } } : p) }));
+          }
+        };
+        try {
+          if (navigator.locks) await navigator.locks.request(`report-send:${scheduledProject.id}`, { ifAvailable: true }, lock => lock ? run() : Promise.resolve());
+          else await run();
+        } finally {
+          sendingProjects.current.delete(scheduledProject.id);
+        }
+      }
+    };
+    const timer = window.setInterval(() => { void tick(); }, 1000);
+    return () => window.clearInterval(timer);
+  }, [addToast]);
 
   // Save library locally whenever it changes (debounced, quota-safe)
   const saveFailedNotified = useRef(false);
@@ -281,7 +323,7 @@ export default function App() {
     } : p) }));
   };
 
-  const handleApplyFindings = (notes: string, cards: SnippetCard[], metrics: MetricInput[]) => {
+  const handleApplyFindings = (notes: string, cards: SnippetCard[], metrics: MetricInput[], selectedCount?: number) => {
     recordHistory();
     const combinedNotes = [project.rawNotes, notes.trim()].filter(Boolean).join('\n\n');
     const updatedCards = mergeReviewedCards(project.cards, cards);
@@ -289,7 +331,8 @@ export default function App() {
     const firstNew = updatedCards.find((card) => cards.some((created) => created.sourceKey === card.sourceKey));
     if (firstNew) setInspectedCardId(firstNew.id);
     setMobileArea('canvas');
-    addToast(`Added ${cards.length} reviewed findings to the report`, 'success');
+    const count = selectedCount ?? cards.length;
+    addToast(`Added ${count} reviewed ${count === 1 ? 'finding' : 'findings'} to the report`, 'success');
   };
 
   // Load sample content into the active project (keeps its id + folder)
@@ -336,6 +379,14 @@ export default function App() {
     setBaselineCards([]);
     setMobileArea('canvas');
     addToast('Created new project', 'success');
+  };
+
+  // Quick fix application for Executive-Ready Score
+  const handleApplyQuickFix = (checkId: string) => {
+    recordHistory();
+    const updated = applyQuickFixToProject(project, checkId);
+    updateActiveProject(() => updated);
+    addToast('Applied readiness quick-fix', 'success');
   };
 
   // Fix all outstanding checks in one click (used by the guided tour)
@@ -433,6 +484,18 @@ export default function App() {
     newCards[idx] = newCards[targetIdx];
     newCards[targetIdx] = temp;
 
+    updateActiveProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
+  };
+
+  const handleReorderCards = (newCards: SnippetCard[]) => {
+    const prevIds = project.cards.map((c) => c.id).join('|');
+    const nextIds = newCards.map((c) => c.id).join('|');
+    if (prevIds === nextIds) return;
+    // Guard against dropped/duplicated ids from a stale drag snapshot.
+    if (newCards.length !== project.cards.length) return;
+    const prevIdSet = new Set(project.cards.map((c) => c.id));
+    if (!newCards.every((c) => prevIdSet.has(c.id))) return;
+    recordHistory();
     updateActiveProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
   };
 
@@ -617,6 +680,7 @@ export default function App() {
     if (!src) return;
     const copy: ReportProject = {
       ...src,
+      sendSchedule: undefined,
       id: uid('proj'),
       title: `${src.title} (Copy)`,
       lastSavedAt: new Date().toISOString(),
@@ -699,6 +763,7 @@ export default function App() {
     updateActiveProject((prev) => ({
       ...prev,
       ...(snap.project ?? {}),
+      sendSchedule: prev.sendSchedule,
       id: prev.id,
       folderId: prev.folderId,
       cards: snap.cards,
@@ -720,7 +785,52 @@ export default function App() {
     setIsSnapshotModalOpen(true);
   };
 
-  // Computed per-project readiness (sidebar dots)
+  const triggerImportProject = useCallback(() => {
+    importInputRef.current?.click();
+  }, []);
+
+  const handleImportProjectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (importInputRef.current) importInputRef.current.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = String(ev.target?.result ?? '');
+      const res = importReportFromJson(text);
+      if (!res.success || !res.data) {
+        addToast(res.error || 'Could not import project JSON', 'error');
+        return;
+      }
+      const folders = ensureDefaultFolder(library.folders);
+      const active = library.projects.find((p) => p.id === library.activeProjectId);
+      const folderId = active?.folderId && folders.some((f) => f.id === active.folderId)
+        ? active.folderId
+        : folders[0].id;
+      const imported: ReportProject = {
+        ...res.data,
+        sendSchedule: undefined,
+        id: uid('proj'),
+        folderId,
+        lastSavedAt: new Date().toISOString(),
+        isDirty: false,
+      };
+      setLibrary((prev) => ({
+        ...prev,
+        folders: ensureDefaultFolder(prev.folders),
+        projects: [...prev.projects, imported],
+        activeProjectId: imported.id,
+      }));
+      resetWorkspaceUI(imported.cards);
+      setBaselineCards([]);
+      setMobileArea('canvas');
+      addToast(`Imported "${imported.title}"`, 'success');
+    };
+    reader.onerror = () => addToast('Failed to read JSON file', 'error');
+    reader.readAsText(file);
+  };
+
+  // Computed per-project readiness (sidebar dots + active canvas badge)
+  const readinessScore = useMemo(() => calculateExecutiveScore(project), [project]);
 
   const readinessByProject = useMemo(() => {
     const map: Record<string, number> = {};
@@ -868,6 +978,7 @@ export default function App() {
         onOpenMessageTools={() => handleOpenMessageTools('email')}
         onPrint={() => window.print()}
         onReset={handleReset}
+        onImportProject={triggerImportProject}
         onOpenGuidedTour={() => {
           setIsGuidedTourOpen(true);
           setTourStepIndex(0);
@@ -952,6 +1063,7 @@ export default function App() {
                 onDeleteProject={handleDeleteProject}
                 onRenameFolder={handleRenameFolder}
                 onDeleteFolder={handleDeleteFolder}
+                onImportProject={triggerImportProject}
               >
                 <TimeFlow
                   snapshots={activeSnapshots}
@@ -988,6 +1100,7 @@ export default function App() {
                 onDeleteProject={handleDeleteProject}
                 onRenameFolder={handleRenameFolder}
                 onDeleteFolder={handleDeleteFolder}
+                onImportProject={triggerImportProject}
               >
                 <TimeFlow
                   snapshots={activeSnapshots}
@@ -1013,12 +1126,15 @@ export default function App() {
             projectTitle={project.title}
             title={project.title}
             reportingPeriod={project.reportingPeriod}
+            sendSchedule={project.sendSchedule}
+            onScheduleChange={(sendSchedule) => updateActiveProject(prev => ({ ...prev, sendSchedule }))}
+            onConfigureDispatch={() => handleOpenMessageTools('slack')}
             cards={project.cards}
             selectedCardIds={selectedCardIds}
             inspectedCardId={inspectedCardId}
             onUpdateTitle={(title) => updateActiveProject((prev) => ({ ...prev, title, isDirty: true }))}
             onUpdatePeriod={(reportingPeriod) =>
-              updateActiveProject((prev) => ({ ...prev, reportingPeriod, isDirty: true }))
+              updateActiveProject((prev) => ({ ...prev, reportingPeriod, sendSchedule: prev.sendSchedule ? { ...prev.sendSchedule, enabled: false } : undefined, isDirty: true }))
             }
             onToggleSelectCard={handleToggleSelectCard}
             onSelectAllCards={handleSelectAllCards}
@@ -1033,6 +1149,7 @@ export default function App() {
               }
             }}
             onMoveCard={handleMoveCard}
+            onReorderCards={handleReorderCards}
             onDuplicateCard={handleDuplicateCard}
             onDeleteCard={handleDeleteCard}
             onDeleteSelectedCards={handleDeleteSelectedCards}
@@ -1052,10 +1169,21 @@ export default function App() {
             onImagesAppend={handleImagesAppend}
             onGenerateReport={handleGenerateReport}
             onApplyFindings={handleApplyFindings}
+            readinessScore={readinessScore}
+            onApplyQuickFix={handleApplyQuickFix}
+            onApplyAllFixes={handleApplyAllFixes}
             onNotify={addToast}
           />
         </section>
       </main>
+
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".json,application/json"
+        onChange={handleImportProjectFile}
+        className="hidden"
+      />
 
       {/* 4. Guided Tour Controller */}
       <GuidedTour
@@ -1096,9 +1224,6 @@ export default function App() {
 
       {/* 8. Toast Feedback */}
       <Toast toasts={toasts} onDismiss={dismissToast} />
-
-      {/* 9. Branded dot + ring cursor (fine pointers only) */}
-      <BrandedCursor />
     </div>
   );
 }

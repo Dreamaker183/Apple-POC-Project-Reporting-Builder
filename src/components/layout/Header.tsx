@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PanelLeft, Undo2, Redo2, Share2, MoreHorizontal, Plus, Printer, GitCompare, Keyboard, Compass, Sparkles, Check, LoaderCircle, AlertCircle } from 'lucide-react';
+import { PanelLeft, Undo2, Redo2, Share2, MoreHorizontal, Plus, Upload, Printer, GitCompare, Keyboard, Compass, Sparkles, Check, LoaderCircle, AlertCircle } from 'lucide-react';
 
 interface Props {
   isDirty: boolean;
@@ -18,6 +18,7 @@ interface Props {
   onOpenMessageTools: () => void;
   onPrint: () => void;
   onReset: () => void;
+  onImportProject?: () => void;
   onOpenGuidedTour: () => void;
   onOpenSnapshotDiff: () => void;
   onOpenShortcuts: () => void;
@@ -41,6 +42,7 @@ export function Header(props: Props) {
   }, [open]);
   const actions = [
     { label: 'New project', Icon: Plus, run: props.onReset },
+    ...(props.onImportProject ? [{ label: 'Import project (.json)', Icon: Upload, run: props.onImportProject }] : []),
     { label: 'Compare snapshots', Icon: GitCompare, run: props.onOpenSnapshotDiff },
     { label: 'Print or save PDF', Icon: Printer, run: props.onPrint },
     { label: 'Keyboard shortcuts', Icon: Keyboard, run: props.onOpenShortcuts },

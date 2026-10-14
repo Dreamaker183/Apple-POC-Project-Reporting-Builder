@@ -32,18 +32,6 @@ export const NextStepsCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between text-[11px] font-semibold text-[#727272] tracking-wider uppercase">
-        <span className="flex items-center gap-1.5">
-          <ListTodo className="w-3.5 h-3.5 text-[#0071E3]" />
-          Next Steps & Commitments
-        </span>
-        {card.sourceRef && (
-          <span className="text-[11px] font-normal normal-case text-[#727272]">
-            Source verified
-          </span>
-        )}
-      </div>
-
       <div className="space-y-2">
         {card.items.map((item, idx) => {
           const isDone = item.status === 'completed';

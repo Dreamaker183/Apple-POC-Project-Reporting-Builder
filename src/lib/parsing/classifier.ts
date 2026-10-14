@@ -118,7 +118,7 @@ export function classifyPassages(text: string): ClassificationFinding[] {
     const riskNegated = /\b(no|not|without|never|none|zero)\b.{0,35}\b(block(?:er|ing|ed)?|risk|defect|bug|issue|failure)s?\b/.test(lower);
     const completed = /\b(completed|delivered|achieved|shipped|launched|finished|complete|ready for review|resolved|fixed)\b/.test(lower) && !/\bnot\s+(?:completed|resolved|fixed|complete)\b/.test(lower);
     const isCompletionStatement = /\b(?:is|was|has been)\s+(?:complete|completed|resolved|fixed|finished)\b/.test(lower) || /\b(?:completed|delivered|achieved|shipped|launched|finished|resolved|fixed)\b/.test(lower);
-    const actionCue = /\b(?:will\s+(?:complete|resolve|investigate|deliver|ship|follow up|review|test|finish)|plans? to|need(?:s)? to|should|must|action item|follow up|investigate|scheduled to)\b/.test(lower);
+    const actionCue = /\b(?:will\s+(?!not\b|be\s+determined\b)[a-z]+|plans?\s+to|need(?:s)?\s+to|should|must|action\s+item|follow\s+up|investigate|scheduled\s+to)\b/.test(lower);
     const milestoneCue = /\b(?:milestone|phase\s+\d+|release\s+candidate|beta\s+launch|ga\s+launch|target\s+release|handoff\s+milestone)\b/.test(lower);
 
     if (riskCue && !riskNegated && !resolved) {

@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { SnippetCard, CardType, MetricInput, ImageAssetInput } from '../../types/report';
-import { CardRenderer } from '../cards/CardRenderer';
+import { AnimatePresence, Reorder } from 'framer-motion';
+import { SnippetCard, CardType, MetricInput, ImageAssetInput, ReadinessScore, SendSchedule } from '../../types/report';
+import { ReportingDate } from './ReportingDate';
+import { SortableCard } from './SortableCard';
 import { ChatComposer } from '../composer/ChatComposer';
-import { MagnifierSearchButton } from '../common/MagnifierSearchButton';
 import { 
   Plus, 
   Trash2, 
@@ -17,8 +17,14 @@ import {
   Square, 
   Calendar,
   Layers,
+  Search,
   Send,
-  X
+  X,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Zap,
+  GripVertical
 } from 'lucide-react';
 
 interface Props {
@@ -26,6 +32,9 @@ interface Props {
   projectTitle: string;
   title: string;
   reportingPeriod: string;
+  sendSchedule?: SendSchedule;
+  onScheduleChange: (schedule?: SendSchedule) => void;
+  onConfigureDispatch: () => void;
   cards: SnippetCard[];
   selectedCardIds: Set<string>;
   inspectedCardId: string | null;
@@ -36,6 +45,7 @@ interface Props {
   onDeselectAllCards: () => void;
   onInspectCard: (id: string) => void;
   onMoveCard: (id: string, direction: 'up' | 'down') => void;
+  onReorderCards: (cards: SnippetCard[]) => void;
   onDuplicateCard: (id: string) => void;
   onDeleteCard: (id: string) => void;
   onDeleteSelectedCards: () => void;
@@ -54,7 +64,10 @@ interface Props {
   onImagesChange: (images: ImageAssetInput[]) => void;
   onImagesAppend: (images: ImageAssetInput[]) => void;
   onGenerateReport: (notes?: string) => void;
-  onApplyFindings: (notes: string, cards: SnippetCard[], metrics: MetricInput[]) => void;
+  onApplyFindings: (notes: string, cards: SnippetCard[], metrics: MetricInput[], selectedCount?: number) => void;
+  readinessScore?: ReadinessScore;
+  onApplyQuickFix?: (checkId: string) => void;
+  onApplyAllFixes?: () => void;
   onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -63,6 +76,9 @@ export const ReportCanvas: React.FC<Props> = ({
   projectTitle,
   title,
   reportingPeriod,
+  sendSchedule,
+  onScheduleChange,
+  onConfigureDispatch,
   cards,
   selectedCardIds,
   inspectedCardId,
@@ -73,6 +89,7 @@ export const ReportCanvas: React.FC<Props> = ({
   onDeselectAllCards,
   onInspectCard,
   onMoveCard,
+  onReorderCards,
   onDuplicateCard,
   onDeleteCard,
   onDeleteSelectedCards,
@@ -92,24 +109,42 @@ export const ReportCanvas: React.FC<Props> = ({
   onImagesAppend,
   onGenerateReport,
   onApplyFindings,
+  readinessScore,
+  onApplyQuickFix,
+  onApplyAllFixes,
   onNotify,
 }) => {
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showReadiness, setShowReadiness] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const addMenuRef = useRef<HTMLDivElement>(null);
+  const readinessRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
         setShowAddMenu(false);
       }
+      if (readinessRef.current && !readinessRef.current.contains(e.target as Node)) {
+        setShowReadiness(false);
+      }
     };
-    if (showAddMenu) {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAddMenu(false);
+        setShowReadiness(false);
+      }
+    };
+    if (showAddMenu || showReadiness) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showAddMenu]);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showAddMenu, showReadiness]);
 
   const cardTypeOptions: Array<{ type: CardType; label: string }> = [
     { type: 'executive_summary', label: 'Executive Summary' },
@@ -127,6 +162,7 @@ export const ReportCanvas: React.FC<Props> = ({
       kpi_metric: cards.filter(c => c.type === 'kpi_metric').length,
       risk_blocker: cards.filter(c => c.type === 'risk_blocker').length,
       next_steps: cards.filter(c => c.type === 'next_steps').length,
+      milestone: cards.filter(c => c.type === 'milestone').length,
       visual_update: cards.filter(c => c.type === 'visual_update').length,
     };
   }, [cards]);
@@ -149,6 +185,27 @@ export const ReportCanvas: React.FC<Props> = ({
   const allSelected = cards.length > 0 && selectedCardIds.size === cards.length;
   const someSelected = selectedCardIds.size > 0;
 
+  // Drag-to-reorder targets the full order; while filtered, reordered visible
+  // cards are merged back into their original slots.
+  const canReorder = filterType === 'all' && !searchQuery.trim();
+  const handleReorder = (newOrder: SnippetCard[]) => {
+    if (canReorder) {
+      onReorderCards(newOrder);
+      return;
+    }
+    const orderById = new Map(newOrder.map((c) => [c.id, c] as const));
+    const slots: number[] = [];
+    cards.forEach((c, i) => {
+      if (orderById.has(c.id)) slots.push(i);
+    });
+    if (slots.length !== newOrder.length) return;
+    const merged = [...cards];
+    slots.forEach((slot, k) => {
+      merged[slot] = newOrder[k];
+    });
+    onReorderCards(merged);
+  };
+
   return (
     <div className="report-canvas flex flex-col h-full min-h-0 overflow-hidden">
       <div className="report-scroll flex-1 min-h-0 overflow-y-auto px-5 sm:px-10 py-8 sm:py-12 max-w-[820px] mx-auto w-full space-y-6">
@@ -164,17 +221,85 @@ export const ReportCanvas: React.FC<Props> = ({
         />
 
         <div className="flex items-center gap-2 text-xs text-[#86868B]">
-          <Calendar className="w-3.5 h-3.5 text-[#86868B]" />
-          <input
-            aria-label="Reporting period"
-            type="text"
-            value={reportingPeriod}
-            onChange={(e) => onUpdatePeriod(e.target.value)}
-            placeholder="Add reporting period (e.g. Oct 5–9, 2026)"
-            className="bg-transparent border-none focus:outline-none placeholder:text-black/30 font-normal text-[#1D1D1F] min-w-0 flex-1 hover:text-[#0071E3] transition-colors"
-          />
+          <ReportingDate value={reportingPeriod} schedule={sendSchedule} hasCards={cards.length > 0} onDateChange={onUpdatePeriod} onScheduleChange={onScheduleChange} onConfigure={onConfigureDispatch} />
           <span className="text-black/10">|</span>
           <span>{cards.length} {cards.length === 1 ? 'card' : 'cards'}</span>
+          {readinessScore && (
+            <>
+              <span className="text-black/10 no-print">|</span>
+              <div className="relative no-print" ref={readinessRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowReadiness((prev) => !prev)}
+                  aria-expanded={showReadiness}
+                  aria-label={`Executive readiness ${readinessScore.score}%`}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/80 hover:bg-white border border-black/[0.06] text-[11px] font-medium text-[#1D1D1F] transition-colors"
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      readinessScore.score >= 80
+                        ? 'bg-emerald-500'
+                        : readinessScore.score >= 50
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500'
+                    }`}
+                  />
+                  <span>Readiness · {readinessScore.score}%</span>
+                </button>
+                {showReadiness && (
+                  <div className="absolute right-0 top-7 z-40 w-80 bg-white/95 backdrop-blur-xl rounded-2xl border border-black/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.14)] p-3.5 text-xs space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-[#1D1D1F]">Executive readiness · {readinessScore.score}%</div>
+                        <div className="text-[11px] text-[#6E6E73]">{readinessScore.passedChecks} of {readinessScore.totalChecks} checks passed</div>
+                      </div>
+                      {readinessScore.score < 100 && onApplyAllFixes && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onApplyAllFixes();
+                            setShowReadiness(false);
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white text-[11px] font-medium"
+                        >
+                          <Zap className="w-3 h-3" />
+                          <span>Fix all</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                      {readinessScore.items.map((item) => (
+                        <div key={item.id} className="rounded-xl bg-[#F5F5F7] p-2.5 flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2 min-w-0">
+                            {item.status === 'pass' ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                            ) : item.status === 'warning' ? (
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-medium text-[#1D1D1F]">{item.label}</div>
+                              <div className="text-[11px] text-[#6E6E73] leading-snug">{item.description}</div>
+                            </div>
+                          </div>
+                          {item.status !== 'pass' && onApplyQuickFix && (
+                            <button
+                              type="button"
+                              onClick={() => onApplyQuickFix(item.id)}
+                              className="shrink-0 px-2 py-1 rounded-lg bg-white border border-black/10 text-[11px] font-medium text-[#0071E3] hover:bg-[#0071E3]/10"
+                            >
+                              Fix
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -232,6 +357,19 @@ export const ReportCanvas: React.FC<Props> = ({
               Actions
             </button>
           )}
+          {counts.milestone > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilterType('milestone')}
+              className={`px-3 py-1 rounded-md transition-all ${
+                filterType === 'milestone'
+                  ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold'
+                  : 'text-[#86868B] hover:text-[#1D1D1F]'
+              }`}
+            >
+              Milestones
+            </button>
+          )}
           {counts.visual_update > 0 && (
             <button
               type="button"
@@ -251,7 +389,7 @@ export const ReportCanvas: React.FC<Props> = ({
         <div className="flex items-center gap-2">
           {/* Subtle Search */}
           <div className="relative">
-            <MagnifierSearchButton />
+            <Search className="w-3.5 h-3.5 text-[#86868B] absolute left-2.5 top-2 pointer-events-none" />
             <input
               type="text"
               placeholder="Filter..."
@@ -368,24 +506,32 @@ export const ReportCanvas: React.FC<Props> = ({
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          <AnimatePresence mode="popLayout" initial={true}>
-            {filteredCards.map((card, idx) => (
-              <motion.div
-                key={card.id}
-                layout
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15, ease: 'easeOut' } }}
-                transition={{
-                  layout: { duration: 0.2, ease: 'easeOut' },
-                  duration: 0.2,
-                  ease: 'easeOut',
-                  delay: Math.min(idx * 0.02, 0.12),
-                }}
-              >
-                <CardRenderer
+        <div className="space-y-3">
+          {cards.length > 1 && (
+            <p className="flex items-center gap-1.5 text-[11px] text-[#86868B] no-print select-none">
+              <GripVertical className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                {canReorder
+                  ? 'Press & hold a card (or drag its grip) to reorder'
+                  : 'Clear search/filter to reorder cards'}
+              </span>
+            </p>
+          )}
+          <Reorder.Group
+            as="div"
+            axis="y"
+            layoutScroll
+            values={filteredCards}
+            onReorder={handleReorder}
+            className="space-y-4"
+          >
+            <AnimatePresence initial={false}>
+              {filteredCards.map((card, idx) => (
+                <SortableCard
+                  key={card.id}
                   card={card}
+                  index={idx}
+                  canReorder={canReorder}
                   isSelected={selectedCardIds.has(card.id)}
                   isInspected={inspectedCardId === card.id}
                   canMoveUp={cards.findIndex((c) => c.id === card.id) > 0}
@@ -400,9 +546,9 @@ export const ReportCanvas: React.FC<Props> = ({
                   onShareCard={onShareCard}
                   onUpdateCard={onUpdateCard}
                 />
-              </motion.div>
-            ))}
-          </AnimatePresence>
+              ))}
+            </AnimatePresence>
+          </Reorder.Group>
         </div>
       )}
       </div>
