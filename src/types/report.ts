@@ -173,6 +173,10 @@ export interface ReadinessItem {
   description: string;
   actionableFix: string;
   cardId?: string;
+  /** Non-card target to spotlight when no single card applies. */
+  spotlight?: 'header' | 'add-card';
+  /** Which card type the add-card spotlight refers to. */
+  spotlightCardType?: CardType;
 }
 
 export interface ReadinessScore {

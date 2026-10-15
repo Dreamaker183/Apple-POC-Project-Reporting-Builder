@@ -20,6 +20,7 @@ interface Props {
   canReorder: boolean;
   isSelected: boolean;
   isInspected: boolean;
+  isPeeked?: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
   onToggleSelect: (id: string) => void;
@@ -50,6 +51,7 @@ export const SortableCard: React.FC<Props> = ({
   canReorder,
   isSelected,
   isInspected,
+  isPeeked,
   canMoveUp,
   canMoveDown,
   onToggleSelect,
@@ -167,6 +169,8 @@ export const SortableCard: React.FC<Props> = ({
       ref={itemRef}
       as="div"
       value={card}
+      data-card-id={card.id}
+      data-card-type={card.type}
       dragListener={false}
       dragControls={controls}
       onPointerDown={handleItemPointerDown}
@@ -245,6 +249,7 @@ export const SortableCard: React.FC<Props> = ({
         card={card}
         isSelected={isSelected}
         isInspected={isInspected}
+        isPeeked={isPeeked}
         canMoveUp={canMoveUp}
         canMoveDown={canMoveDown}
         dragHandle={

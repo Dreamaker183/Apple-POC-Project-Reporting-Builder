@@ -18,7 +18,8 @@ export function ReportingDate({ value, schedule, hasCards, onDateChange, onSched
   const [destination, setDestination] = useState<SendSchedule['destination']>(schedule?.destination ?? 'slack');
   const [error, setError] = useState('');
   const dateRef = useRef<HTMLInputElement>(null);
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+  // The reporting period is always a plain ISO date (YYYY-MM-DD) or empty.
+  const date = value;
   const updateDate = (next: string) => {
     onDateChange(next);
     if (schedule?.enabled) onScheduleChange({ ...schedule, enabled: false });
@@ -50,7 +51,6 @@ export function ReportingDate({ value, schedule, hasCards, onDateChange, onSched
         </button>
         <input ref={dateRef} type="date" aria-label="Reporting date" value={date} onChange={(e) => updateDate(e.target.value)} className="reporting-date bg-transparent text-xs text-[#1D1D1F] rounded-md min-w-0" />
       </div>
-      {value && !date && <span className="text-[10px] text-[#6E6E73]">Previous period: {value}</span>}
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="no-print flex items-center gap-1 rounded-full border border-black/[0.08] bg-white/70 px-2 py-1 text-[11px] text-[#0071E3]"><Clock className="w-3 h-3" />{schedule?.enabled ? 'Auto-send on' : 'Auto-send'}</button>
     </div>
     {open && <div className="no-print mt-3 rounded-2xl bg-white border border-black/[0.08] p-4 shadow-sm space-y-3 text-xs" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>

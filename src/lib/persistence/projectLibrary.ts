@@ -29,6 +29,11 @@ export function snapshotLabelFor(project: { reportingPeriod: string }): string {
   return new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/** Reporting periods are plain ISO dates (YYYY-MM-DD); legacy free-text periods become empty. */
+export function normalizeReportingPeriod(value: unknown): string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim()) ? value.trim() : '';
+}
+
 export function createBlankProject(folderId: string): ReportProject {
   const now = new Date().toISOString();
   return {
@@ -133,7 +138,11 @@ export function createSeedLibrary(): ProjectLibrary {
 /** Migrates a legacy single draft into a one-project library. Pure + testable. */
 export function migrateLegacyDraft(draft: ReportProject): ProjectLibrary {
   const folders = ensureDefaultFolder([]);
-  const project: ReportProject = { ...draft, folderId: folders[0].id };
+  const project: ReportProject = {
+    ...draft,
+    folderId: folders[0].id,
+    reportingPeriod: normalizeReportingPeriod(draft.reportingPeriod),
+  };
   return {
     version: 1,
     folders,
@@ -149,6 +158,7 @@ function sanitizeLibrary(lib: ProjectLibrary): ProjectLibrary {
   const projects: ReportProject[] = lib.projects.map((p) => ({
     ...p,
     folderId: p.folderId && folderIds.has(p.folderId) ? p.folderId : folders[0].id,
+    reportingPeriod: normalizeReportingPeriod(p.reportingPeriod),
   }));
   if (projects.length === 0) projects.push(createBlankProject(folders[0].id));
   const projectIds = new Set(projects.map((p) => p.id));

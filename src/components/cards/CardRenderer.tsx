@@ -33,6 +33,7 @@ interface Props {
   card: SnippetCard;
   isSelected: boolean;
   isInspected: boolean;
+  isPeeked?: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
   dragHandle?: DragHandleProps;
@@ -51,6 +52,7 @@ export const CardRenderer: React.FC<Props> = ({
   card,
   isSelected,
   isInspected,
+  isPeeked,
   canMoveUp,
   canMoveDown,
   dragHandle,
@@ -126,6 +128,10 @@ export const CardRenderer: React.FC<Props> = ({
       className={`group relative bg-white rounded-2xl border p-5 sm:p-6 transition-all duration-200 cursor-pointer outline-none ${
         editing
           ? 'border-[#0071E3] ring-2 ring-[#0071E3]/20 shadow-[0_6px_24px_rgba(0,113,227,0.08)]'
+          : isPeeked
+          ? 'border-[#0071E3] ring-2 ring-[#0071E3]/60 shadow-[0_10px_32px_rgba(0,113,227,0.22)] scale-[1.005]'
+          : isInspected
+          ? 'border-[#0071E3]/60 ring-1 ring-[#0071E3]/30 bg-blue-50/[0.12] shadow-[0_4px_20px_rgba(0,113,227,0.10)]'
           : isSelected
           ? 'border-[#0071E3]/50 ring-1 ring-[#0071E3]/20 bg-blue-50/[0.12] shadow-xs'
           : 'border-black/[0.06] hover:border-black/[0.12] shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.05)]'

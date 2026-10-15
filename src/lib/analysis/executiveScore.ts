@@ -23,6 +23,8 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       status: 'fail',
       description: 'Senior leaders require a concise executive summary before reviewing detailed cards.',
       actionableFix: 'Add Executive Summary card summarizing bottom-line achievements.',
+      spotlight: 'add-card',
+      spotlightCardType: 'executive_summary',
     });
   } else {
     items.push({
@@ -37,10 +39,10 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
   }
 
   // Check 2: Unconfirmed release commitments or unstated dates
-  const hasUnconfirmedNote = project.cards.some(c => 
+  const unconfirmedCard = project.cards.find(c => 
     c.type === 'executive_summary' && c.statusNote?.toLowerCase().includes('not yet')
   );
-  if (hasUnconfirmedNote) {
+  if (unconfirmedCard) {
     items.push({
       id: 'check-unconfirmed-release',
       category: 'completeness',
@@ -48,6 +50,7 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       status: 'warning',
       description: 'Report notes release date is unconfirmed. Senior leaders will ask about timeline dependencies.',
       actionableFix: 'Clarify release date target window or specify security gating dependency.',
+      cardId: unconfirmedCard.id,
     });
   } else {
     items.push({
@@ -69,6 +72,7 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       status: 'warning',
       description: 'Report header lacks active date window (e.g. 5–9 October 2026).',
       actionableFix: 'Set the reporting period window in header.',
+      spotlight: 'header',
     });
   } else {
     items.push({
@@ -91,6 +95,8 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       status: 'warning',
       description: 'Status reports carry more weight with at least one quantitative metric.',
       actionableFix: 'Add at least one KPI metric (e.g. velocity, latency, or defects).',
+      spotlight: 'add-card',
+      spotlightCardType: 'kpi_metric',
     });
   } else {
     const missingTargets = metricCards.filter(m => m.target === undefined);
@@ -130,6 +136,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
   });
 
   if (totalSteps > 0 && unassignedSteps > 0) {
+    const ownerlessCard = nextStepsCards.find(card =>
+      card.items.some(item => !item.owner || !item.owner.trim())
+    );
     items.push({
       id: 'check-action-ownership',
       category: 'ownership',
@@ -137,6 +146,7 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       status: 'warning',
       description: `${unassignedSteps} next step(s) lack a named DRI (Directly Responsible Individual).`,
       actionableFix: 'Assign DRI owner to next steps for accountability.',
+      cardId: ownerlessCard?.id,
     });
   } else if (totalSteps > 0) {
     items.push({
@@ -155,6 +165,8 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       status: 'fail',
       description: 'No actionable next steps identified for upcoming review cycle.',
       actionableFix: 'Add a Next Steps card with prioritized action items.',
+      spotlight: 'add-card',
+      spotlightCardType: 'next_steps',
     });
   }
 
