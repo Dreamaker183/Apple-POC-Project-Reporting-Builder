@@ -12,6 +12,7 @@ import {
 } from '../../types/report';
 import { ProjectLibrarySchema, ReportProjectSchema } from '../../schemas/reportSchema';
 import { createSampleProject, WEEK_40_BASELINE_SNAPSHOT } from '../sampleData';
+import { logger } from '../logger';
 
 export const LIBRARY_STORAGE_KEY = 'project_reporting_builder_library_v1';
 const LEGACY_DRAFT_KEY = 'project_reporting_builder_draft_v1';
@@ -178,7 +179,7 @@ export function loadLibrary(): ProjectLibrary {
       if (validated.success) {
         return sanitizeLibrary(validated.data as ProjectLibrary);
       }
-      console.warn('Project library failed validation, rebuilding:', validated.error);
+      logger.warn('Project library failed validation, rebuilding:', validated.error);
     } else {
       // One-time migration from the legacy single-draft key
       const legacyRaw = localStorage.getItem(LEGACY_DRAFT_KEY);
@@ -198,7 +199,7 @@ export function loadLibrary(): ProjectLibrary {
       }
     }
   } catch (err) {
-    console.error('Failed to load project library:', err);
+    logger.error('Failed to load project library:', err);
   }
   return createSeedLibrary();
 }
@@ -209,7 +210,7 @@ export function saveLibrary(library: ProjectLibrary): boolean {
     localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(library));
     return true;
   } catch (err) {
-    console.error('Failed to save project library (quota?):', err);
+    logger.error('Failed to save project library (quota?):', err);
     return false;
   }
 }

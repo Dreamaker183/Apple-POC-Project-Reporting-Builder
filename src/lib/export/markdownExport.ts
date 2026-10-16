@@ -4,6 +4,7 @@
  */
 
 import { ReportProject, SnippetCard } from '../../types/report';
+import { metricGraphText } from './metricGraphs';
 
 export function formatCardToMarkdown(card: SnippetCard): string {
   switch (card.type) {
@@ -26,6 +27,13 @@ export function formatCardToMarkdown(card: SnippetCard): string {
       }
       if (card.previousValue !== undefined) {
         parts.push(`- Previous: ${card.previousValue}${card.unit}`);
+      }
+      const graph = metricGraphText(card);
+      if (graph) {
+        parts.push('');
+        parts.push('```');
+        parts.push(graph);
+        parts.push('```');
       }
       if (card.explanation) {
         parts.push(`- Context: ${card.explanation}`);

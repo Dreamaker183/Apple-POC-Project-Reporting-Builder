@@ -5,6 +5,7 @@
 
 import { ReportProject, SnippetCard } from '../../types/report';
 import { metricGraphHtml } from './metricGraphs';
+import { sanitizeImageSrc } from '../security/sanitize';
 
 /**
  * Escapes HTML characters to prevent XSS.
@@ -110,18 +111,20 @@ export function formatCardToHtml(card: SnippetCard): string {
         </div>
       `;
 
-    case 'visual_update':
+    case 'visual_update': {
+      const safeUrl = sanitizeImageSrc(card.imageUrl);
       return `
         <div class="snippet-card">
           <div class="card-kicker">VISUAL UPDATE</div>
           <h3 class="card-title">${escapeHtml(card.title)}</h3>
-          <div class="image-wrapper">
-            <img src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(card.altText)}" style="max-width: 100%; border-radius: 6px;" />
-          </div>
+          ${safeUrl ? `<div class="image-wrapper">
+            <img src="${escapeHtml(safeUrl)}" alt="${escapeHtml(card.altText)}" style="max-width: 100%; border-radius: 6px;" />
+          </div>` : ''}
           <p class="image-caption"><em>${escapeHtml(card.caption)}</em></p>
           ${card.context ? `<p class="image-context">${escapeHtml(card.context)}</p>` : ''}
         </div>
       `;
+    }
 
     default:
       return '';

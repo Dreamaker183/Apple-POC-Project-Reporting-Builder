@@ -183,6 +183,10 @@ export function formatForWeeklyStatusMemo(project: ReportProject, cards?: Snippe
       if (m.type !== 'kpi_metric') return;
       const targetStr = m.target !== undefined ? ` [Target: ${m.target}${m.unit}]` : '';
       lines.push(`  * ${m.label.padEnd(28)} : ${m.value}${m.unit}${targetStr}`);
+      const graph = metricGraphText(m);
+      if (graph) {
+        lines.push(graph.split('\n').map(l => `    ${l}`).join('\n'));
+      }
     });
     lines.push(``);
   }

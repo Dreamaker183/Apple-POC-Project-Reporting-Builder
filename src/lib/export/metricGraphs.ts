@@ -39,7 +39,7 @@ export function metricGraphHtml(m: KpiMetricCardData): string {
       const ring = distance >= 2.5 && distance <= 4.5;
       const angle = (Math.atan2(dx, -dy) + Math.PI * 2) % (Math.PI * 2);
       const fill = ring ? (angle / (Math.PI * 2) < ratio ? color : '#E8E8ED') : '#FFFFFF';
-      return `<td width="9" height="9" bgcolor="${fill}" style="width:9px;height:9px;padding:0;font-size:0;line-height:0;">&nbsp;</td>`;
+      return `<td width="9" height="9" bgcolor="${fill}" style="width:9px;height:9px;padding:0;font-size:0;line-height:0;background-color:${fill};">&nbsp;</td>`;
     }).join('')}</tr>`).join('');
     return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:16px;"><tr><td><table role="img" aria-label="${label}" data-metric-graph="donut" cellpadding="0" cellspacing="0">${rows}</table></td><td style="padding-left:18px;"><div style="font-size:24px;font-weight:600;color:${color};">${Math.round(m.value / m.target * 100)}%</div><div style="font-size:12px;color:#6E6E73;">of target ${escape(String(m.target) + m.unit)}</div></td></tr></table>`;
   }
@@ -54,6 +54,6 @@ export function metricGraphHtml(m: KpiMetricCardData): string {
     const start = Math.round(Math.min(position(0), position(value)) * 100);
     const width = Math.round(Math.abs(position(value) - position(0)) * 100);
     const segments = [[start, '#F0F0F3'], [width, fill], [100 - start - width, '#F0F0F3']] as const;
-    return `<tr><td width="60" style="font-size:11px;color:#6E6E73;padding:6px 10px 6px 0;">${name}</td><td style="padding:6px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${segments.filter(([size]) => size > 0).map(([size, bg]) => `<td width="${size}%" height="12" bgcolor="${bg}" style="height:12px;font-size:0;line-height:0;">&nbsp;</td>`).join('')}</tr></table></td><td width="70" style="padding-left:12px;font-size:12px;text-align:right;color:#1D1D1F;white-space:nowrap;">${escape(String(value) + m.unit)}</td></tr>`;
+    return `<tr><td width="60" style="font-size:11px;color:#6E6E73;padding:6px 10px 6px 0;">${name}</td><td style="padding:6px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${segments.filter(([size]) => size > 0).map(([size, bg]) => `<td width="${size}%" height="12" bgcolor="${bg}" style="height:12px;font-size:0;line-height:0;background-color:${bg};">&nbsp;</td>`).join('')}</tr></table></td><td width="70" style="padding-left:12px;font-size:12px;text-align:right;color:#1D1D1F;white-space:nowrap;">${escape(String(value) + m.unit)}</td></tr>`;
   }).join('')}</table>`;
 }

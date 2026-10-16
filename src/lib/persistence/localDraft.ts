@@ -5,6 +5,7 @@
 
 import { ReportProject } from '../../types/report';
 import { ReportProjectSchema } from '../../schemas/reportSchema';
+import { logger } from '../logger';
 
 const STORAGE_KEY = 'project_reporting_builder_draft_v1';
 
@@ -18,7 +19,7 @@ export function saveLocalDraft(project: ReportProject): boolean {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
     return true;
   } catch (err) {
-    console.error('Failed to save draft to localStorage:', err);
+    logger.error('Failed to save draft to localStorage:', err);
     return false;
   }
 }
@@ -33,11 +34,11 @@ export function loadLocalDraft(): ReportProject | null {
     if (validated.success) {
       return validated.data as ReportProject;
     } else {
-      console.warn('Local draft failed schema validation, resetting corrupted draft:', validated.error);
+      logger.warn('Local draft failed schema validation, resetting corrupted draft:', validated.error);
       return null;
     }
   } catch (err) {
-    console.error('Failed to parse local draft:', err);
+    logger.error('Failed to parse local draft:', err);
     return null;
   }
 }
@@ -46,6 +47,6 @@ export function clearLocalDraft(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (err) {
-    console.error('Failed to clear draft:', err);
+    logger.error('Failed to clear draft:', err);
   }
 }

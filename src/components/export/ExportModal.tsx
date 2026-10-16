@@ -8,6 +8,7 @@ import { useDialogFocus } from '../common/useDialogFocus';
 import { useLanguage } from '../../lib/i18n/LanguageContext';
 import { metricGraphText } from '../../lib/export/metricGraphs';
 import { ReportProject, SnippetCard, ExportDestination } from '../../types/report';
+import { sanitizeHtml } from '../../lib/security/sanitize';
 import { exportReportToMarkdown } from '../../lib/export/markdownExport';
 import { exportReportToJson } from '../../lib/export/jsonExport';
 import { exportReportToHtml } from '../../lib/export/htmlExport';
@@ -593,7 +594,7 @@ export const ExportModal: React.FC<Props> = ({
                 {destination === 'executive_email' && htmlText ? (
                   <div 
                     className="font-sans" 
-                    dangerouslySetInnerHTML={{ __html: htmlText }} 
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlText) }} 
                   />
                 ) : (
                   <pre className="whitespace-pre-wrap break-words">{plainText}</pre>
@@ -773,7 +774,7 @@ export const ExportModal: React.FC<Props> = ({
                 <summary className="px-4 py-3 cursor-pointer text-[13px] font-semibold text-[#1D1D1F]">{selectedTool === 'email' ? t('export.emailPreview') : t('export.graphsIncluded')}</summary>
                 {selectedTool === 'email' ? <div>
                   <div className="px-4 pb-3 flex flex-wrap items-center gap-3"><button type="button" onClick={handleCopyEmail} className="rounded-full bg-[#0071E3] text-white px-4 py-2 text-xs font-medium">{t('export.copyEmailGraphs')}</button><span className="text-[11px] text-[#6E6E73]">{t('export.composeHint')}</span></div>
-                  <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: emailHtml }} />
+                  <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: sanitizeHtml(emailHtml) }} />
                 </div> : <div className="px-4 pb-4 space-y-3">
                   <p className="text-[11px] text-[#6E6E73]">{t('export.portableGraphs')}</p>
                   {dispatchGraphs.length ? dispatchGraphs.map((metric, index) => <div key={index} className="rounded-xl bg-white border border-black/[0.06] p-3"><div className="text-xs font-medium mb-2">{metric.label}</div><pre className="text-[11px] whitespace-pre-wrap text-[#424245] leading-relaxed">{metric.graph}</pre></div>) : <p className="text-xs text-[#6E6E73]">{t('export.chooseGraph')}</p>}

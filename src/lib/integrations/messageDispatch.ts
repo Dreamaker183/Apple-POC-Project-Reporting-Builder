@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { validateWebhookUrl } from '../security/webhookValidation';
+
 export interface DispatchResult {
   success: boolean;
   message: string;
@@ -177,6 +179,67 @@ export function createTelegramShareLink(messageText: string): string {
   return `https://t.me/share/url?text=${encodeURIComponent(messageText)}`;
 }
 
+interface WebhookDispatchOptions {
+  platform: 'slack' | 'teams' | 'googleChat' | 'discord';
+  webhookUrl: string;
+  payload: any;
+  toolName: DispatchAuditEntry['tool'];
+  targetFormatter?: (url: string) => string;
+  summary: string;
+  successMessage: string;
+  statusText: string;
+}
+
+/**
+ * Generic webhook dispatcher with URL validation and consistent audit logging.
+ */
+async function dispatchWebhookGeneric(opts: WebhookDispatchOptions): Promise<DispatchResult> {
+  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const validation = validateWebhookUrl(opts.webhookUrl, opts.platform);
+  if (!validation.valid) {
+    return {
+      success: false,
+      message: validation.error || `Please provide a valid ${opts.toolName} Webhook URL`,
+      timestamp: now,
+    };
+  }
+
+  try {
+    await fetch(opts.webhookUrl.trim(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opts.payload),
+      mode: 'no-cors',
+    });
+
+    const target = opts.targetFormatter
+      ? opts.targetFormatter(opts.webhookUrl.trim())
+      : `${opts.toolName} Webhook`;
+
+    recordDispatchAudit({
+      tool: opts.toolName,
+      target,
+      status: 'delivered',
+      timestamp: now,
+      summary: opts.summary,
+    });
+
+    return {
+      success: true,
+      message: opts.successMessage,
+      timestamp: now,
+      statusText: opts.statusText,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `${opts.toolName} dispatch failed: ${err?.message || 'Network / CORS error'}`,
+      timestamp: now,
+    };
+  }
+}
+
 /**
  * Dispatches payload to a live Slack Incoming Webhook endpoint.
  */
@@ -184,45 +247,16 @@ export async function dispatchToSlackWebhook(
   webhookUrl: string,
   payload: { text: string; blocks?: any[] }
 ): Promise<DispatchResult> {
-  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  if (!webhookUrl || !webhookUrl.trim()) {
-    return {
-      success: false,
-      message: 'Please provide a valid Slack Incoming Webhook URL',
-      timestamp: now,
-    };
-  }
-
-  try {
-    await fetch(webhookUrl.trim(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      mode: 'no-cors',
-    });
-
-    recordDispatchAudit({
-      tool: 'Slack',
-      target: webhookUrl.replace(/(\/T[A-Z0-9]+\/B[A-Z0-9]+\/).*$/, '$1••••••••'),
-      status: 'delivered',
-      timestamp: now,
-      summary: payload.text || 'Project Status Report',
-    });
-
-    return {
-      success: true,
-      message: 'Message delivered to Slack channel successfully!',
-      timestamp: now,
-      statusText: 'Dispatched via Incoming Webhook (HTTP 200/Opaque)',
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      message: `Slack dispatch failed: ${err.message || 'Network / CORS error'}`,
-      timestamp: now,
-    };
-  }
+  return dispatchWebhookGeneric({
+    platform: 'slack',
+    webhookUrl,
+    payload,
+    toolName: 'Slack',
+    targetFormatter: (url) => url.replace(/(\/T[A-Z0-9]+\/B[A-Z0-9]+\/).*$/, '$1••••••••'),
+    summary: payload.text || 'Project Status Report',
+    successMessage: 'Message delivered to Slack channel successfully!',
+    statusText: 'Dispatched via Incoming Webhook (HTTP 200/Opaque)',
+  });
 }
 
 /**
@@ -232,45 +266,16 @@ export async function dispatchToTeamsWebhook(
   webhookUrl: string,
   payload: any
 ): Promise<DispatchResult> {
-  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  if (!webhookUrl || !webhookUrl.trim()) {
-    return {
-      success: false,
-      message: 'Please provide a valid Microsoft Teams Webhook URL',
-      timestamp: now,
-    };
-  }
-
-  try {
-    await fetch(webhookUrl.trim(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      mode: 'no-cors',
-    });
-
-    recordDispatchAudit({
-      tool: 'Microsoft Teams',
-      target: 'Teams Connector Endpoint',
-      status: 'delivered',
-      timestamp: now,
-      summary: 'Adaptive Card 1.4 Status Report',
-    });
-
-    return {
-      success: true,
-      message: 'Report delivered to Microsoft Teams channel successfully!',
-      timestamp: now,
-      statusText: 'Dispatched via Connector Webhook (HTTP 200/Opaque)',
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      message: `Teams dispatch failed: ${err.message || 'Network / CORS error'}`,
-      timestamp: now,
-    };
-  }
+  return dispatchWebhookGeneric({
+    platform: 'teams',
+    webhookUrl,
+    payload,
+    toolName: 'Microsoft Teams',
+    targetFormatter: () => 'Teams Connector Endpoint',
+    summary: 'Adaptive Card 1.4 Status Report',
+    successMessage: 'Report delivered to Microsoft Teams channel successfully!',
+    statusText: 'Dispatched via Connector Webhook (HTTP 200/Opaque)',
+  });
 }
 
 /**
@@ -280,45 +285,16 @@ export async function dispatchToGoogleChatWebhook(
   webhookUrl: string,
   payload: any
 ): Promise<DispatchResult> {
-  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  if (!webhookUrl || !webhookUrl.trim()) {
-    return {
-      success: false,
-      message: 'Please provide a valid Google Chat Webhook URL',
-      timestamp: now,
-    };
-  }
-
-  try {
-    await fetch(webhookUrl.trim(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      mode: 'no-cors',
-    });
-
-    recordDispatchAudit({
-      tool: 'Google Chat',
-      target: 'Google Spaces Webhook',
-      status: 'delivered',
-      timestamp: now,
-      summary: 'Card v2 Google Workspace Report',
-    });
-
-    return {
-      success: true,
-      message: 'Report delivered to Google Chat Space successfully!',
-      timestamp: now,
-      statusText: 'Dispatched via Google Chat Card v2 API',
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      message: `Google Chat dispatch failed: ${err.message || 'Network / CORS error'}`,
-      timestamp: now,
-    };
-  }
+  return dispatchWebhookGeneric({
+    platform: 'googleChat',
+    webhookUrl,
+    payload,
+    toolName: 'Google Chat',
+    targetFormatter: () => 'Google Spaces Webhook',
+    summary: 'Card v2 Google Workspace Report',
+    successMessage: 'Report delivered to Google Chat Space successfully!',
+    statusText: 'Dispatched via Google Chat Card v2 API',
+  });
 }
 
 /**
@@ -328,45 +304,16 @@ export async function dispatchToDiscordWebhook(
   webhookUrl: string,
   payload: any
 ): Promise<DispatchResult> {
-  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  if (!webhookUrl || !webhookUrl.trim()) {
-    return {
-      success: false,
-      message: 'Please provide a valid Discord Webhook URL',
-      timestamp: now,
-    };
-  }
-
-  try {
-    await fetch(webhookUrl.trim(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      mode: 'no-cors',
-    });
-
-    recordDispatchAudit({
-      tool: 'Discord',
-      target: 'Discord Channel Webhook',
-      status: 'delivered',
-      timestamp: now,
-      summary: 'Rich Embed Status Report',
-    });
-
-    return {
-      success: true,
-      message: 'Report delivered to Discord channel successfully!',
-      timestamp: now,
-      statusText: 'Dispatched via Discord Webhook Embed API',
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      message: `Discord dispatch failed: ${err.message || 'Network / CORS error'}`,
-      timestamp: now,
-    };
-  }
+  return dispatchWebhookGeneric({
+    platform: 'discord',
+    webhookUrl,
+    payload,
+    toolName: 'Discord',
+    targetFormatter: () => 'Discord Channel Webhook',
+    summary: 'Rich Embed Status Report',
+    successMessage: 'Report delivered to Discord channel successfully!',
+    statusText: 'Dispatched via Discord Webhook Embed API',
+  });
 }
 
 /**
