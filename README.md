@@ -305,7 +305,7 @@ Apple-POC-Project-Reporting-Builder/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/Apple-POC-Project-Reporting-Builder.git
+   git clone https://github.com/Dreamaker183/Apple-POC-Project-Reporting-Builder.git
    cd Apple-POC-Project-Reporting-Builder
    ```
 
