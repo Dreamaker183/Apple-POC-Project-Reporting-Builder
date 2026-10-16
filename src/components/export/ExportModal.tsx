@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDialogFocus } from '../common/useDialogFocus';
 import { useLanguage } from '../../lib/i18n/LanguageContext';
 import { metricGraphText } from '../../lib/export/metricGraphs';
@@ -60,7 +60,9 @@ import {
   Trash2,
   Smartphone,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export type MessageToolId = 'email' | 'slack' | 'teams' | 'google_chat' | 'discord' | 'mobile' | 'audit_log';
@@ -114,6 +116,48 @@ export const ExportModal: React.FC<Props> = ({
   const [isDispatching, setIsDispatching] = useState(false);
   const [showPayloadInspector, setShowPayloadInspector] = useState(false);
   const [auditLogs, setAuditLogs] = useState<DispatchAuditEntry[]>([]);
+
+  // Navigation scroll affordance & smooth transition refs
+  const navScrollRef = useRef<HTMLDivElement>(null);
+  const activeNavButtonRef = useRef<HTMLButtonElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkNavScroll = useCallback(() => {
+    const el = navScrollRef.current;
+    if (!el) return;
+    const hasOverflow = el.scrollWidth > el.clientWidth + 2;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(hasOverflow && el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  const scrollNav = (direction: 'left' | 'right') => {
+    const el = navScrollRef.current;
+    if (!el) return;
+    const delta = direction === 'left' ? -220 : 220;
+    el.scrollBy({ left: delta, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    checkNavScroll();
+    const el = navScrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkNavScroll, { passive: true });
+    window.addEventListener('resize', checkNavScroll);
+    return () => {
+      el.removeEventListener('scroll', checkNavScroll);
+      window.removeEventListener('resize', checkNavScroll);
+    };
+  }, [checkNavScroll, modalMode, isOpen]);
+
+  useEffect(() => {
+    activeNavButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    if (previewScrollRef.current) {
+      previewScrollRef.current.scrollTop = 0;
+    }
+    checkNavScroll();
+  }, [destination, checkNavScroll]);
 
   // Sync mode and tool when opened
   useEffect(() => {
@@ -439,11 +483,11 @@ export const ExportModal: React.FC<Props> = ({
 
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             {/* Mode Switcher */}
-            <div className="flex flex-1 sm:flex-none items-center p-0.5 bg-black/[0.04] rounded-lg text-xs font-medium">
+            <div className="flex flex-1 sm:flex-none items-center p-0.5 bg-black/[0.04] rounded-lg text-xs font-medium border border-transparent">
               <button
                 type="button"
                 onClick={() => setModalMode('formats')}
-                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-md transition-all whitespace-nowrap ${
+                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-md transition-colors duration-150 whitespace-nowrap ${
                   modalMode === 'formats' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B] hover:text-[#1D1D1F]'
                 }`}
               >
@@ -452,7 +496,7 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => setModalMode('tools')}
-                className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-md transition-colors duration-150 flex items-center gap-1.5 whitespace-nowrap ${
                   modalMode === 'tools' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B] hover:text-[#1D1D1F]'
                 }`}
               >
@@ -476,10 +520,10 @@ export const ExportModal: React.FC<Props> = ({
         {modalMode === 'formats' && (
           <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
             {/* Left Destinations Menu */}
-            <div className="export-destination-nav shrink-0 p-2 sm:p-3 border-b border-black/[0.08] bg-[#FAFAFA] overflow-x-auto lg:overflow-y-auto">
+            <div className="export-destination-nav shrink-0 p-2 sm:p-3 border-b border-black/[0.08] bg-[#FAFAFA] overflow-x-auto lg:overflow-y-auto relative">
               {/* Scope selector */}
               {selectedCards.length > 0 && (
-                <div className="export-scope space-y-1.5 mb-2 sm:mb-3">
+                <div className="export-scope space-y-1.5 mb-2 sm:mb-3 shrink-0">
                   <span className="text-[11px] font-semibold text-[#727272] uppercase tracking-wider block">
                     {t('export.scope')}
                   </span>
@@ -487,8 +531,8 @@ export const ExportModal: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => setExportScope('all')}
-                      className={`py-1 rounded text-center transition-all ${
-                        exportScope === 'all' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
+                      className={`py-1 rounded text-center transition-colors duration-150 ${
+                        exportScope === 'all' ? 'bg-white text-[#1F1F1F] shadow-xs font-semibold' : 'text-[#727272] hover:text-[#1F1F1F]'
                       }`}
                     >
                       {t('export.allOf', { count: project.cards.length })}
@@ -496,8 +540,8 @@ export const ExportModal: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => setExportScope('selected')}
-                      className={`py-1 rounded text-center transition-all ${
-                        exportScope === 'selected' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
+                      className={`py-1 rounded text-center transition-colors duration-150 ${
+                        exportScope === 'selected' ? 'bg-white text-[#1F1F1F] shadow-xs font-semibold' : 'text-[#727272] hover:text-[#1F1F1F]'
                       }`}
                     >
                       {t('export.selectedOf', { count: selectedCards.length })}
@@ -506,42 +550,83 @@ export const ExportModal: React.FC<Props> = ({
                 </div>
               )}
 
-              <div className="export-destinations flex flex-col sm:flex-row sm:items-center gap-1.5">
-                <span className="hidden sm:block text-[11px] font-semibold text-[#727272] uppercase tracking-wider shrink-0 mr-1">
-                  {t('export.destinations')}
-                </span>
-                {destinationsList.map((dest) => (
-                  <button
-                    key={dest.id}
-                    type="button"
-                    onClick={() => setDestination(dest.id)}
-                    className={`w-full sm:w-auto sm:min-w-[150px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center sm:items-start gap-2 ${
-                      destination === dest.id
-                        ? 'bg-white shadow-xs border border-black/10 font-semibold text-[#1F1F1F]'
-                        : 'hover:bg-neutral-200/50 text-[#727272]'
-                    }`}
-                  >
-                    <div className="mt-0.5 shrink-0">{dest.icon}</div>
-                    <div className="min-w-0">
-                      <div className="text-xs truncate">{dest.name}</div>
-                      <div className="hidden lg:block text-[10px] text-[#727272] leading-tight line-clamp-1 font-normal">
-                        {dest.description}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {/* Scroll cues & buttons for compact screens (< 1024px) */}
+              <div className="relative flex-1 min-w-0">
+                {canScrollLeft && (
+                  <div className="lg:hidden absolute left-0 top-0 bottom-0 z-20 flex items-center pointer-events-none">
+                    <div className="w-8 h-full bg-gradient-to-r from-[#FAFAFA] via-[#FAFAFA]/90 to-transparent" />
+                    <button
+                      type="button"
+                      onClick={() => scrollNav('left')}
+                      className="pointer-events-auto absolute left-0.5 p-1 rounded-full bg-white/95 shadow-md border border-black/10 text-[#1F1F1F] hover:bg-white active:scale-95 transition-all"
+                      aria-label="Scroll destinations left"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
-              {/* Print action button */}
-              <div className="export-print-action pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-black/[0.08] sm:pl-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-[#1F1F1F] bg-white border border-black/15 rounded-xl hover:bg-neutral-50 transition-colors shadow-xs whitespace-nowrap"
+                {canScrollRight && (
+                  <div className="lg:hidden absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end pointer-events-none">
+                    <div className="w-8 h-full bg-gradient-to-l from-[#FAFAFA] via-[#FAFAFA]/90 to-transparent" />
+                    <button
+                      type="button"
+                      onClick={() => scrollNav('right')}
+                      className="pointer-events-auto absolute right-0.5 p-1 rounded-full bg-white/95 shadow-md border border-black/10 text-[#1F1F1F] hover:bg-white active:scale-95 transition-all"
+                      aria-label="Scroll destinations right"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div 
+                  ref={navScrollRef}
+                  onScroll={checkNavScroll}
+                  className="export-destinations flex flex-row lg:flex-col items-center lg:items-stretch gap-1.5 overflow-x-auto lg:overflow-visible scroll-smooth snap-x snap-proximity py-1 px-0.5"
                 >
-                  <Printer className="w-3.5 h-3.5 text-[#0071E3]" />
-                  <span>{t('export.printPdf')}</span>
-                </button>
+                  <span className="hidden sm:inline-block lg:block text-[11px] font-semibold text-[#727272] uppercase tracking-wider shrink-0 mr-1 lg:mb-1.5">
+                    {t('export.destinations')}
+                  </span>
+                  {destinationsList.map((dest) => {
+                    const isSelected = destination === dest.id;
+                    return (
+                      <button
+                        key={dest.id}
+                        ref={isSelected ? activeNavButtonRef : null}
+                        type="button"
+                        onClick={() => setDestination(dest.id)}
+                        className={`w-auto lg:w-full min-w-[140px] sm:min-w-[155px] lg:min-w-0 text-left p-2 sm:p-2.5 rounded-xl border flex items-center sm:items-start gap-2 shrink-0 snap-start transition-[background-color,border-color,box-shadow,color] duration-150 ease-out select-none ${
+                          isSelected
+                            ? 'bg-white shadow-xs border-black/10 text-[#1F1F1F]'
+                            : 'border-transparent hover:bg-neutral-200/50 text-[#727272] hover:text-[#1F1F1F]'
+                        }`}
+                      >
+                        <div className="mt-0.5 shrink-0">{dest.icon}</div>
+                        <div className="min-w-0">
+                          <div className={`text-xs truncate ${isSelected ? 'font-semibold text-[#1F1F1F]' : 'font-medium text-[#484848]'}`}>
+                            {dest.name}
+                          </div>
+                          <div className="hidden lg:block text-[10px] text-[#727272] leading-tight line-clamp-1 font-normal">
+                            {dest.description}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {/* Print action button inline on compact, styled at bottom on desktop */}
+                  <div className="export-print-action shrink-0 pl-1.5 sm:pl-2 border-l lg:border-l-0 lg:border-t border-black/[0.08] lg:pt-2 snap-start">
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="w-full sm:w-auto lg:w-full flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-[#1F1F1F] bg-white border border-black/15 rounded-xl hover:bg-neutral-50 transition-colors shadow-xs whitespace-nowrap"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-[#0071E3]" />
+                      <span>{t('export.printPdf')}</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -590,15 +675,20 @@ export const ExportModal: React.FC<Props> = ({
                 </div>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-auto overscroll-contain bg-[#F8FAFC] border border-black/[0.08] rounded-xl font-mono leading-relaxed select-all p-3 sm:p-4 text-[11px] sm:text-xs">
-                {destination === 'executive_email' && htmlText ? (
-                  <div 
-                    className="font-sans" 
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlText) }} 
-                  />
-                ) : (
-                  <pre className="whitespace-pre-wrap break-words">{plainText}</pre>
-                )}
+              <div 
+                ref={previewScrollRef}
+                className="flex-1 min-h-0 overflow-auto overscroll-contain bg-[#F8FAFC] border border-black/[0.08] rounded-xl font-mono leading-relaxed select-all p-3 sm:p-4 text-[11px] sm:text-xs"
+              >
+                <div key={destination} className="export-preview-fade">
+                  {destination === 'executive_email' && htmlText ? (
+                    <div 
+                      className="font-sans" 
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlText) }} 
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap break-words">{plainText}</pre>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -619,8 +709,8 @@ export const ExportModal: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => setExportScope('all')}
-                      className={`py-1 rounded text-center transition-all ${
-                        exportScope === 'all' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
+                      className={`py-1 rounded text-center transition-colors duration-150 ${
+                        exportScope === 'all' ? 'bg-white text-[#1F1F1F] shadow-xs font-semibold' : 'text-[#727272] hover:text-[#1F1F1F]'
                       }`}
                     >
                       {t('export.allOf', { count: project.cards.length })}
@@ -628,8 +718,8 @@ export const ExportModal: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => setExportScope('selected')}
-                      className={`py-1 rounded text-center transition-all ${
-                        exportScope === 'selected' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
+                      className={`py-1 rounded text-center transition-colors duration-150 ${
+                        exportScope === 'selected' ? 'bg-white text-[#1F1F1F] shadow-xs font-semibold' : 'text-[#727272] hover:text-[#1F1F1F]'
                       }`}
                     >
                       {t('export.selectedOf', { count: selectedCards.length })}
@@ -646,15 +736,15 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('email'); setDispatchStatus(null); }}
-                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl border flex items-center gap-2 transition-[background-color,border-color,box-shadow,color] duration-150 ease-out select-none ${
                   selectedTool === 'email'
-                    ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
-                    : 'text-[#727272] hover:bg-neutral-200/50'
+                    ? 'bg-white shadow-xs border-black/10 text-[#1F1F1F]'
+                    : 'border-transparent text-[#727272] hover:bg-neutral-200/50 hover:text-[#1F1F1F]'
                 }`}
               >
                 <Mail className="w-4 h-4 text-[#0071E3]" />
                 <div>
-                  <div className="text-xs">{t('export.toolEmail')}</div>
+                  <div className={`text-xs ${selectedTool === 'email' ? 'font-semibold text-[#1F1F1F]' : 'font-medium text-[#484848]'}`}>{t('export.toolEmail')}</div>
                   <div className="text-[10px] text-[#727272] font-normal">{t('export.toolEmailSub')}</div>
                 </div>
               </button>
@@ -663,15 +753,15 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('slack'); setDispatchStatus(null); }}
-                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl border flex items-center gap-2 transition-[background-color,border-color,box-shadow,color] duration-150 ease-out select-none ${
                   selectedTool === 'slack'
-                    ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
-                    : 'text-[#727272] hover:bg-neutral-200/50'
+                    ? 'bg-white shadow-xs border-black/10 text-[#1F1F1F]'
+                    : 'border-transparent text-[#727272] hover:bg-neutral-200/50 hover:text-[#1F1F1F]'
                 }`}
               >
                 <MessageSquare className="w-4 h-4 text-[#E01E5A]" />
                 <div>
-                  <div className="text-xs">{t('export.toolSlack')}</div>
+                  <div className={`text-xs ${selectedTool === 'slack' ? 'font-semibold text-[#1F1F1F]' : 'font-medium text-[#484848]'}`}>{t('export.toolSlack')}</div>
                   <div className="text-[10px] text-[#727272] font-normal">{t('export.toolSlackSub')}</div>
                 </div>
               </button>
@@ -680,15 +770,15 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('teams'); setDispatchStatus(null); }}
-                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl border flex items-center gap-2 transition-[background-color,border-color,box-shadow,color] duration-150 ease-out select-none ${
                   selectedTool === 'teams'
-                    ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
-                    : 'text-[#727272] hover:bg-neutral-200/50'
+                    ? 'bg-white shadow-xs border-black/10 text-[#1F1F1F]'
+                    : 'border-transparent text-[#727272] hover:bg-neutral-200/50 hover:text-[#1F1F1F]'
                 }`}
               >
                 <MessageSquare className="w-4 h-4 text-[#6264A7]" />
                 <div>
-                  <div className="text-xs">{t('export.toolTeams')}</div>
+                  <div className={`text-xs ${selectedTool === 'teams' ? 'font-semibold text-[#1F1F1F]' : 'font-medium text-[#484848]'}`}>{t('export.toolTeams')}</div>
                   <div className="text-[10px] text-[#727272] font-normal">{t('export.toolTeamsSub')}</div>
                 </div>
               </button>
@@ -697,15 +787,15 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('google_chat'); setDispatchStatus(null); }}
-                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl border flex items-center gap-2 transition-[background-color,border-color,box-shadow,color] duration-150 ease-out select-none ${
                   selectedTool === 'google_chat'
-                    ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
-                    : 'text-[#727272] hover:bg-neutral-200/50'
+                    ? 'bg-white shadow-xs border-black/10 text-[#1F1F1F]'
+                    : 'border-transparent text-[#727272] hover:bg-neutral-200/50 hover:text-[#1F1F1F]'
                 }`}
               >
                 <MessageSquare className="w-4 h-4 text-[#00AC47]" />
                 <div>
-                  <div className="text-xs">{t('export.toolGchat')}</div>
+                  <div className={`text-xs ${selectedTool === 'google_chat' ? 'font-semibold text-[#1F1F1F]' : 'font-medium text-[#484848]'}`}>{t('export.toolGchat')}</div>
                   <div className="text-[10px] text-[#727272] font-normal">{t('export.toolGchatSub')}</div>
                 </div>
               </button>
@@ -714,15 +804,15 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('discord'); setDispatchStatus(null); }}
-                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl border flex items-center gap-2 transition-[background-color,border-color,box-shadow,color] duration-150 ease-out select-none ${
                   selectedTool === 'discord'
-                    ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
-                    : 'text-[#727272] hover:bg-neutral-200/50'
+                    ? 'bg-white shadow-xs border-black/10 text-[#1F1F1F]'
+                    : 'border-transparent text-[#727272] hover:bg-neutral-200/50 hover:text-[#1F1F1F]'
                 }`}
               >
                 <MessageSquare className="w-4 h-4 text-[#5865F2]" />
                 <div>
-                  <div className="text-xs">{t('export.toolDiscord')}</div>
+                  <div className={`text-xs ${selectedTool === 'discord' ? 'font-semibold text-[#1F1F1F]' : 'font-medium text-[#484848]'}`}>{t('export.toolDiscord')}</div>
                   <div className="text-[10px] text-[#727272] font-normal">{t('export.toolDiscordSub')}</div>
                 </div>
               </button>
@@ -731,15 +821,15 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('mobile'); setDispatchStatus(null); }}
-                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl border flex items-center gap-2 transition-[background-color,border-color,box-shadow,color] duration-150 ease-out select-none ${
                   selectedTool === 'mobile'
-                    ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
-                    : 'text-[#727272] hover:bg-neutral-200/50'
+                    ? 'bg-white shadow-xs border-black/10 text-[#1F1F1F]'
+                    : 'border-transparent text-[#727272] hover:bg-neutral-200/50 hover:text-[#1F1F1F]'
                 }`}
               >
                 <Smartphone className="w-4 h-4 text-[#25D366]" />
                 <div>
-                  <div className="text-xs">{t('export.toolMobile')}</div>
+                  <div className={`text-xs ${selectedTool === 'mobile' ? 'font-semibold text-[#1F1F1F]' : 'font-medium text-[#484848]'}`}>{t('export.toolMobile')}</div>
                   <div className="text-[10px] text-[#727272] font-normal">{t('export.toolMobileSub')}</div>
                 </div>
               </button>
@@ -749,15 +839,15 @@ export const ExportModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => { setSelectedTool('audit_log'); setDispatchStatus(null); }}
-                  className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center justify-between ${
+                  className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl border flex items-center justify-between transition-[background-color,border-color,box-shadow,color] duration-150 ease-out select-none ${
                     selectedTool === 'audit_log'
-                      ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
-                      : 'text-[#727272] hover:bg-neutral-200/50'
+                      ? 'bg-white shadow-xs border-black/10 text-[#1F1F1F]'
+                      : 'border-transparent text-[#727272] hover:bg-neutral-200/50 hover:text-[#1F1F1F]'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <History className="w-4 h-4 text-[#F59E0B]" />
-                    <div className="text-xs">{t('export.audit')}</div>
+                    <div className={`text-xs ${selectedTool === 'audit_log' ? 'font-semibold text-[#1F1F1F]' : 'font-medium text-[#484848]'}`}>{t('export.audit')}</div>
                   </div>
                   {auditLogs.length > 0 && (
                     <span className="text-[10px] font-bold bg-[#0071E3]/10 text-[#0071E3] px-1.5 py-0.5 rounded-full">

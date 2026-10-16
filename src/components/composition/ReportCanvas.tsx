@@ -209,9 +209,10 @@ export const ReportCanvas: React.FC<Props> = ({
 
   return (
     <div className="report-canvas flex flex-col h-full min-h-0 overflow-hidden">
-      <div className="report-scroll flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 md:px-10 py-5 sm:py-8 md:py-12 max-w-[820px] mx-auto w-full space-y-4 sm:space-y-6">
-      {/* Document Header (Minimalist Apple Document Style) */}
-      <div className="space-y-2">
+      <div className="report-scroll flex-1 min-h-0 overflow-y-auto w-full">
+        <div className="max-w-[820px] mx-auto w-full px-3 sm:px-6 md:px-10 py-5 sm:py-8 md:py-12 space-y-4 sm:space-y-6">
+          {/* Document Header (Minimalist Apple Document Style) */}
+          <div className="space-y-2">
         <input
           aria-label={t('canvas.titleAria')}
           type="text"
@@ -581,6 +582,7 @@ export const ReportCanvas: React.FC<Props> = ({
           </Reorder.Group>
         </div>
       )}
+        </div>
       </div>
 
       {/* Bottom chatbot-style composer: text, metrics, table, media */}

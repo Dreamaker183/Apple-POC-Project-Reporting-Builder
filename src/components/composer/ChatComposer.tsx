@@ -19,7 +19,6 @@ import {
   TrendingUp,
   Hash,
   StickyNote,
-  FileText,
 } from 'lucide-react';
 import { MetricInput, ImageAssetInput, MetricChartStyle } from '../../types/report';
 import { MetricChart, CHART_STYLE_OPTIONS } from '../cards/MetricChart';
@@ -118,7 +117,6 @@ export const ChatComposer: React.FC<Props> = ({
     try { sessionStorage.setItem(`reporting-attachments:${projectId}`, JSON.stringify(signatures)); } catch { /* optional storage */ }
   };
   const [draft, setDraft] = useState('');
-  const [showSources, setShowSources] = useState(false);
   const [reviewFindings, setReviewFindings] = useState<ClassificationFinding[] | null>(null);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -297,7 +295,6 @@ export const ChatComposer: React.FC<Props> = ({
       setReviewFindings(classifyPassages(draft));
       return;
     }
-    setShowSources(false);
     onGenerateReport(draft);
     clearAttachmentStrip();
     setDraft('');
@@ -321,7 +318,6 @@ export const ChatComposer: React.FC<Props> = ({
     const cards = cardsFromFindings(reviewFindings, metrics, images, projectTitle);
     onApplyFindings(draft, cards, updatedMetrics, selected.length);
     clearAttachmentStrip(updatedMetrics);
-    setShowSources(false);
     setDraft('');
     setReviewFindings(null);
     try { sessionStorage.removeItem(`reporting-composer:${projectId}`); } catch { /* optional storage */ }
@@ -769,7 +765,6 @@ export const ChatComposer: React.FC<Props> = ({
             </div>
           )}
 
-          {showSources && <div className="mx-4 mt-3 rounded-xl bg-[#F5F5F7] p-3 max-h-40 overflow-y-auto"><div className="text-[11px] font-medium text-[#6E6E73] mb-2">{t('composer.sourceNotesTitle')}</div><textarea aria-label={t('composer.editSources')} value={rawNotes} onChange={(e) => onNotesChange(e.target.value)} rows={4} className="w-full bg-transparent text-[13px] leading-relaxed resize-y focus:outline-none" /></div>}
           {/* Main text field */}
           <div className="px-4 pt-3">
             <textarea
@@ -882,19 +877,6 @@ export const ChatComposer: React.FC<Props> = ({
               )}
               </AnimatePresence>
             </div>
-
-            {rawNotes && (
-              <button
-                type="button"
-                onClick={() => setShowSources(!showSources)}
-                className="p-2 text-[#86868B] hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors"
-                title={t('composer.sourceNotes')}
-                aria-label={t('composer.toggleSources')}
-                aria-expanded={showSources}
-              >
-                <FileText className="w-4 h-4" />
-              </button>
-            )}
 
             <div className="flex-1" />
 
