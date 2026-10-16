@@ -23,11 +23,11 @@ export const VisualUpdateCard: React.FC<Props> = ({ card, isInlineEditing, onUpd
     <div className="space-y-2.5">
       <h3 className="text-sm font-semibold text-[#1F1F1F]"><EditableText value={card.title} label="visual title" onCommit={(title) => onUpdate?.({ title })} /></h3>
 
-      <div className="relative rounded-lg overflow-hidden border border-black/[0.08] bg-neutral-50 max-h-56 flex items-center justify-center">
+      <div className="relative rounded-lg overflow-hidden border border-black/[0.08] bg-neutral-50 aspect-video max-h-56 flex items-center justify-center">
         <img
           src={card.imageUrl}
           alt={card.altText}
-          className="w-full h-auto object-contain max-h-56"
+          className="w-full h-full object-contain"
           loading="lazy"
         />
       </div>
@@ -65,7 +65,7 @@ export const VisualUpdateCard: React.FC<Props> = ({ card, isInlineEditing, onUpd
             <label className={editLabel}>Context</label>
             <textarea
               value={card.context || ''}
-              onChange={(e) => onUpdate?.({ context: e.target.value })}
+              onChange={(e) => onUpdate?.({ context: e.target.value.trim() || undefined })}
               rows={2}
               className={editInput}
             />
@@ -73,9 +73,16 @@ export const VisualUpdateCard: React.FC<Props> = ({ card, isInlineEditing, onUpd
         </div>
       ) : (
       <div className="space-y-1 text-xs">
-        <EditableText value={card.caption} label="caption" onCommit={(caption) => onUpdate?.({ caption })} className="font-medium text-[#1F1F1F]" />
+        <EditableText value={card.caption} label="caption" allowEmpty placeholder="Add caption..." onCommit={(caption) => onUpdate?.({ caption })} className="font-medium text-[#1F1F1F]" />
         {card.context && (
-          <EditableText value={card.context} label="visual context" multiline onCommit={(context) => onUpdate?.({ context })} className="text-[#727272] leading-relaxed" />
+          <EditableText
+            value={card.context}
+            label="visual context"
+            multiline
+            allowEmpty
+            onCommit={(context) => onUpdate?.({ context: context.trim() || undefined })}
+            className="text-[#727272] leading-relaxed"
+          />
         )}
       </div>
       )}

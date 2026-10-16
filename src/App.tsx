@@ -214,7 +214,8 @@ export default function App() {
     const snap = restoreSnapshotInLib(snapshotId, recordProjectHistory);
     if (!snap) return;
     resetWorkspaceUI(snap.cards);
-  }, [restoreSnapshotInLib, recordProjectHistory, resetWorkspaceUI]);
+    if (!isDesktop) setMobileArea('canvas');
+  }, [restoreSnapshotInLib, recordProjectHistory, resetWorkspaceUI, isDesktop]);
 
   const handleCompareSnapshot = useCallback((snapshotId: string) => {
     const snap = compareSnapshotInLib(snapshotId);
@@ -313,12 +314,15 @@ export default function App() {
       const folderId = active?.folderId && folders.some((f) => f.id === active.folderId)
         ? active.folderId
         : folders[0].id;
+      const now = new Date().toISOString();
       const imported: ReportProject = {
         ...res.data,
         sendSchedule: undefined,
         id: uid('proj'),
         folderId,
-        lastSavedAt: new Date().toISOString(),
+        createdAt: res.data.createdAt || now,
+        reportingPeriod: res.data.reportingPeriod?.trim() ? res.data.reportingPeriod.trim() : (res.data.createdAt || now).slice(0, 10),
+        lastSavedAt: now,
         isDirty: false,
       };
       setLibrary((prev) => ({
@@ -496,13 +500,13 @@ export default function App() {
       />
 
       {/* 2. Mobile Area Switcher */}
-      <div className="lg:hidden flex items-center justify-center p-2 bg-[#F5F5F7] border-b border-black/[0.06] no-print">
-        <div className="flex items-center p-0.5 bg-black/[0.05] rounded-full text-xs font-medium w-full max-w-sm">
+      <div className="lg:hidden flex items-center justify-center px-3 py-1.5 bg-[#F5F5F7] border-b border-black/[0.06] no-print shrink-0">
+        <div className="flex items-center p-0.5 bg-black/[0.06] rounded-full text-xs font-medium w-full max-w-sm">
           <button
             type="button"
             onClick={() => setMobileArea('projects')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
-              mobileArea === 'projects' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-2 rounded-full transition-all min-h-[32px] ${
+              mobileArea === 'projects' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B] hover:text-[#1D1D1F]'
             }`}
           >
             <Folder className="w-3.5 h-3.5" />
@@ -512,8 +516,8 @@ export default function App() {
           <button
             type="button"
             onClick={() => setMobileArea('canvas')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full transition-all ${
-              mobileArea === 'canvas' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B]'
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-2 rounded-full transition-all min-h-[32px] ${
+              mobileArea === 'canvas' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B] hover:text-[#1D1D1F]'
             }`}
           >
             <Eye className="w-3.5 h-3.5" />

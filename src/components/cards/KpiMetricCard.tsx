@@ -26,7 +26,7 @@ export const KpiMetricCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate
 
   return (
     <div className="space-y-2">
-      <div className="flex items-baseline justify-between gap-4">
+      <div className="flex flex-wrap sm:flex-nowrap items-baseline justify-between gap-2 sm:gap-4">
         <div className="flex-1 min-w-0">
           {isInlineEditing ? (
             <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
@@ -107,7 +107,7 @@ export const KpiMetricCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate
                 <label className={editLabel}>Explanation</label>
                 <textarea
                   value={card.explanation || ''}
-                  onChange={(e) => onUpdate?.({ explanation: e.target.value })}
+                  onChange={(e) => onUpdate?.({ explanation: e.target.value.trim() || undefined })}
                   rows={2}
                   className={editInput}
                 />
@@ -117,11 +117,11 @@ export const KpiMetricCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate
           <>
           <h3 className="text-[13px] font-medium text-[#727272]"><EditableText value={card.label} label="metric label" onCommit={(label) => onUpdate?.({ label, title: label })} /></h3>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-3xl font-semibold tracking-tight text-[#1F1F1F]">
+            <span className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1F1F1F]">
               <EditableText value={String(card.value)} label="metric value" onCommit={(text) => { const value = Number(text); if (Number.isFinite(value)) onUpdate?.({ value }); }} />
             </span>
-            <span className="text-base font-medium text-[#727272]">
-              <EditableText value={card.unit} label="metric unit" placeholder="unit" onCommit={(unit) => onUpdate?.({ unit })} />
+            <span className="text-sm sm:text-base font-medium text-[#727272]">
+              <EditableText value={card.unit} label="metric unit" placeholder="unit" allowEmpty onCommit={(unit) => onUpdate?.({ unit })} />
             </span>
           </div>
           </>
@@ -184,7 +184,13 @@ export const KpiMetricCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate
 
       {card.explanation && (
         <p className="text-xs text-[#727272] leading-relaxed pt-1">
-          <EditableText value={card.explanation} label="metric explanation" multiline onCommit={(explanation) => onUpdate?.({ explanation })} />
+          <EditableText
+            value={card.explanation}
+            label="metric explanation"
+            multiline
+            allowEmpty
+            onCommit={(explanation) => onUpdate?.({ explanation: explanation.trim() || undefined })}
+          />
         </p>
       )}
     </div>

@@ -81,7 +81,7 @@ export const RiskBlockerCard: React.FC<Props> = ({ card, isInlineEditing, onUpda
           <input
             type="text"
             value={card.impact || ''}
-            onChange={(e) => onUpdate?.({ impact: e.target.value })}
+            onChange={(e) => onUpdate?.({ impact: e.target.value.trim() || undefined })}
             className={editInput}
           />
         </div>
@@ -90,7 +90,7 @@ export const RiskBlockerCard: React.FC<Props> = ({ card, isInlineEditing, onUpda
           <input
             type="text"
             value={card.mitigation || ''}
-            onChange={(e) => onUpdate?.({ mitigation: e.target.value })}
+            onChange={(e) => onUpdate?.({ mitigation: e.target.value.trim() || undefined })}
             className={editInput}
           />
         </div>
@@ -128,7 +128,14 @@ export const RiskBlockerCard: React.FC<Props> = ({ card, isInlineEditing, onUpda
               <span className="text-[11px] font-semibold text-[#86868B] uppercase tracking-wider">
                 Impact
               </span>
-              <EditableText value={card.impact} label="impact" multiline onCommit={(impact) => onUpdate?.({ impact })} className="text-[#1D1D1F] leading-relaxed" />
+              <EditableText
+                value={card.impact}
+                label="impact"
+                multiline
+                allowEmpty
+                onCommit={(impact) => onUpdate?.({ impact: impact.trim() || undefined })}
+                className="text-[#1D1D1F] leading-relaxed"
+              />
             </div>
           )}
           {card.mitigation && (
@@ -136,7 +143,14 @@ export const RiskBlockerCard: React.FC<Props> = ({ card, isInlineEditing, onUpda
               <span className="text-[11px] font-semibold text-[#86868B] uppercase tracking-wider">
                 Mitigation
               </span>
-              <EditableText value={card.mitigation} label="mitigation" multiline onCommit={(mitigation) => onUpdate?.({ mitigation })} className="text-[#1D1D1F] leading-relaxed" />
+              <EditableText
+                value={card.mitigation}
+                label="mitigation"
+                multiline
+                allowEmpty
+                onCommit={(mitigation) => onUpdate?.({ mitigation: mitigation.trim() || undefined })}
+                className="text-[#1D1D1F] leading-relaxed"
+              />
             </div>
           )}
         </div>

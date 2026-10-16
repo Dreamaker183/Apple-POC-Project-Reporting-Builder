@@ -69,13 +69,13 @@ export const ExecutiveSummaryCard: React.FC<Props> = ({ card, isInlineEditing, o
             type="text"
             aria-label="Status note"
             value={card.statusNote || ''}
-            onChange={(e) => onUpdate?.({ statusNote: e.target.value })}
+            onChange={(e) => onUpdate?.({ statusNote: e.target.value.trim() || undefined })}
             placeholder="Status note (optional)"
             className="w-full text-[13px] p-2.5 bg-neutral-50 border border-black/[0.1] rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0071E3] text-[#1F1F1F]"
           />
         </div>
       ) : (
-        <EditableText value={card.summary} label="summary" multiline onCommit={(summary) => onUpdate?.({ summary })} className="text-[15px] leading-relaxed text-[#1F1F1F]" />
+        <EditableText value={card.summary} label="summary" multiline placeholder="Add executive summary..." onCommit={(summary) => onUpdate?.({ summary })} className="text-[15px] leading-relaxed text-[#1F1F1F]" />
       )}
 
       {!isInlineEditing && card.keyAccomplishments.length > 0 && (
@@ -87,7 +87,19 @@ export const ExecutiveSummaryCard: React.FC<Props> = ({ card, isInlineEditing, o
             {card.keyAccomplishments.map((item, idx) => (
               <li key={idx} className="flex items-start gap-2 text-[13px] text-[#333333]">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                <EditableText value={item} label={`accomplishment ${idx + 1}`} onCommit={(value) => onUpdate?.({ keyAccomplishments: card.keyAccomplishments.map((old, i) => i === idx ? value : old) })} />
+                <EditableText
+                  value={item}
+                  label={`accomplishment ${idx + 1}`}
+                  allowEmpty
+                  onCommit={(value) => {
+                    const trimmed = value.trim();
+                    if (!trimmed) {
+                      onUpdate?.({ keyAccomplishments: card.keyAccomplishments.filter((_, i) => i !== idx) });
+                    } else {
+                      onUpdate?.({ keyAccomplishments: card.keyAccomplishments.map((old, i) => (i === idx ? trimmed : old)) });
+                    }
+                  }}
+                />
               </li>
             ))}
           </ul>
@@ -97,7 +109,12 @@ export const ExecutiveSummaryCard: React.FC<Props> = ({ card, isInlineEditing, o
       {!isInlineEditing && card.statusNote && (
         <div className="mt-2 p-2.5 bg-amber-500/[0.06] border border-amber-500/20 rounded-md text-[12px] text-amber-900 flex items-start gap-2">
           <span className="font-semibold text-amber-700 shrink-0">Note:</span>
-          <EditableText value={card.statusNote} label="status note" onCommit={(statusNote) => onUpdate?.({ statusNote })} />
+          <EditableText
+            value={card.statusNote}
+            label="status note"
+            allowEmpty
+            onCommit={(statusNote) => onUpdate?.({ statusNote: statusNote.trim() || undefined })}
+          />
         </div>
       )}
     </div>

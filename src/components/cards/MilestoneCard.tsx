@@ -69,7 +69,7 @@ export const MilestoneCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate
             <input
               type="text"
               value={card.dueDate || ''}
-              onChange={(e) => onUpdate?.({ dueDate: e.target.value })}
+              onChange={(e) => onUpdate?.({ dueDate: e.target.value.trim() || undefined })}
               className={editInput}
             />
           </div>
@@ -78,7 +78,7 @@ export const MilestoneCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate
             <input
               type="text"
               value={card.owner || ''}
-              onChange={(e) => onUpdate?.({ owner: e.target.value })}
+              onChange={(e) => onUpdate?.({ owner: e.target.value.trim() || undefined })}
               className={editInput}
             />
           </div>
@@ -99,7 +99,12 @@ export const MilestoneCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate
             <span className="text-[#86868B]">·</span>
             <span className="text-[#86868B] flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-               <EditableText value={card.dueDate} label="due date" onCommit={(dueDate) => onUpdate?.({ dueDate })} />
+               <EditableText
+                 value={card.dueDate}
+                 label="due date"
+                 allowEmpty
+                 onCommit={(dueDate) => onUpdate?.({ dueDate: dueDate.trim() || undefined })}
+               />
             </span>
           </>
         )}
@@ -108,7 +113,12 @@ export const MilestoneCard: React.FC<Props> = ({ card, isInlineEditing, onUpdate
             <span className="text-[#86868B]">·</span>
             <span className="text-[#86868B] flex items-center gap-1">
               <User className="w-3 h-3" />
-               <EditableText value={card.owner} label="owner" onCommit={(owner) => onUpdate?.({ owner })} />
+               <EditableText
+                 value={card.owner}
+                 label="owner"
+                 allowEmpty
+                 onCommit={(owner) => onUpdate?.({ owner: owner.trim() || undefined })}
+               />
             </span>
           </>
         )}

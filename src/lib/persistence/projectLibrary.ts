@@ -37,10 +37,12 @@ export function normalizeReportingPeriod(value: unknown): string {
 
 export function createBlankProject(folderId: string): ReportProject {
   const now = new Date().toISOString();
+  const createdDate = now.slice(0, 10);
   return {
     id: uid('proj'),
     title: 'Untitled Project',
-    reportingPeriod: '',
+    reportingPeriod: createdDate,
+    createdAt: now,
     folderId,
     rawNotes: '',
     metrics: [],
@@ -139,10 +141,13 @@ export function createSeedLibrary(): ProjectLibrary {
 /** Migrates a legacy single draft into a one-project library. Pure + testable. */
 export function migrateLegacyDraft(draft: ReportProject): ProjectLibrary {
   const folders = ensureDefaultFolder([]);
+  const fallbackCreated = draft.createdAt || draft.lastSavedAt || new Date().toISOString();
+  const normalized = normalizeReportingPeriod(draft.reportingPeriod);
   const project: ReportProject = {
     ...draft,
     folderId: folders[0].id,
-    reportingPeriod: normalizeReportingPeriod(draft.reportingPeriod),
+    createdAt: draft.createdAt || fallbackCreated,
+    reportingPeriod: normalized || fallbackCreated.slice(0, 10),
   };
   return {
     version: 1,
@@ -156,11 +161,16 @@ export function migrateLegacyDraft(draft: ReportProject): ProjectLibrary {
 function sanitizeLibrary(lib: ProjectLibrary): ProjectLibrary {
   const folders = ensureDefaultFolder(lib.folders);
   const folderIds = new Set(folders.map((f) => f.id));
-  const projects: ReportProject[] = lib.projects.map((p) => ({
-    ...p,
-    folderId: p.folderId && folderIds.has(p.folderId) ? p.folderId : folders[0].id,
-    reportingPeriod: normalizeReportingPeriod(p.reportingPeriod),
-  }));
+  const projects: ReportProject[] = lib.projects.map((p) => {
+    const fallbackCreated = p.createdAt || p.lastSavedAt || new Date().toISOString();
+    const normalized = normalizeReportingPeriod(p.reportingPeriod);
+    return {
+      ...p,
+      createdAt: p.createdAt || fallbackCreated,
+      folderId: p.folderId && folderIds.has(p.folderId) ? p.folderId : folders[0].id,
+      reportingPeriod: normalized || fallbackCreated.slice(0, 10),
+    };
+  });
   if (projects.length === 0) projects.push(createBlankProject(folders[0].id));
   const projectIds = new Set(projects.map((p) => p.id));
   const snapshots = lib.snapshots.filter((s) => projectIds.has(s.projectId));

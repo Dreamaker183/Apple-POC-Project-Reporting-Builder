@@ -132,6 +132,7 @@ export interface ReportProject {
   title: string;
   reportingPeriod: string;
   sendSchedule?: SendSchedule;
+  createdAt?: string;
   folderId?: string;
   rawNotes: string;
   metrics: MetricInput[];

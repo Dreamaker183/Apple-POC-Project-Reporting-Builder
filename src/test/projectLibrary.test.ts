@@ -148,5 +148,8 @@ describe('Project library: folders, time flow & migration', () => {
     expect(blank.folderId).toBe(folder.id);
     expect(blank.title).toBe('Untitled Project');
     expect(blank.cards).toHaveLength(0);
+    expect(blank.createdAt).toBeDefined();
+    expect(blank.reportingPeriod).toBe(blank.createdAt?.slice(0, 10));
+    expect(/^\d{4}-\d{2}-\d{2}$/.test(blank.reportingPeriod)).toBe(true);
   });
 });

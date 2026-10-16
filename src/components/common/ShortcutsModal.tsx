@@ -31,11 +31,11 @@ export const ShortcutsModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs no-print"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs no-print"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl border border-black/10 shadow-2xl max-w-md w-full p-5 space-y-4"
+        className="bg-white rounded-2xl border border-black/10 shadow-2xl max-w-md w-full p-4 sm:p-5 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -43,7 +43,7 @@ export const ShortcutsModal: React.FC<Props> = ({ isOpen, onClose }) => {
       >
         <div className="flex items-center justify-between pb-3 border-b border-black/[0.06]">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#0071E3]/10 text-[#0071E3] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-[#0071E3]/10 text-[#0071E3] flex items-center justify-center shrink-0">
               <Keyboard className="w-4 h-4" />
             </div>
             <h2 id="shortcuts-title" className="text-sm font-bold text-[#1F1F1F]">
@@ -59,14 +59,14 @@ export const ShortcutsModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           {shortcuts.map((sc, idx) => (
             <div 
               key={idx} 
-              className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg hover:bg-neutral-50 transition-colors"
+              className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5 text-xs py-1.5 px-2 rounded-lg hover:bg-neutral-50 transition-colors"
             >
-              <span className="text-[#333333]">{sc.description}</span>
-              <kbd className="px-2 py-1 bg-neutral-100 border border-black/10 rounded font-mono text-[11px] font-semibold text-[#1F1F1F] shadow-2xs">
+              <span className="text-[#333333] flex-1 min-w-[140px]">{sc.description}</span>
+              <kbd className="px-2 py-1 bg-neutral-100 border border-black/10 rounded font-mono text-[10px] sm:text-[11px] font-semibold text-[#1F1F1F] shadow-2xs shrink-0">
                 {sc.key}
               </kbd>
             </div>

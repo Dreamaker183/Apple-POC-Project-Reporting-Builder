@@ -74,7 +74,7 @@ export const NextStepsCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
                         value={item.owner || ''}
                         onChange={(e) => {
                           const updated = [...card.items];
-                          updated[idx] = { ...item, owner: e.target.value };
+                          updated[idx] = { ...item, owner: e.target.value.trim() || undefined };
                           onUpdate?.({ items: updated });
                         }}
                         placeholder="Owner"
@@ -86,7 +86,7 @@ export const NextStepsCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
                         value={item.dueDate || ''}
                         onChange={(e) => {
                           const updated = [...card.items];
-                          updated[idx] = { ...item, dueDate: e.target.value };
+                          updated[idx] = { ...item, dueDate: e.target.value.trim() || undefined };
                           onUpdate?.({ items: updated });
                         }}
                         placeholder="Due date"
@@ -104,17 +104,34 @@ export const NextStepsCard: React.FC<Props> = ({ card, onInspect, isInlineEditin
                   {item.owner ? (
                     <span className="flex items-center gap-1 text-[#1F1F1F] font-medium">
                       <User className="w-3 h-3 text-[#727272]" />
-                      <EditableText value={item.owner} label="step owner" onCommit={(owner) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, owner } : it) })} />
+                      <EditableText
+                        value={item.owner}
+                        label="step owner"
+                        allowEmpty
+                        onCommit={(owner) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, owner: owner.trim() || undefined } : it) })}
+                      />
                     </span>
                   ) : (
-                    <EditableText value="" placeholder="Add owner" label="step owner" onCommit={(owner) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, owner } : it) })} className="text-[#6E6E73]" />
+                    <EditableText
+                      value=""
+                      placeholder="Add owner"
+                      label="step owner"
+                      allowEmpty
+                      onCommit={(owner) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, owner: owner.trim() || undefined } : it) })}
+                      className="text-[#6E6E73]"
+                    />
                   )}
                   {item.dueDate && (
                     <>
                       <span>·</span>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-[#727272]" />
-                        <EditableText value={item.dueDate} label="step due date" onCommit={(dueDate) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, dueDate } : it) })} />
+                        <EditableText
+                          value={item.dueDate}
+                          label="step due date"
+                          allowEmpty
+                          onCommit={(dueDate) => onUpdate?.({ items: card.items.map((it) => it.id === item.id ? { ...it, dueDate: dueDate.trim() || undefined } : it) })}
+                        />
                       </span>
                     </>
                   )}

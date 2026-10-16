@@ -121,6 +121,7 @@ export const ReportProjectSchema = z.object({
   id: z.string(),
   title: z.string().min(1, 'Report title is required'),
   reportingPeriod: z.string(),
+  createdAt: z.string().optional(),
   sendSchedule: z.object({
     enabled: z.boolean(),
     scheduledAt: z.string().datetime(),

@@ -135,8 +135,10 @@
   }
 }
 
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 @media (pointer: coarse) {
-  button { min-height: 40px; }
   input, textarea, select { font-size: 16px !important; }
 }
 

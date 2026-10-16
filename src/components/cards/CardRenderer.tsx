@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { SnippetCard } from '../../types/report';
 import { ExecutiveSummaryCard } from './ExecutiveSummaryCard';
 import { KpiMetricCard } from './KpiMetricCard';
@@ -34,7 +35,6 @@ interface Props {
   card: SnippetCard;
   isSelected: boolean;
   isInspected: boolean;
-  isPeeked?: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
   dragHandle?: DragHandleProps;
@@ -53,7 +53,6 @@ export const CardRenderer: React.FC<Props> = ({
   card,
   isSelected,
   isInspected,
-  isPeeked,
   canMoveUp,
   canMoveDown,
   dragHandle,
@@ -127,11 +126,9 @@ export const CardRenderer: React.FC<Props> = ({
           setShowMenu(false);
         }
       }}
-      className={`group relative bg-white rounded-2xl border p-5 sm:p-6 transition-all duration-200 cursor-pointer outline-none ${
+      className={`group relative bg-white rounded-2xl border p-4 sm:p-5 md:p-6 transition-all duration-200 cursor-pointer outline-none ${
         editing
           ? 'border-[#0071E3] ring-2 ring-[#0071E3]/20 shadow-[0_6px_24px_rgba(0,113,227,0.08)]'
-          : isPeeked
-          ? 'border-[#0071E3] ring-2 ring-[#0071E3]/60 shadow-[0_10px_32px_rgba(0,113,227,0.22)] scale-[1.005]'
           : isInspected
           ? 'border-[#0071E3]/60 ring-1 ring-[#0071E3]/30 bg-blue-50/[0.12] shadow-[0_4px_20px_rgba(0,113,227,0.10)]'
           : isSelected
@@ -141,10 +138,10 @@ export const CardRenderer: React.FC<Props> = ({
     >
       {/* Top Quiet Header */}
       <div 
-        className="flex items-center justify-between pb-3 mb-3 border-b border-black/[0.04] no-print"
+        className="flex items-center justify-between pb-3 mb-3 border-b border-black/[0.04] no-print gap-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-wrap">
           {/* Drag handle: immediate drag on press; long-press anywhere else also arms dragging */}
           {dragHandle && (
             <button
@@ -152,10 +149,10 @@ export const CardRenderer: React.FC<Props> = ({
               aria-label={t('card.dragCard', { title: card.title })}
               title={t('card.dragHint')}
               onPointerDown={dragHandle.onPointerDown}
-              className={`p-1 -ml-1.5 rounded-lg transition-colors touch-none cursor-grab active:cursor-grabbing ${
+              className={`p-1 -ml-1 rounded-lg transition-colors touch-none cursor-grab active:cursor-grabbing min-w-[28px] min-h-[28px] flex items-center justify-center ${
                 dragHandle.active
-                  ? 'text-[#0071E3] bg-[#0071E3]/10'
-                  : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.04] opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+                  ? 'text-[#0071E3] bg-[#0071E3]/10 opacity-100'
+                  : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.04] opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100'
               }`}
             >
               <GripVertical className="w-4 h-4" />
@@ -170,7 +167,22 @@ export const CardRenderer: React.FC<Props> = ({
             className="w-3.5 h-3.5 rounded border-black/20 text-[#0071E3] focus:ring-0 focus:outline-none cursor-pointer"
           />
 
-          <span className="text-[11px] font-semibold tracking-wider uppercase text-[#6E6E73]">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide ${
+            card.type === 'executive_summary' ? 'bg-[#0071E3]/10 text-[#0071E3]' :
+            card.type === 'kpi_metric' ? 'bg-emerald-500/10 text-emerald-700' :
+            card.type === 'risk_blocker' ? (card.isBlocker ? 'bg-rose-500/10 text-rose-700' : 'bg-amber-500/10 text-amber-800') :
+            card.type === 'next_steps' ? 'bg-purple-500/10 text-purple-700' :
+            card.type === 'milestone' ? 'bg-sky-500/10 text-sky-700' :
+            'bg-black/[0.05] text-[#1D1D1F]'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              card.type === 'executive_summary' ? 'bg-[#0071E3]' :
+              card.type === 'kpi_metric' ? 'bg-emerald-500' :
+              card.type === 'risk_blocker' ? (card.isBlocker ? 'bg-rose-500' : 'bg-amber-500') :
+              card.type === 'next_steps' ? 'bg-purple-500' :
+              card.type === 'milestone' ? 'bg-sky-500' :
+              'bg-[#86868B]'
+            }`} />
             {cardTypeNames[card.type] || card.type}
           </span>
           {card.sourceRef && (
@@ -186,9 +198,9 @@ export const CardRenderer: React.FC<Props> = ({
         </div>
 
         {/* Clean Hover Actions */}
-        <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-          <button type="button" onClick={() => setEditing(!editing)} aria-label={t('card.editDetails')} title={t('card.editTitle')} className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg"><Pencil className="w-3.5 h-3.5" /></button>
-          {card.sourceRef && <button type="button" onClick={() => setShowSource(!showSource)} aria-label={t('card.showSource')} aria-expanded={showSource} className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg"><Link2 className="w-3.5 h-3.5" /></button>}
+        <div className="flex items-center gap-0.5 sm:gap-1 opacity-90 sm:opacity-70 sm:group-hover:opacity-100 transition-opacity shrink-0">
+          <button type="button" onClick={() => setEditing(!editing)} aria-label={t('card.editDetails')} title={t('card.editTitle')} className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg min-w-[30px] min-h-[30px] flex items-center justify-center"><Pencil className="w-3.5 h-3.5" /></button>
+          {card.sourceRef && <button type="button" onClick={() => setShowSource(!showSource)} aria-label={t('card.showSource')} aria-expanded={showSource} className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg min-w-[30px] min-h-[30px] flex items-center justify-center"><Link2 className="w-3.5 h-3.5" /></button>}
           {/* Quick Duplicate (immediately appends a copy below) */}
           <button
             type="button"
@@ -212,8 +224,15 @@ export const CardRenderer: React.FC<Props> = ({
               <MoreHorizontal className="w-3.5 h-3.5" />
             </button>
 
+            <AnimatePresence>
             {showMenu && (
-              <div className="absolute right-0 top-8 w-44 bg-white/95 backdrop-blur-xl rounded-xl border border-black/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.12)] py-1.5 z-30 text-xs">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                transition={{ duration: 0.14, ease: [0.32, 0.72, 0, 1] }}
+                className="absolute right-0 top-8 w-44 bg-white/95 backdrop-blur-xl rounded-xl border border-black/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.12)] py-1.5 z-30 text-xs origin-top-right"
+              >
                 {onShareCard && (
                   <button
                     type="button"
@@ -267,8 +286,9 @@ export const CardRenderer: React.FC<Props> = ({
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>{t('card.delete')}</span>
                 </button>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

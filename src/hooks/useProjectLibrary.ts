@@ -170,12 +170,15 @@ export function useProjectLibrary(addToast: (msg: string, type?: 'success' | 'er
   const handleDuplicateProject = useCallback((id: string): ReportProject | null => {
     const src = library.projects.find((p) => p.id === id);
     if (!src) return null;
+    const now = new Date().toISOString();
     const copy: ReportProject = {
       ...src,
       sendSchedule: undefined,
       id: uid('proj'),
       title: `${src.title} (Copy)`,
-      lastSavedAt: new Date().toISOString(),
+      createdAt: now,
+      reportingPeriod: now.slice(0, 10),
+      lastSavedAt: now,
       isDirty: false,
     };
     setLibrary((prev) => ({ ...prev, projects: [...prev.projects, copy], activeProjectId: copy.id }));
