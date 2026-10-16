@@ -7,21 +7,25 @@ import type { TourStep } from './GuidedTour';
 import type { ReportProject, SnippetCard } from '../../types/report';
 import type { MessageToolId } from '../export/ExportModal';
 import { en, type DictKey } from '../../lib/i18n/dictionaries';
+import { WEEK_40_BASELINE_SNAPSHOT } from '../../lib/sampleData';
 
 export interface TourStepActions {
-  onLoadSample: (messy: boolean) => void;
+  onLoadSample: (messy: boolean, emptyCards?: boolean) => void;
   setMobileArea: (area: 'projects' | 'canvas') => void;
   setTourStepIndex: (idx: number) => void;
-  onGenerateReport: () => void;
+  onGenerateReport: () => SnippetCard[];
   getProject: () => ReportProject;
   setInspectedCardId: (id: string | null) => void;
   setHighlightPassage: (passage: { start?: number; end?: number; text?: string } | null) => void;
   onApplyAllFixes: () => void;
+  setBaselineCards: (cards: SnippetCard[]) => void;
   setIsSnapshotModalOpen: (open: boolean) => void;
   setExportInitialMode: (mode: 'formats' | 'tools') => void;
   setExportInitialTool: (tool: MessageToolId) => void;
   setIsExportOpen: (open: boolean) => void;
   setIsGuidedTourOpen: (open: boolean) => void;
+  isSnapshotModalOpen?: boolean;
+  isExportOpen?: boolean;
 }
 
 export type TranslateFn = (key: DictKey, vars?: Record<string, string | number>) => string;
@@ -40,7 +44,7 @@ export function buildTourSteps(actions: TourStepActions, t?: TranslateFn): TourS
       tip: lookup('tour.step1.tip'),
       actionLabel: lookup('tour.step1.action'),
       onExecute: () => {
-        actions.onLoadSample(true);
+        actions.onLoadSample(true, true);
         actions.setMobileArea('canvas');
         actions.setTourStepIndex(1);
       },
@@ -52,9 +56,8 @@ export function buildTourSteps(actions: TourStepActions, t?: TranslateFn): TourS
       tip: lookup('tour.step2.tip'),
       actionLabel: lookup('tour.step2.action'),
       onExecute: () => {
-        actions.onGenerateReport();
-        const project = actions.getProject();
-        const blocker = project.cards.find((c: SnippetCard) => c.type === 'risk_blocker');
+        const generated = actions.onGenerateReport();
+        const blocker = generated.find((c: SnippetCard) => c.type === 'risk_blocker');
         if (blocker) {
           actions.setInspectedCardId(blocker.id);
           if (blocker.sourceRef) {
@@ -82,10 +85,17 @@ export function buildTourSteps(actions: TourStepActions, t?: TranslateFn): TourS
       badge: lookup('tour.step4.badge'),
       summary: lookup('tour.step4.summary'),
       tip: lookup('tour.step4.tip'),
-      actionLabel: lookup('tour.step4.action'),
+      actionLabel: actions.isSnapshotModalOpen ? lookup('tour.step5.action') : lookup('tour.step4.action'),
       onExecute: () => {
-        actions.setIsSnapshotModalOpen(true);
-        actions.setTourStepIndex(4);
+        if (actions.isSnapshotModalOpen) {
+          actions.setIsSnapshotModalOpen(false);
+          actions.setExportInitialMode('formats');
+          actions.setIsExportOpen(true);
+          actions.setTourStepIndex(4);
+        } else {
+          actions.setBaselineCards(WEEK_40_BASELINE_SNAPSHOT);
+          actions.setIsSnapshotModalOpen(true);
+        }
       },
     },
     {
@@ -93,12 +103,18 @@ export function buildTourSteps(actions: TourStepActions, t?: TranslateFn): TourS
       badge: lookup('tour.step5.badge'),
       summary: lookup('tour.step5.summary'),
       tip: lookup('tour.step5.tip'),
-      actionLabel: lookup('tour.step5.action'),
+      actionLabel: actions.isExportOpen ? lookup('tour.step6.action') : lookup('tour.step5.action'),
       onExecute: () => {
-        actions.setIsSnapshotModalOpen(false);
-        actions.setExportInitialMode('formats');
-        actions.setIsExportOpen(true);
-        actions.setTourStepIndex(5);
+        if (!actions.isExportOpen) {
+          actions.setIsSnapshotModalOpen(false);
+          actions.setExportInitialMode('formats');
+          actions.setIsExportOpen(true);
+        } else {
+          actions.setExportInitialMode('tools');
+          actions.setExportInitialTool('email');
+          actions.setIsExportOpen(true);
+          actions.setTourStepIndex(5);
+        }
       },
     },
     {
@@ -106,7 +122,7 @@ export function buildTourSteps(actions: TourStepActions, t?: TranslateFn): TourS
       badge: lookup('tour.step6.badge'),
       summary: lookup('tour.step6.summary'),
       tip: lookup('tour.step6.tip'),
-      actionLabel: lookup('tour.step6.action'),
+      actionLabel: lookup('tour.finish'),
       onExecute: () => {
         actions.setIsSnapshotModalOpen(false);
         actions.setExportInitialMode('tools');

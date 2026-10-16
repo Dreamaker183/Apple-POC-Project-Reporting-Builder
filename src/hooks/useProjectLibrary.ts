@@ -207,8 +207,9 @@ export function useProjectLibrary(addToast: (msg: string, type?: 'success' | 'er
     return { wasActive, nextActive, projects, snapshots };
   }, [library, addToast]);
 
-  const handleLoadSample = useCallback((useMessy: boolean = false) => {
+  const handleLoadSample = useCallback((useMessy: boolean = false, emptyCards: boolean = false) => {
     const sample = createSampleProject(useMessy);
+    const cardsToUse = emptyCards ? [] : sample.cards;
     updateActiveProject((prev) => ({
       ...prev,
       title: sample.title,
@@ -216,12 +217,12 @@ export function useProjectLibrary(addToast: (msg: string, type?: 'success' | 'er
       rawNotes: sample.rawNotes,
       metrics: sample.metrics,
       images: sample.images,
-      cards: sample.cards,
+      cards: cardsToUse,
       isDirty: true,
       lastSavedAt: new Date().toISOString(),
     }));
     addToast(useMessy ? 'Loaded messy standup sample' : 'Loaded Customer Portal sample project', 'success');
-    return sample;
+    return { ...sample, cards: cardsToUse };
   }, [updateActiveProject, addToast]);
 
   // ── Folder CRUD ──────────────────────────────────────────────────

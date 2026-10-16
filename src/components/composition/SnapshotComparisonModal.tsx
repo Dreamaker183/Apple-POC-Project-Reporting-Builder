@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { copyToClipboard } from '../../lib/export/clipboard';
 import { useDialogFocus } from '../common/useDialogFocus';
+import { useLanguage } from '../../lib/i18n/LanguageContext';
 
 interface Props {
   currentCards: SnippetCard[];
@@ -37,6 +38,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
   onClose,
   onNotify,
 }) => {
+  const { t } = useLanguage();
   useDialogFocus(isOpen, onClose);
   const [copied, setCopied] = useState(false);
 
@@ -47,31 +49,32 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
 
   const formatDiffSummaryText = (): string => {
     const lines: string[] = [];
-    lines.push(`WHAT'S CHANGED: REPORT SNAPSHOT COMPARISON`);
-    lines.push(`Baseline: Selected saved snapshot`);
-    lines.push(`Target: Current working report`);
+    lines.push(t('diff.logHeader'));
+    lines.push(t('diff.logBaseline'));
+    lines.push(t('diff.logTarget'));
     lines.push(`──────────────────────────────────────────`);
 
     if (diff.metricChanges.length > 0) {
-      lines.push(`\nMETRIC EVOLUTIONS:`);
+      lines.push(`\n${t('diff.logMetricSection')}`);
       diff.metricChanges.forEach(m => {
-        lines.push(`• ${m.label}: ${m.oldValue}${m.unit} → ${m.newValue}${m.unit} (${m.diff > 0 ? `+${m.diff}` : m.diff}${m.unit}, ${m.improved ? 'improved' : 'attention needed'})`);
+        const trend = m.improved ? t('diff.improved') : t('diff.attentionNeeded');
+        lines.push(`• ${m.label}: ${m.oldValue}${m.unit} → ${m.newValue}${m.unit} (${m.diff > 0 ? `+${m.diff}` : m.diff}${m.unit}, ${trend})`);
       });
     }
 
     if (diff.newAccomplishments.length > 0) {
-      lines.push(`\nNEW ACCOMPLISHMENTS:`);
+      lines.push(`\n${t('diff.logAccomplishmentsSection')}`);
       diff.newAccomplishments.forEach(a => lines.push(`• ${a}`));
     }
 
     if (diff.resolvedRisks.length > 0) {
-      lines.push(`\nRESOLVED BLOCKERS/RISKS:`);
-      diff.resolvedRisks.forEach(r => lines.push(`✓ [Resolved] ${r}`));
+      lines.push(`\n${t('diff.logResolvedSection')}`);
+      diff.resolvedRisks.forEach(r => lines.push(`✓ ${t('diff.logResolvedTag')} ${r}`));
     }
 
     if (diff.newBlockers.length > 0) {
-      lines.push(`\nNEW BLOCKERS:`);
-      diff.newBlockers.forEach(b => lines.push(`! [New Blocker] ${b}`));
+      lines.push(`\n${t('diff.logBlockersSection')}`);
+      diff.newBlockers.forEach(b => lines.push(`! ${t('diff.logBlockerTag')} ${b}`));
     }
 
     return lines.join('\n');
@@ -82,10 +85,10 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
     const res = await copyToClipboard(text);
     if (res.success) {
       setCopied(true);
-      onNotify('Copied snapshot change summary!', 'success');
+      onNotify(t('diff.copiedToast'), 'success');
       setTimeout(() => setCopied(false), 2000);
     } else {
-      onNotify('Failed to copy summary', 'error');
+      onNotify(t('diff.copyErrorToast'), 'error');
     }
   };
 
@@ -105,10 +108,10 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
             </div>
             <div>
               <h2 id="diff-dialog-title" className="text-base font-bold text-[#1F1F1F]">
-                What's Changed? (Snapshot Diff)
+                {t('diff.title')}
               </h2>
               <p className="text-xs text-[#727272]">
-                Deterministic delta between two explicitly supplied report snapshots.
+                {t('diff.subtitle')}
               </p>
             </div>
           </div>
@@ -116,7 +119,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
             type="button"
             onClick={onClose}
             className="p-1.5 text-[#727272] hover:text-[#1F1F1F] rounded-lg hover:bg-neutral-100 transition-colors"
-            aria-label="Close diff dialog"
+            aria-label={t('diff.closeAria')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -125,8 +128,8 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
         {/* Baseline Selector */}
         <div className="px-5 py-3 bg-[#FAFAFA] border-b border-black/[0.06] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#727272]">Compare Against:</span>
-            <span className="text-xs text-[#6E6E73]">Saved snapshot → Working draft</span>
+            <span className="text-xs font-semibold text-[#727272]">{t('diff.compareAgainst')}</span>
+            <span className="text-xs text-[#6E6E73]">{t('diff.flow')}</span>
           </div>
 
           <button
@@ -135,7 +138,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-black/10 rounded-lg text-xs font-semibold text-[#1F1F1F] hover:bg-neutral-50 transition-colors shadow-xs"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#0071E3]" />}
-            <span>{copied ? 'Copied' : 'Copy Change Log'}</span>
+            <span>{copied ? t('diff.copied') : t('diff.copy')}</span>
           </button>
         </div>
 
@@ -146,10 +149,12 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
             <div className="p-4 bg-white rounded-xl border border-black/[0.08] shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[#1F1F1F] uppercase tracking-wider">
-                  Quantitative Metric Evolutions
+                  {t('diff.metricEvolutions')}
                 </span>
                 <span className="text-[11px] text-[#727272]">
-                  {diff.metricChanges.length} metric{diff.metricChanges.length !== 1 ? 's' : ''} shifted
+                  {diff.metricChanges.length === 1
+                    ? t('diff.metricsShifted', { count: diff.metricChanges.length })
+                    : t('diff.metricsShiftedPlural', { count: diff.metricChanges.length })}
                 </span>
               </div>
 
@@ -159,7 +164,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
                     <div>
                       <div className="text-xs font-semibold text-[#1F1F1F]">{m.label}</div>
                       <div className="text-[11px] text-[#727272]">
-                        Baseline: {m.oldValue}{m.unit} → Current: <strong>{m.newValue}{m.unit}</strong>
+                        {t('diff.baselineVal', { oldValue: m.oldValue, unit: m.unit, newValue: m.newValue })}
                       </div>
                     </div>
 
@@ -189,7 +194,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
             <div className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-200/80 shadow-xs space-y-2.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 uppercase tracking-wider">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>New Accomplishments Delivered</span>
+                <span>{t('diff.accomplishments')}</span>
               </div>
               <ul className="space-y-1.5">
                 {diff.newAccomplishments.map((acc, idx) => (
@@ -207,14 +212,14 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
             <div className="p-4 bg-blue-50/40 rounded-xl border border-blue-200/80 shadow-xs space-y-2.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#0071E3] uppercase tracking-wider">
                 <Check className="w-4 h-4 text-[#0071E3] shrink-0" />
-                <span>Resolved Blockers & Risks (Cleared since baseline)</span>
+                <span>{t('diff.resolved')}</span>
               </div>
               <ul className="space-y-1.5">
                 {diff.resolvedRisks.map((risk, idx) => (
                   <li key={idx} className="text-xs text-[#1F1F1F] flex items-center gap-2">
                     <span className="line-through text-[#727272]">{risk}</span>
                     <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                      RESOLVED
+                      {t('diff.resolvedBadge')}
                     </span>
                   </li>
                 ))}
@@ -227,7 +232,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
             <div className="p-4 bg-rose-50/50 rounded-xl border border-rose-200 shadow-xs space-y-2.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800 uppercase tracking-wider">
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>Newly Identified Critical Blockers</span>
+                <span>{t('diff.blockers')}</span>
               </div>
               <ul className="space-y-1.5">
                 {diff.newBlockers.map((blocker, idx) => (
@@ -244,7 +249,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
           {diff.outstandingActions.length > 0 && (
             <div className="p-4 bg-white rounded-xl border border-black/[0.08] shadow-xs space-y-2">
               <div className="text-xs font-bold text-[#1F1F1F] uppercase tracking-wider">
-                Outstanding Action Commitments ({diff.outstandingActions.length})
+                {t('diff.actions', { count: diff.outstandingActions.length })}
               </div>
               <ul className="space-y-1">
                 {diff.outstandingActions.map((action, idx) => (

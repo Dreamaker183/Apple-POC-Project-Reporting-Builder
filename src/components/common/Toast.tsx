@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 export interface ToastMessage {
@@ -19,11 +20,26 @@ interface ToastProps {
 }
 
 export const Toast: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
+  const reduceMotion = useReducedMotion();
   return (
     <div className="fixed top-20 left-4 right-4 sm:left-auto sm:right-5 z-50 flex flex-col gap-2 pointer-events-none sm:max-w-sm no-print">
-      {toasts.slice(-1).map((toast) => (
-        <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
-      ))}
+      <AnimatePresence mode="popLayout">
+        {toasts.slice(-1).map((toast) => (
+          <motion.div
+            key={toast.id}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.96 }}
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : { duration: 0.22, ease: [0.32, 0.72, 0, 1] }
+            }
+          >
+            <ToastItem toast={toast} onDismiss={onDismiss} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 };

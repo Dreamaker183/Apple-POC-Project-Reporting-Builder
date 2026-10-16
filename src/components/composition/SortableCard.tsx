@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Reorder, motion, useDragControls } from 'framer-motion';
+import { Reorder, motion, useDragControls, useReducedMotion } from 'framer-motion';
 import { GripVertical } from 'lucide-react';
 import { SnippetCard } from '../../types/report';
 import { CardRenderer } from '../cards/CardRenderer';
@@ -65,6 +65,7 @@ export const SortableCard: React.FC<Props> = ({
   onUpdateCard,
 }) => {
   const controls = useDragControls();
+  const reduceMotion = useReducedMotion();
   const [holdPhase, setHoldPhase] = useState<HoldPhase>('idle');
   const phaseRef = useRef<HoldPhase>('idle');
   const holdTimer = useRef<number | undefined>(undefined);
@@ -201,20 +202,32 @@ export const SortableCard: React.FC<Props> = ({
       onContextMenu={(e) => {
         if (phaseRef.current !== 'idle') e.preventDefault();
       }}
-      initial={{ opacity: 0, y: 14 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 14 }}
       animate={{
         opacity: 1,
         y: 0,
-        scale: holdPhase === 'holding' ? 0.995 : isArmed ? 1.01 : 1,
+        scale: reduceMotion ? 1 : holdPhase === 'holding' ? 0.995 : isArmed ? 1.01 : 1,
       }}
-      exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15, ease: 'easeOut' } }}
-      transition={{
-        layout: { duration: 0.2, ease: 'easeOut' },
-        duration: 0.2,
-        ease: 'easeOut',
-        delay: Math.min(index * 0.02, 0.12),
-      }}
-      whileDrag={{ scale: 1.02, boxShadow: '0 16px 40px rgba(0,0,0,0.16)' }}
+      exit={
+        reduceMotion
+          ? { opacity: 0 }
+          : { opacity: 0, scale: 0.98, transition: { duration: 0.15, ease: 'easeOut' } }
+      }
+      transition={
+        reduceMotion
+          ? { duration: 0 }
+          : {
+              layout: { duration: 0.2, ease: 'easeOut' },
+              scale: { duration: 0.12, ease: 'easeOut' },
+              opacity: { duration: 0.2, ease: 'easeOut', delay: Math.min(index * 0.02, 0.12) },
+              y: { duration: 0.2, ease: 'easeOut', delay: Math.min(index * 0.02, 0.12) },
+            }
+      }
+      whileDrag={
+        reduceMotion
+          ? undefined
+          : { scale: 1.02, boxShadow: '0 16px 40px rgba(0,0,0,0.16)' }
+      }
       className={`relative rounded-2xl ${
         holdPhase === 'holding' || holdPhase === 'armed' ? 'select-none' : ''
       } ${

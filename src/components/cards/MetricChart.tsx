@@ -110,6 +110,7 @@ export const MetricChart: React.FC<Props> = ({ datum, style, idSuffix = 'c' }) =
             strokeDashoffset={circ - progress * circ}
             strokeLinecap="round"
             fill="transparent"
+            className="transition-[stroke-dashoffset] duration-500 ease-out"
           />
         </svg>
         <div>

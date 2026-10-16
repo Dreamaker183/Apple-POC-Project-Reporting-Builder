@@ -4,7 +4,7 @@
  */
 
 import React, { Suspense, lazy, useState, useMemo, useRef, useCallback } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Eye, Folder } from 'lucide-react';
 
 import type { ReportProject, SnippetCard } from './types/report';
@@ -202,10 +202,11 @@ export default function App() {
     }
   }, [deleteProjectInLib, clearHistory, resetWorkspaceUI]);
 
-  const handleLoadSample = useCallback((useMessy: boolean = false) => {
+  const handleLoadSample = useCallback((useMessy: boolean = false, emptyCards: boolean = false) => {
     recordProjectHistory();
-    const sample = loadSampleInLib(useMessy);
+    const sample = loadSampleInLib(useMessy, emptyCards);
     resetWorkspaceUI(sample.cards);
+    return sample;
   }, [recordProjectHistory, loadSampleInLib, resetWorkspaceUI]);
 
   // 7. Snapshot Handlers
@@ -227,7 +228,7 @@ export default function App() {
     const rawNotes = newNotes?.trim()
       ? [project.rawNotes, newNotes.trim()].filter(Boolean).join('\n\n')
       : project.rawNotes;
-    if (!rawNotes.trim() && !project.metrics.length && !project.images.length) return;
+    if (!rawNotes.trim() && !project.metrics.length && !project.images.length) return [];
     recordProjectHistory();
     const generatedCards = mergeGeneratedCards(
       project.cards,
@@ -265,6 +266,7 @@ export default function App() {
     }
     setMobileArea('canvas');
     addToast(`Generated ${generatedCards.length} verified snippet cards`, 'success');
+    return generatedCards;
   }, [project, recordProjectHistory, setLibrary, setInspectedCardId, setHighlightPassage, addToast]);
 
   // 9. Quick Fixes for Readiness Scores
@@ -360,12 +362,74 @@ export default function App() {
     setInspectedCardId,
     setHighlightPassage,
     onApplyAllFixes: handleApplyAllFixes,
+    setBaselineCards,
     setIsSnapshotModalOpen,
     setExportInitialMode,
     setExportInitialTool,
     setIsExportOpen,
     setIsGuidedTourOpen,
-  }, t), [handleLoadSample, handleGenerateReport, project, setInspectedCardId, setHighlightPassage, handleApplyAllFixes, t]);
+    isSnapshotModalOpen,
+    isExportOpen,
+  }, t), [
+    handleLoadSample,
+    handleGenerateReport,
+    project,
+    setInspectedCardId,
+    setHighlightPassage,
+    handleApplyAllFixes,
+    setBaselineCards,
+    setIsSnapshotModalOpen,
+    setExportInitialMode,
+    setExportInitialTool,
+    setIsExportOpen,
+    setIsGuidedTourOpen,
+    isSnapshotModalOpen,
+    isExportOpen,
+    t,
+  ]);
+
+  const handleTourNext = useCallback(() => {
+    if (tourStepIndex === 0) {
+      tourSteps[0]?.onExecute();
+    } else if (tourStepIndex === 1) {
+      tourSteps[1]?.onExecute();
+    } else if (tourStepIndex === 2) {
+      tourSteps[2]?.onExecute();
+    } else if (tourStepIndex === 3) {
+      if (isSnapshotModalOpen) {
+        setIsSnapshotModalOpen(false);
+        setExportInitialMode('formats');
+        setIsExportOpen(true);
+        setTourStepIndex(4);
+      } else {
+        tourSteps[3]?.onExecute();
+      }
+    } else if (tourStepIndex === 4) {
+      tourSteps[4]?.onExecute();
+    } else if (tourStepIndex === 5) {
+      tourSteps[5]?.onExecute();
+    } else {
+      setTourStepIndex((prev) => Math.min(prev + 1, tourSteps.length - 1));
+    }
+  }, [tourStepIndex, tourSteps, isSnapshotModalOpen]);
+
+  const handleTourPrev = useCallback(() => {
+    setIsSnapshotModalOpen(false);
+    setIsExportOpen(false);
+    setTourStepIndex((prev) => Math.max(prev - 1, 0));
+  }, []);
+
+  const handleTourClose = useCallback(() => {
+    setIsGuidedTourOpen(false);
+  }, []);
+
+  const handleTourJump = useCallback((idx: number) => {
+    if (idx < 3) {
+      setIsSnapshotModalOpen(false);
+      setIsExportOpen(false);
+    }
+    setTourStepIndex(idx);
+  }, []);
 
   // 13. Sharing & Message Tool Triggers
   const handleOpenExport = useCallback(() => {
@@ -473,7 +537,7 @@ export default function App() {
                 ? { duration: 0 }
                 : { duration: 0.34, ease: [0.32, 0.72, 0, 1] }
             }
-            style={{ willChange: 'width' }}
+            style={{ contain: 'paint' }}
             className={`workspace-sidebar hidden lg:block h-full shrink-0 overflow-hidden no-print ${
               sidebarVisible ? '' : 'pointer-events-none'
             }`}
@@ -519,51 +583,120 @@ export default function App() {
             </motion.div>
           </motion.aside>
         ) : (
-          mobileArea === 'projects' && (
-            <motion.section
-              aria-label="Projects and Time Flow"
-              initial={{ x: -24, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={
-                reduceMotion
-                  ? { duration: 0 }
-                  : { duration: 0.28, ease: [0.32, 0.72, 0, 1] }
-              }
-              className="workspace-sidebar w-full h-full shrink-0 no-print"
-            >
-              <ProjectSidebar
-                library={library}
-                activeProjectId={library.activeProjectId}
-                scores={readinessByProject}
-                onSelectProject={handleSelectProject}
-                onNewProject={handleNewProject}
-                onNewFolder={handleNewFolder}
-                onRenameProject={handleRenameProject}
-                onDuplicateProject={handleDuplicateProject}
-                onMoveProject={handleMoveProject}
-                onDeleteProject={handleDeleteProject}
-                onRenameFolder={handleRenameFolder}
-                onDeleteFolder={handleDeleteFolder}
-                onImportProject={triggerImportProject}
+          <AnimatePresence mode="wait" initial={false}>
+            {mobileArea === 'projects' ? (
+              <motion.section
+                key="mobile-projects"
+                aria-label="Projects and Time Flow"
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -20, opacity: 0 }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { duration: 0.24, ease: [0.32, 0.72, 0, 1] }
+                }
+                className="workspace-sidebar w-full h-full shrink-0 no-print"
               >
-                <TimeFlow
-                  snapshots={activeSnapshots}
-                  onSaveSnapshot={handleSaveSnapshot}
-                  onRestoreSnapshot={handleRestoreSnapshot}
-                  onCompareSnapshot={handleCompareSnapshot}
+                <ProjectSidebar
+                  library={library}
+                  activeProjectId={library.activeProjectId}
+                  scores={readinessByProject}
+                  onSelectProject={handleSelectProject}
+                  onNewProject={handleNewProject}
+                  onNewFolder={handleNewFolder}
+                  onRenameProject={handleRenameProject}
+                  onDuplicateProject={handleDuplicateProject}
+                  onMoveProject={handleMoveProject}
+                  onDeleteProject={handleDeleteProject}
+                  onRenameFolder={handleRenameFolder}
+                  onDeleteFolder={handleDeleteFolder}
+                  onImportProject={triggerImportProject}
+                >
+                  <TimeFlow
+                    snapshots={activeSnapshots}
+                    onSaveSnapshot={handleSaveSnapshot}
+                    onRestoreSnapshot={handleRestoreSnapshot}
+                    onCompareSnapshot={handleCompareSnapshot}
+                  />
+                </ProjectSidebar>
+              </motion.section>
+            ) : (
+              <motion.section
+                key="mobile-canvas"
+                aria-label="Report Composition and Preview"
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { duration: 0.24, ease: [0.32, 0.72, 0, 1] }
+                }
+                className="workspace-report flex-1 min-w-0 h-full flex flex-col overflow-hidden bg-[#F5F5F7]"
+              >
+                <ReportCanvas
+                  key={project.id}
+                  projectId={project.id}
+                  projectTitle={project.title}
+                  title={project.title}
+                  reportingPeriod={project.reportingPeriod}
+                  sendSchedule={project.sendSchedule}
+                  onScheduleChange={handleScheduleChange}
+                  onConfigureDispatch={() => handleOpenMessageTools('slack')}
+                  cards={project.cards}
+                  selectedCardIds={selectedCardIds}
+                  inspectedCardId={inspectedCardId}
+                  onUpdateTitle={(title) => updateActiveProject((prev) => ({ ...prev, title, isDirty: true }))}
+                  onUpdatePeriod={(reportingPeriod) =>
+                    updateActiveProject((prev) => ({
+                      ...prev,
+                      reportingPeriod,
+                      sendSchedule: prev.sendSchedule ? { ...prev.sendSchedule, enabled: false } : undefined,
+                      isDirty: true,
+                    }))
+                  }
+                  onToggleSelectCard={handleToggleSelectCard}
+                  onSelectAllCards={handleSelectAllCards}
+                  onDeselectAllCards={handleDeselectAllCards}
+                  onInspectCard={handleInspectCard}
+                  onMoveCard={handleMoveCard}
+                  onReorderCards={handleReorderCards}
+                  onDuplicateCard={handleDuplicateCard}
+                  onDeleteCard={handleDeleteCard}
+                  onDeleteSelectedCards={handleDeleteSelectedCards}
+                  onCopyCard={handleCopyCard}
+                  onCopySelectedCards={handleCopySelectedCards}
+                  onOpenMessageToolsForSelected={handleOpenMessageToolsForSelected}
+                  onShareCard={handleShareCard}
+                  onUpdateCard={handleUpdateCard}
+                  onAddCard={handleAddCard}
+                  rawNotes={project.rawNotes}
+                  metrics={project.metrics}
+                  images={project.images}
+                  highlightPassage={highlightPassage}
+                  onNotesChange={handleNotesChange}
+                  onMetricsChange={handleMetricsChange}
+                  onImagesChange={handleImagesChange}
+                  onImagesAppend={handleImagesAppend}
+                  onGenerateReport={handleGenerateReport}
+                  onApplyFindings={handleApplyFindings}
+                  readinessScore={readinessScore}
+                  onApplyQuickFix={handleApplyQuickFix}
+                  onApplyAllFixes={handleApplyAllFixes}
+                  onNotify={addToast}
                 />
-              </ProjectSidebar>
-            </motion.section>
-          )
+              </motion.section>
+            )}
+          </AnimatePresence>
         )}
 
-        {/* Report Canvas */}
-        <section
-          aria-label="Report Composition and Preview"
-          className={`workspace-report flex-1 min-w-0 h-full flex-col overflow-hidden bg-[#F5F5F7] ${
-            isDesktop ? 'flex' : mobileArea === 'canvas' ? 'flex' : 'hidden'
-          }`}
-        >
+        {/* Report Canvas (Desktop) */}
+        {isDesktop && (
+          <section
+            aria-label="Report Composition and Preview"
+            className="workspace-report flex-1 min-w-0 h-full flex flex-col overflow-hidden bg-[#F5F5F7]"
+          >
           <ReportCanvas
             key={project.id}
             projectId={project.id}
@@ -616,6 +749,7 @@ export default function App() {
             onNotify={addToast}
           />
         </section>
+      )}
       </main>
 
       <input
@@ -630,10 +764,10 @@ export default function App() {
       <GuidedTour
         currentStepIndex={tourStepIndex}
         isOpen={isGuidedTourOpen}
-        onClose={() => setIsGuidedTourOpen(false)}
-        onNext={() => setTourStepIndex((prev) => Math.min(prev + 1, tourSteps.length - 1))}
-        onPrev={() => setTourStepIndex((prev) => Math.max(prev - 1, 0))}
-        onJumpToStep={(idx) => setTourStepIndex(idx)}
+        onClose={handleTourClose}
+        onNext={handleTourNext}
+        onPrev={handleTourPrev}
+        onJumpToStep={handleTourJump}
         steps={tourSteps}
       />
 

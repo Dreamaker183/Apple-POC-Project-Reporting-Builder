@@ -55,7 +55,7 @@ export const GuidedTour: React.FC<Props> = ({
           exit={{ opacity: 0, y: reduceMotion ? 0 : 16 }}
           transition={{ duration: reduceMotion ? 0 : 0.2 }}
           aria-label={t('tour.ariaLabel')}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-[calc(100%-2rem)] sm:w-[440px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-black/[0.08] bg-white/95 backdrop-blur-xl shadow-[0_12px_48px_rgba(0,0,0,0.16)] text-[#1D1D1F] no-print"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] w-[calc(100%-2rem)] sm:w-[440px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-black/[0.08] bg-white/95 backdrop-blur-xl shadow-[0_12px_48px_rgba(0,0,0,0.16)] text-[#1D1D1F] no-print"
         >
           <div className="flex items-center justify-between px-5 pt-4">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#0071E3]">
@@ -89,16 +89,26 @@ export const GuidedTour: React.FC<Props> = ({
             </div>
 
             <div aria-live="polite" aria-atomic="true">
-              <h3 className="text-base font-semibold tracking-tight">{currentStep.title}</h3>
-              <p className="mt-2 text-[13px] text-[#6E6E73] leading-relaxed">{currentStep.summary}</p>
-              <div className="flex items-start gap-2 mt-3 mb-4 rounded-xl bg-[#FFF8E8] p-3">
-                <Lightbulb className="w-4 h-4 text-[#B67B13] shrink-0 mt-0.5" />
-                <p className="text-xs text-[#806126] leading-relaxed"><span className="font-semibold">{t('tour.pipTipLabel')}</span>{currentStep.tip}</p>
-              </div>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={currentStepIndex}
+                  initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                  transition={reduceMotion ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
+                >
+                  <h3 className="text-base font-semibold tracking-tight">{currentStep.title}</h3>
+                  <p className="mt-2 text-[13px] text-[#6E6E73] leading-relaxed">{currentStep.summary}</p>
+                  <div className="flex items-start gap-2 mt-3 mb-4 rounded-xl bg-[#FFF8E8] p-3">
+                    <Lightbulb className="w-4 h-4 text-[#B67B13] shrink-0 mt-0.5" />
+                    <p className="text-xs text-[#806126] leading-relaxed"><span className="font-semibold">{t('tour.pipTipLabel')}</span>{currentStep.tip}</p>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             <button type="button" onClick={currentStep.onExecute} className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 bg-[#0071E3] hover:bg-[#0077ED] active:scale-[0.98] text-white text-xs font-semibold transition-all">
-              {currentStep.actionLabel}<ChevronRight className="w-4 h-4" />
+              {currentStep.actionLabel}{isLastStep ? <Check className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-black/[0.06]">
               <button type="button" onClick={onPrev} disabled={currentStepIndex === 0} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[#6E6E73] hover:bg-black/[0.04] disabled:opacity-35 disabled:hover:bg-transparent">
