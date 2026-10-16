@@ -415,6 +415,61 @@ export const en = {
   'export.destHtml': 'Standalone HTML',
   'export.destHtmlDesc': 'Self-contained HTML file with embedded Apple design styling',
 
+  // Guided tour (Pip)
+  'tour.ariaLabel': 'Guided tour with Pip',
+  'tour.guideTag': 'YOUR LITTLE WORKSPACE GUIDE',
+  'tour.dismiss': 'Dismiss guided tour',
+  'tour.pipTitleFirst': 'Hi, I’m Pip! 👋',
+  'tour.pipTitleNext': 'Let’s keep going!',
+  'tour.pipTitleLast': 'You’ve got this!',
+  'tour.pipBodyFirst': 'I’ll help you turn everyday updates into a polished report. Try each step, or just have a look around.',
+  'tour.pipBodyStep': 'Next up: {badge}. I’ll show you what to do.',
+  'tour.pipBodyLast': 'One last stop: send your update to the team. I’m always here if you want another tour.',
+  'tour.stepProgress': 'Step {current} of {total} · {badge}',
+  'tour.stepsNav': 'Tour steps',
+  'tour.stepJump': 'Step {n}: {title}',
+  'tour.pipTipLabel': 'Pip’s tip: ',
+  'tour.back': 'Back',
+  'tour.next': 'Next step',
+  'tour.finish': 'Finish tour',
+
+  // Tour steps
+  'tour.step1.title': 'Start with your everyday updates',
+  'tour.step1.badge': 'Notes & assets',
+  'tour.step1.summary': 'Paste your notes into the composer at the bottom of the report. Add numbers or images too. Try the sample to see how it all fits together.',
+  'tour.step1.tip': 'The sample loads into the active project. You can use Undo to return to your previous draft.',
+  'tour.step1.action': 'Try the sample notes',
+
+  'tour.step2.title': 'Turn your notes into report cards',
+  'tour.step2.badge': 'Build your report',
+  'tour.step2.summary': 'Generate a report to organize your updates into summaries, metrics, risks, and next steps. Select a card to explore where its information came from.',
+  'tour.step2.tip': 'Start with some notes, metrics, or an image. You can edit the resulting cards to make the report your own.',
+  'tour.step2.action': 'Generate report cards',
+
+  'tour.step3.title': 'Give your report a little polish',
+  'tour.step3.badge': 'Readiness check',
+  'tour.step3.summary': 'The readiness check looks for useful details such as dates, metric targets, and image descriptions. Apply the available quick fixes to tidy up your report.',
+  'tour.step3.tip': 'Review suggested details before sharing. You know your project best, and Undo is there if you need it.',
+  'tour.step3.action': 'Apply quick fixes',
+
+  'tour.step4.title': 'See what changed since last time',
+  'tour.step4.badge': 'Compare updates',
+  'tour.step4.summary': 'Open the comparison view to spot changes between your baseline and current report, including metric updates, new milestones, and resolved blockers.',
+  'tour.step4.tip': 'Close the comparison window when you’re ready to continue. Saved snapshots also let you revisit earlier updates.',
+  'tour.step4.action': 'Compare report versions',
+
+  'tour.step5.title': 'Choose the right look for your audience',
+  'tour.step5.badge': 'Preview & export',
+  'tour.step5.summary': 'Preview your report as an executive email, Slack message, Teams update, or weekly memo. Copy the formatted content, download a file, or print to PDF.',
+  'tour.step5.tip': 'Switch destinations to see each format. Close the preview window to come back to me.',
+  'tour.step5.action': 'Explore export formats',
+
+  'tour.step6.title': 'Share your update with the team',
+  'tour.step6.badge': 'Message tools',
+  'tour.step6.summary': 'Open message tools to compose an email or configure a team channel webhook. The delivery history helps you keep track of your dispatch attempts.',
+  'tour.step6.tip': 'Try a simulated delivery to explore the flow. For email, copy the formatted content into your message body to include graphs.',
+  'tour.step6.action': 'Open message tools',
+
   // Readiness panel is covered by canvas.* keys above.
 } as const;
 
@@ -797,6 +852,61 @@ const zhHant: Dictionary = {
   'export.destJsonDesc': '經結構描述驗證的 JSON，含穩定 ID 與內容模型',
   'export.destHtml': '獨立 HTML',
   'export.destHtmlDesc': '內嵌 Apple 設計樣式的獨立 HTML 檔案',
+
+  // Guided tour (Pip)
+  'tour.ariaLabel': 'Pip 導覽教學',
+  'tour.guideTag': '你的工作區小嚮導',
+  'tour.dismiss': '關閉導覽',
+  'tour.pipTitleFirst': '嗨，我是 Pip！👋',
+  'tour.pipTitleNext': '我們繼續吧！',
+  'tour.pipTitleLast': '你太棒了！',
+  'tour.pipBodyFirst': '我會協助你將日常進度轉化為專業報告。你可以嘗試每個步驟，或隨意瀏覽。',
+  'tour.pipBodyStep': '下一步：{badge}。我會為你示範操作。',
+  'tour.pipBodyLast': '最後一步：將進度更新傳送給團隊。隨時可以再找我進行導覽。',
+  'tour.stepProgress': '第 {current} / {total} 步 · {badge}',
+  'tour.stepsNav': '導覽步驟',
+  'tour.stepJump': '第 {n} 步：{title}',
+  'tour.pipTipLabel': 'Pip 的小提示：',
+  'tour.back': '返回',
+  'tour.next': '下一步',
+  'tour.finish': '完成導覽',
+
+  // Tour steps
+  'tour.step1.title': '從日常進度記錄開始',
+  'tour.step1.badge': '筆記與素材',
+  'tour.step1.summary': '將筆記貼入報告下方的撰寫框中。也可以加入數據指標或圖片。載入範例內容體驗實際效果。',
+  'tour.step1.tip': '範例內容會載入至目前專案中。你可隨時使用「復原」返回原先草稿。',
+  'tour.step1.action': '試用範例筆記',
+
+  'tour.step2.title': '將筆記轉化為報告卡片',
+  'tour.step2.badge': '建立報告',
+  'tour.step2.summary': '生成報告以將更新整理為摘要、指標、風險與後續步驟。選取任一卡片可追溯其資料來源。',
+  'tour.step2.tip': '從筆記、指標或圖片開始。你可以直接編輯生成的卡片，定制屬於你的專屬報告。',
+  'tour.step2.action': '生成報告卡片',
+
+  'tour.step3.title': '完善與潤飾你的報告',
+  'tour.step3.badge': '完備度檢查',
+  'tour.step3.summary': '完備度檢查會評估重要細節，如日期、指標目標與圖片說明。套用快速修復即可讓報告更臻完美。',
+  'tour.step3.tip': '分享前先檢視建議細節。你最了解專案狀況，必要時可隨時復原變更。',
+  'tour.step3.action': '套用快速修復',
+
+  'tour.step4.title': '查看與前次的版本差異',
+  'tour.step4.badge': '比較更新',
+  'tour.step4.summary': '開啟比較檢視，輕鬆掌握基準版本與目前報告間的差異，包含指標更新、新增里程碑及已解決障礙。',
+  'tour.step4.tip': '準備好繼續時關閉比較視窗即可。儲存的快照亦能隨時帶你回顧過往的更新紀錄。',
+  'tour.step4.action': '比較報告版本',
+
+  'tour.step5.title': '為目標讀者選擇合適格式',
+  'tour.step5.badge': '預覽與匯出',
+  'tour.step5.summary': '以高階主管電子郵件、Slack 訊息、Teams 更新或每週備忘錄格式預覽報告。可複製排版內容、下載檔案或列印為 PDF。',
+  'tour.step5.tip': '切換發送目標以檢視各格式效果。關閉預覽視窗即可返回導覽。',
+  'tour.step5.action': '瀏覽匯出格式',
+
+  'tour.step6.title': '與團隊分享進度更新',
+  'tour.step6.badge': '通訊工具',
+  'tour.step6.summary': '開啟訊息工具來撰寫電子郵件或設定團隊頻道 Webhook。發送記錄能協助你追蹤每次發送進度。',
+  'tour.step6.tip': '嘗試模擬發送以體驗完整流程。若使用電子郵件，可將格式化內容貼至信件內文中以包含圖表。',
+  'tour.step6.action': '開啟通訊工具',
 };
 
 const zhHans: Dictionary = {
@@ -1175,6 +1285,61 @@ const zhHans: Dictionary = {
   'export.destJsonDesc': '经架构验证的 JSON，含稳定 ID 与内容模型',
   'export.destHtml': '独立 HTML',
   'export.destHtmlDesc': '内嵌 Apple 设计样式的独立 HTML 文件',
+
+  // Guided tour (Pip)
+  'tour.ariaLabel': 'Pip 导览教学',
+  'tour.guideTag': '你的工作区小向导',
+  'tour.dismiss': '关闭导览',
+  'tour.pipTitleFirst': '嗨，我是 Pip！👋',
+  'tour.pipTitleNext': '我们继续吧！',
+  'tour.pipTitleLast': '你太棒了！',
+  'tour.pipBodyFirst': '我会协助你将日常进度转化为专业报告。你可以尝试每个步骤，或随意浏览。',
+  'tour.pipBodyStep': '下一步：{badge}。我会为你演示操作。',
+  'tour.pipBodyLast': '最后一步：将进度更新发送给团队。随时可以再找我进行导览。',
+  'tour.stepProgress': '第 {current} / {total} 步 · {badge}',
+  'tour.stepsNav': '导览步骤',
+  'tour.stepJump': '第 {n} 步：{title}',
+  'tour.pipTipLabel': 'Pip 的小提示：',
+  'tour.back': '返回',
+  'tour.next': '下一步',
+  'tour.finish': '完成导览',
+
+  // Tour steps
+  'tour.step1.title': '从日常进度记录开始',
+  'tour.step1.badge': '笔记与素材',
+  'tour.step1.summary': '将笔记粘贴到报告下方的编写框中。也可以添加数据指标或图片。载入示例内容体验实际效果。',
+  'tour.step1.tip': '示例内容会载入到当前项目中。你可以随时使用“撤销”返回先前的草稿。',
+  'tour.step1.action': '体验示例笔记',
+
+  'tour.step2.title': '将笔记转化为报告卡片',
+  'tour.step2.badge': '构建报告',
+  'tour.step2.summary': '生成报告以将更新整理为摘要、指标、风险与后续步骤。选择任意卡片可追溯其数据来源。',
+  'tour.step2.tip': '从笔记、指标或图片开始。你可以直接编辑生成的卡片，定制属于你的专属报告。',
+  'tour.step2.action': '生成报告卡片',
+
+  'tour.step3.title': '完善与润饰你的报告',
+  'tour.step3.badge': '完备度检查',
+  'tour.step3.summary': '完备度检查会评估重要细节，如日期、指标目标与图片说明。应用快速修复即可让报告更加完善。',
+  'tour.step3.tip': '分享前先检查建议细节。你最了解项目状况，必要时可随时撤销更改。',
+  'tour.step3.action': '应用快速修复',
+
+  'tour.step4.title': '查看与上次的版本差异',
+  'tour.step4.badge': '对比更新',
+  'tour.step4.summary': '打开对比视图，轻松掌握基准版本与当前报告间的差异，包含指标更新、新增里程碑及已解决阻碍。',
+  'tour.step4.tip': '准备好继续时关闭对比窗口即可。保存的快照也能随时带你回顾以往的更新记录。',
+  'tour.step4.action': '对比报告版本',
+
+  'tour.step5.title': '为目标受众选择合适格式',
+  'tour.step5.badge': '预览与导出',
+  'tour.step5.summary': '以高管电子邮件、Slack 消息、Teams 更新或每周备忘录格式预览报告。可复制排版内容、下载文件或打印为 PDF。',
+  'tour.step5.tip': '切换发送目标以查看各格式效果。关闭预览窗口即可返回导览。',
+  'tour.step5.action': '浏览导出格式',
+
+  'tour.step6.title': '与团队分享进度更新',
+  'tour.step6.badge': '通讯工具',
+  'tour.step6.summary': '打开消息工具来编写电子邮件或配置团队频道 Webhook。发送记录可协助你追踪每次发送进度。',
+  'tour.step6.tip': '尝试模拟发送以体验完整流程。若使用电子邮件，可将格式化内容粘贴至邮件正文中以包含图表。',
+  'tour.step6.action': '打开通讯工具',
 };
 
 export const dictionaries: Record<Locale, Dictionary> = {

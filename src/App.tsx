@@ -365,7 +365,7 @@ export default function App() {
     setExportInitialTool,
     setIsExportOpen,
     setIsGuidedTourOpen,
-  }), [handleLoadSample, handleGenerateReport, project, setInspectedCardId, setHighlightPassage, handleApplyAllFixes]);
+  }, t), [handleLoadSample, handleGenerateReport, project, setInspectedCardId, setHighlightPassage, handleApplyAllFixes, t]);
 
   // 13. Sharing & Message Tool Triggers
   const handleOpenExport = useCallback(() => {

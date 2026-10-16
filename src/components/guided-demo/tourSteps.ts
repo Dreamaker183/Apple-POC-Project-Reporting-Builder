@@ -6,6 +6,7 @@
 import type { TourStep } from './GuidedTour';
 import type { ReportProject, SnippetCard } from '../../types/report';
 import type { MessageToolId } from '../export/ExportModal';
+import { en, type DictKey } from '../../lib/i18n/dictionaries';
 
 export interface TourStepActions {
   onLoadSample: (messy: boolean) => void;
@@ -23,17 +24,21 @@ export interface TourStepActions {
   setIsGuidedTourOpen: (open: boolean) => void;
 }
 
+export type TranslateFn = (key: DictKey, vars?: Record<string, string | number>) => string;
+
 /**
  * Builds the sequence of 6 guided tour steps for exploring the workspace.
  */
-export function buildTourSteps(actions: TourStepActions): TourStep[] {
+export function buildTourSteps(actions: TourStepActions, t?: TranslateFn): TourStep[] {
+  const lookup = t ?? ((key: DictKey) => en[key] ?? key);
+
   return [
     {
-      title: 'Start with your everyday updates',
-      badge: 'Notes & assets',
-      summary: 'Paste your notes into the composer at the bottom of the report. Add numbers or images too. Try the sample to see how it all fits together.',
-      tip: 'The sample loads into the active project. You can use Undo to return to your previous draft.',
-      actionLabel: 'Try the sample notes',
+      title: lookup('tour.step1.title'),
+      badge: lookup('tour.step1.badge'),
+      summary: lookup('tour.step1.summary'),
+      tip: lookup('tour.step1.tip'),
+      actionLabel: lookup('tour.step1.action'),
       onExecute: () => {
         actions.onLoadSample(true);
         actions.setMobileArea('canvas');
@@ -41,11 +46,11 @@ export function buildTourSteps(actions: TourStepActions): TourStep[] {
       },
     },
     {
-      title: 'Turn your notes into report cards',
-      badge: 'Build your report',
-      summary: 'Generate a report to organize your updates into summaries, metrics, risks, and next steps. Select a card to explore where its information came from.',
-      tip: 'Start with some notes, metrics, or an image. You can edit the resulting cards to make the report your own.',
-      actionLabel: 'Generate report cards',
+      title: lookup('tour.step2.title'),
+      badge: lookup('tour.step2.badge'),
+      summary: lookup('tour.step2.summary'),
+      tip: lookup('tour.step2.tip'),
+      actionLabel: lookup('tour.step2.action'),
       onExecute: () => {
         actions.onGenerateReport();
         const project = actions.getProject();
@@ -61,11 +66,11 @@ export function buildTourSteps(actions: TourStepActions): TourStep[] {
       },
     },
     {
-      title: 'Give your report a little polish',
-      badge: 'Readiness check',
-      summary: 'The readiness check looks for useful details such as dates, metric targets, and image descriptions. Apply the available quick fixes to tidy up your report.',
-      tip: 'Review suggested details before sharing. You know your project best, and Undo is there if you need it.',
-      actionLabel: 'Apply quick fixes',
+      title: lookup('tour.step3.title'),
+      badge: lookup('tour.step3.badge'),
+      summary: lookup('tour.step3.summary'),
+      tip: lookup('tour.step3.tip'),
+      actionLabel: lookup('tour.step3.action'),
       onExecute: () => {
         actions.setMobileArea('canvas');
         actions.onApplyAllFixes();
@@ -73,22 +78,22 @@ export function buildTourSteps(actions: TourStepActions): TourStep[] {
       },
     },
     {
-      title: 'See what changed since last time',
-      badge: 'Compare updates',
-      summary: 'Open the comparison view to spot changes between your baseline and current report, including metric updates, new milestones, and resolved blockers.',
-      tip: 'Close the comparison window when you’re ready to continue. Saved snapshots also let you revisit earlier updates.',
-      actionLabel: 'Compare report versions',
+      title: lookup('tour.step4.title'),
+      badge: lookup('tour.step4.badge'),
+      summary: lookup('tour.step4.summary'),
+      tip: lookup('tour.step4.tip'),
+      actionLabel: lookup('tour.step4.action'),
       onExecute: () => {
         actions.setIsSnapshotModalOpen(true);
         actions.setTourStepIndex(4);
       },
     },
     {
-      title: 'Choose the right look for your audience',
-      badge: 'Preview & export',
-      summary: 'Preview your report as an executive email, Slack message, Teams update, or weekly memo. Copy the formatted content, download a file, or print to PDF.',
-      tip: 'Switch destinations to see each format. Close the preview window to come back to me.',
-      actionLabel: 'Explore export formats',
+      title: lookup('tour.step5.title'),
+      badge: lookup('tour.step5.badge'),
+      summary: lookup('tour.step5.summary'),
+      tip: lookup('tour.step5.tip'),
+      actionLabel: lookup('tour.step5.action'),
       onExecute: () => {
         actions.setIsSnapshotModalOpen(false);
         actions.setExportInitialMode('formats');
@@ -97,11 +102,11 @@ export function buildTourSteps(actions: TourStepActions): TourStep[] {
       },
     },
     {
-      title: 'Share your update with the team',
-      badge: 'Message tools',
-      summary: 'Open message tools to compose an email or configure a team channel webhook. The delivery history helps you keep track of your dispatch attempts.',
-      tip: 'Try a simulated delivery to explore the flow. For email, copy the formatted content into your message body to include graphs.',
-      actionLabel: 'Open message tools',
+      title: lookup('tour.step6.title'),
+      badge: lookup('tour.step6.badge'),
+      summary: lookup('tour.step6.summary'),
+      tip: lookup('tour.step6.tip'),
+      actionLabel: lookup('tour.step6.action'),
       onExecute: () => {
         actions.setIsSnapshotModalOpen(false);
         actions.setExportInitialMode('tools');

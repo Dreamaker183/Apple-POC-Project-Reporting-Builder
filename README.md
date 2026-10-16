@@ -1,7 +1,7 @@
 # Project Reporting Builder
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/apple/swift-artwork/main/images/swift-logo.svg" width="64" height="64" alt="Project Reporting Builder Icon" />
+  <img src="./docs/assets/app-icon.svg" width="80" height="80" alt="Project Reporting Builder Icon" />
 </p>
 
 <h3 align="center">Modular, Truth-Preserving Executive Status Intelligence</h3>

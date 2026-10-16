@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" fill="none">
+  <defs>
+    <!-- Background Apple Gradient -->
+    <linearGradient id="bgGrad" x1="64" y1="0" x2="64" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2997FF"/>
+      <stop offset="100%" stop-color="#0062D2"/>
+    </linearGradient>
+
+    <!-- Card Subtle Drop Shadow -->
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="125%" filterUnits="objectBoundingBox">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#002D6E" flood-opacity="0.3"/>
+    </filter>
+
+    <!-- Card Face Gradient -->
+    <linearGradient id="cardGrad" x1="64" y1="28" x2="64" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F5F5F7"/>
+    </linearGradient>
+
+    <!-- Inner Highlight for Apple Squircle -->
+    <linearGradient id="innerStroke" x1="64" y1="4" x2="64" y2="124" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Apple macOS Squircle Body -->
+  <rect x="4" y="4" width="120" height="120" rx="27" fill="url(#bgGrad)"/>
+  <rect x="4.5" y="4.5" width="119" height="119" rx="26.5" stroke="url(#innerStroke)" stroke-width="1"/>
+
+  <!-- Back Snippet Card (Subtle Stack Illusion) -->
+  <rect x="36" y="24" width="56" height="74" rx="7" fill="#FFFFFF" fill-opacity="0.22"/>
+
+  <!-- Middle Snippet Card -->
+  <rect x="30" y="28" width="68" height="74" rx="7" fill="#FFFFFF" fill-opacity="0.45"/>
+
+  <!-- Front Executive Snippet Card -->
+  <g filter="url(#cardShadow)">
+    <rect x="24" y="32" width="80" height="72" rx="7" fill="url(#cardGrad)"/>
+    <rect x="24.5" y="32.5" width="79" height="71" rx="6.5" stroke="#E5E5EA" stroke-width="1"/>
+  </g>
+
+  <!-- Card Content: Status Badge & Title -->
+  <rect x="32" y="40" width="28" height="4" rx="2" fill="#0071E3"/>
+  <circle cx="88" cy="42" r="2.5" fill="#34C759"/>
+
+  <!-- Card Content: Key Metrics / Summary Lines -->
+  <rect x="32" y="49" width="64" height="2.5" rx="1.25" fill="#8E8E93" fill-opacity="0.5"/>
+  <rect x="32" y="55" width="48" height="2.5" rx="1.25" fill="#8E8E93" fill-opacity="0.3"/>
+
+  <!-- Card Content: Mini KPI Bar Visualization -->
+  <rect x="32" y="65" width="64" height="6" rx="3" fill="#E5E5EA"/>
+  <rect x="32" y="65" width="46" height="6" rx="3" fill="#0071E3"/>
+  <!-- Target line -->
+  <line x1="68" y1="63" x2="68" y2="73" stroke="#1D1D1F" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Card Content: Trend sparkline / check indicators -->
+  <path d="M33 86 L45 81 L55 84 L68 76 L80 79 L93 72" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="93" cy="72" r="2" fill="#34C759"/>
+</svg>
