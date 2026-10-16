@@ -75,7 +75,7 @@ describe('Zod Schema & Data Validation', () => {
     const project = {
       id: 'proj-1',
       title: 'Customer Portal Modernization',
-      reportingPeriod: '5–9 October 2026',
+      reportingPeriod: '2026-10-09',
       rawNotes: 'Sprint completed.',
       metrics: [],
       images: [],

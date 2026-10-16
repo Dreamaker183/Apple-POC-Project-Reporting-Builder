@@ -162,7 +162,7 @@ export function createSampleProject(useMessyInput: boolean = false): ReportProje
   return {
     id: 'project-sample-customer-portal',
     title: 'Customer Portal Modernization',
-    reportingPeriod: '5–9 October 2026',
+    reportingPeriod: '2026-10-09',
     rawNotes: sourceText,
     metrics: SAMPLE_METRICS,
     images: SAMPLE_IMAGES,

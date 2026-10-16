@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDialogFocus } from '../common/useDialogFocus';
+import { useLanguage } from '../../lib/i18n/LanguageContext';
 import { metricGraphText } from '../../lib/export/metricGraphs';
 import { ReportProject, SnippetCard, ExportDestination } from '../../types/report';
 import { exportReportToMarkdown } from '../../lib/export/markdownExport';
@@ -83,6 +84,7 @@ export const ExportModal: React.FC<Props> = ({
   initialTool = 'email',
 }) => {
   useDialogFocus(isOpen, onClose);
+  const { t } = useLanguage();
   const [modalMode, setModalMode] = useState<'formats' | 'tools'>(initialMode);
   const [destination, setDestination] = useState<ExportDestination>('executive_email');
   const [exportScope, setExportScope] = useState<'all' | 'selected'>(
@@ -157,57 +159,57 @@ export const ExportModal: React.FC<Props> = ({
   }> = [
     {
       id: 'executive_email',
-      name: 'Executive Email',
+      name: t('export.destEmail'),
       icon: <Mail className="w-4 h-4 text-[#0071E3]" />,
-      description: 'Polished HTML formatted for Outlook and Gmail with KPI tables',
+      description: t('export.destEmailDesc'),
       ext: 'html',
       mime: 'text/html',
     },
     {
       id: 'slack',
-      name: 'Slack Message',
+      name: t('export.destSlack'),
       icon: <MessageSquare className="w-4 h-4 text-[#E01E5A]" />,
-      description: 'Clean mrkdwn syntax with emoji indicators & quote blocks',
+      description: t('export.destSlackDesc'),
       ext: 'txt',
       mime: 'text/plain',
     },
     {
       id: 'teams',
-      name: 'Microsoft Teams',
+      name: t('export.destTeams'),
       icon: <MessageSquare className="w-4 h-4 text-[#6264A7]" />,
-      description: 'Formatted markdown adapted for Teams channels & chats',
+      description: t('export.destTeamsDesc'),
       ext: 'txt',
       mime: 'text/plain',
     },
     {
       id: 'weekly_status',
-      name: 'Weekly Status Memo',
+      name: t('export.destWeekly'),
       icon: <FileText className="w-4 h-4 text-[#107C41]" />,
-      description: 'Formal executive text memo with numbered sections',
+      description: t('export.destWeeklyDesc'),
       ext: 'txt',
       mime: 'text/plain',
     },
     {
       id: 'markdown',
-      name: 'Markdown (.md)',
+      name: t('export.destMarkdown'),
       icon: <FileCode className="w-4 h-4 text-[#1F1F1F]" />,
-      description: 'Standard GitHub-flavored markdown with card dividers',
+      description: t('export.destMarkdownDesc'),
       ext: 'md',
       mime: 'text/markdown',
     },
     {
       id: 'json',
-      name: 'Structured JSON',
+      name: t('export.destJson'),
       icon: <FileCode className="w-4 h-4 text-[#F59E0B]" />,
-      description: 'Schema-validated JSON with stable IDs and content models',
+      description: t('export.destJsonDesc'),
       ext: 'json',
       mime: 'application/json',
     },
     {
       id: 'html',
-      name: 'Standalone HTML',
+      name: t('export.destHtml'),
       icon: <FileCode className="w-4 h-4 text-[#0071E3]" />,
-      description: 'Self-contained HTML file with embedded Apple design styling',
+      description: t('export.destHtmlDesc'),
       ext: 'html',
       mime: 'text/html',
     },
@@ -244,17 +246,17 @@ export const ExportModal: React.FC<Props> = ({
   const dispatchGraphs = cardsToExport.filter(c => c.type === 'kpi_metric').map(c => ({ label: c.label, graph: metricGraphText(c) })).filter(c => c.graph);
   const handleCopyEmail = async () => {
     const result = await copyToClipboard(emailText, emailHtml);
-    onNotify(result.success ? 'Copied email with metric graphs — paste into your email body.' : 'Could not copy email', result.success ? 'success' : 'error');
+    onNotify(result.success ? t('export.copiedEmail') : t('export.copyFailEmail'), result.success ? 'success' : 'error');
   };
 
   const handleCopy = async () => {
     const res = await copyToClipboard(plainText, htmlText);
     if (res.success) {
       setCopied(true);
-      onNotify('Copied formatted content to clipboard!', 'success');
+      onNotify(t('export.copiedContent'), 'success');
       setTimeout(() => setCopied(false), 2000);
     } else {
-      onNotify(res.error || 'Failed to copy to clipboard', 'error');
+      onNotify(res.error || t('export.copyFail'), 'error');
     }
   };
 
@@ -263,10 +265,10 @@ export const ExportModal: React.FC<Props> = ({
     const res = await copyToClipboard(htmlText);
     if (res.success) {
       setCopiedRawHtml(true);
-      onNotify('Copied raw HTML markup!', 'success');
+      onNotify(t('export.copiedHtml'), 'success');
       setTimeout(() => setCopiedRawHtml(false), 2000);
     } else {
-      onNotify('Failed to copy HTML markup', 'error');
+      onNotify(t('export.copyHtmlFail'), 'error');
     }
   };
 
@@ -274,7 +276,7 @@ export const ExportModal: React.FC<Props> = ({
     const current = destinationsList.find((d) => d.id === destination);
     const filename = `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-report.${current?.ext || 'txt'}`;
     downloadFile(filename, destination === 'executive_email' ? emailHtml : plainText, current?.mime || 'text/plain');
-    onNotify(`Downloaded ${filename}`, 'success');
+    onNotify(t('export.downloaded', { file: filename }), 'success');
   };
 
   const handlePrint = () => {
@@ -289,35 +291,35 @@ export const ExportModal: React.FC<Props> = ({
     handleSaveSettings({ emailTo, emailCc });
     const link = createMailtoLink(emailTo, emailSubject, emailText, emailCc);
     window.location.href = link;
-    onNotify('Opening default mail client compose draft', 'info');
+    onNotify(t('export.openMail'), 'info');
   };
 
   const handleOpenGmailWeb = () => {
     handleSaveSettings({ emailTo, emailCc });
     const link = createGmailComposeLink(emailTo, emailSubject, emailText, emailCc);
     window.open(link, '_blank');
-    onNotify('Opened Gmail web composer draft', 'info');
+    onNotify(t('export.openGmail'), 'info');
   };
 
   const handleOpenOutlookWeb = () => {
     handleSaveSettings({ emailTo });
     const link = createOutlookComposeLink(emailTo, emailSubject, emailText);
     window.open(link, '_blank');
-    onNotify('Opened Outlook web composer draft', 'info');
+    onNotify(t('export.openOutlook'), 'info');
   };
 
   const handleOpenWhatsApp = () => {
     const summary = `${project.title}\n${plainText.slice(0, 1500)}`;
     const link = createWhatsAppShareLink(summary);
     window.open(link, '_blank');
-    onNotify('Opening WhatsApp chat share', 'info');
+    onNotify(t('export.openWhatsApp'), 'info');
   };
 
   const handleOpenTelegram = () => {
     const summary = `${project.title}\n${plainText.slice(0, 1500)}`;
     const link = createTelegramShareLink(summary);
     window.open(link, '_blank');
-    onNotify('Opening Telegram share', 'info');
+    onNotify(t('export.openTelegram'), 'info');
   };
 
   const handleDispatchSlack = async (isTest: boolean) => {
@@ -404,65 +406,65 @@ export const ExportModal: React.FC<Props> = ({
     setIsDispatching(false);
     setDispatchStatus(res);
     setAuditLogs(loadDispatchAuditLog());
-    onNotify(`Verified simulated delivery to ${emailTo}`, 'success');
+    onNotify(t('export.simulatedTo', { to: emailTo }), 'success');
   };
 
   const handleClearAuditLog = () => {
     clearDispatchAuditLog();
     setAuditLogs([]);
-    onNotify('Cleared delivery audit logs', 'info');
+    onNotify(t('export.clearedLog'), 'info');
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs no-print">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs no-print p-0 sm:p-3 lg:p-4">
       <div 
-        className="bg-white rounded-2xl border border-black/10 shadow-2xl max-w-4xl w-full flex flex-col max-h-[92vh] overflow-hidden"
+        className="bg-white rounded-none sm:rounded-2xl border-0 sm:border border-black/10 shadow-2xl max-w-5xl w-full h-[100dvh] sm:h-auto flex flex-col min-h-0 max-h-[100dvh] sm:max-h-[calc(100dvh-1.5rem)] lg:max-h-[92vh] overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="export-dialog-title"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-5 border-b border-black/[0.08]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 p-3 sm:p-4 lg:p-5 border-b border-black/[0.08] shrink-0">
           <div className="flex items-center gap-3">
             <div>
               <h2 id="export-dialog-title" className="text-base font-bold text-[#1F1F1F]">
-                Export & Message Tool Integration
+                {t('export.title')}
               </h2>
-              <p className="text-xs text-[#727272]">
-                Deliver reports to Email, Slack, Teams, Google Chat, Discord, and messaging channels.
+              <p className="hidden sm:block text-xs text-[#727272]">
+                {t('export.subtitle')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             {/* Mode Switcher */}
-            <div className="flex items-center p-0.5 bg-black/[0.04] rounded-lg text-xs font-medium">
+            <div className="flex flex-1 sm:flex-none items-center p-0.5 bg-black/[0.04] rounded-lg text-xs font-medium">
               <button
                 type="button"
                 onClick={() => setModalMode('formats')}
-                className={`px-3 py-1.5 rounded-md transition-all ${
+                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-md transition-all whitespace-nowrap ${
                   modalMode === 'formats' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B] hover:text-[#1D1D1F]'
                 }`}
               >
-                Formats & Preview
+                {t('export.formats')}
               </button>
               <button
                 type="button"
                 onClick={() => setModalMode('tools')}
-                className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${
+                className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${
                   modalMode === 'tools' ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold' : 'text-[#86868B] hover:text-[#1D1D1F]'
                 }`}
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Message Dispatch</span>
+                <span>{t('export.dispatch')}</span>
               </button>
             </div>
 
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-[#727272] hover:text-[#1F1F1F] rounded-lg hover:bg-neutral-100 transition-colors"
-              aria-label="Close dialog"
+              className="shrink-0 p-2 text-[#727272] hover:text-[#1F1F1F] rounded-lg hover:bg-neutral-100 transition-colors"
+              aria-label={t('export.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -471,16 +473,16 @@ export const ExportModal: React.FC<Props> = ({
 
         {/* MODE 1: FORMATS & COPY */}
         {modalMode === 'formats' && (
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-[440px]">
+          <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
             {/* Left Destinations Menu */}
-            <div className="w-full md:w-64 p-4 border-r border-black/[0.08] bg-[#FAFAFA] space-y-4 shrink-0 overflow-y-auto">
+            <div className="export-destination-nav shrink-0 p-2 sm:p-3 border-b border-black/[0.08] bg-[#FAFAFA] overflow-x-auto lg:overflow-y-auto">
               {/* Scope selector */}
               {selectedCards.length > 0 && (
-                <div className="space-y-1.5">
+                <div className="export-scope space-y-1.5 mb-2 sm:mb-3">
                   <span className="text-[11px] font-semibold text-[#727272] uppercase tracking-wider block">
-                    Export Scope
+                    {t('export.scope')}
                   </span>
-                  <div className="grid grid-cols-2 gap-1 p-1 bg-neutral-200/60 rounded-lg text-xs font-medium">
+                  <div className="grid grid-cols-2 gap-1 p-1 bg-neutral-200/60 rounded-lg text-xs font-medium max-w-sm">
                     <button
                       type="button"
                       onClick={() => setExportScope('all')}
@@ -488,7 +490,7 @@ export const ExportModal: React.FC<Props> = ({
                         exportScope === 'all' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
                       }`}
                     >
-                      All ({project.cards.length})
+                      {t('export.allOf', { count: project.cards.length })}
                     </button>
                     <button
                       type="button"
@@ -497,22 +499,22 @@ export const ExportModal: React.FC<Props> = ({
                         exportScope === 'selected' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
                       }`}
                     >
-                      Selected ({selectedCards.length})
+                      {t('export.selectedOf', { count: selectedCards.length })}
                     </button>
                   </div>
                 </div>
               )}
 
-              <div className="space-y-1">
-                <span className="text-[11px] font-semibold text-[#727272] uppercase tracking-wider block mb-2">
-                  Destinations
+              <div className="export-destinations flex flex-col sm:flex-row sm:items-center gap-1.5">
+                <span className="hidden sm:block text-[11px] font-semibold text-[#727272] uppercase tracking-wider shrink-0 mr-1">
+                  {t('export.destinations')}
                 </span>
                 {destinationsList.map((dest) => (
                   <button
                     key={dest.id}
                     type="button"
                     onClick={() => setDestination(dest.id)}
-                    className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start gap-2.5 ${
+                    className={`w-full sm:w-auto sm:min-w-[150px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center sm:items-start gap-2 ${
                       destination === dest.id
                         ? 'bg-white shadow-xs border border-black/10 font-semibold text-[#1F1F1F]'
                         : 'hover:bg-neutral-200/50 text-[#727272]'
@@ -521,7 +523,7 @@ export const ExportModal: React.FC<Props> = ({
                     <div className="mt-0.5 shrink-0">{dest.icon}</div>
                     <div className="min-w-0">
                       <div className="text-xs truncate">{dest.name}</div>
-                      <div className="text-[10px] text-[#727272] leading-tight line-clamp-1 font-normal">
+                      <div className="hidden lg:block text-[10px] text-[#727272] leading-tight line-clamp-1 font-normal">
                         {dest.description}
                       </div>
                     </div>
@@ -530,38 +532,38 @@ export const ExportModal: React.FC<Props> = ({
               </div>
 
               {/* Print action button */}
-              <div className="pt-2 border-t border-black/[0.08]">
+              <div className="export-print-action pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-black/[0.08] sm:pl-2 shrink-0">
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-[#1F1F1F] bg-white border border-black/15 rounded-xl hover:bg-neutral-50 transition-colors shadow-xs"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-[#1F1F1F] bg-white border border-black/15 rounded-xl hover:bg-neutral-50 transition-colors shadow-xs whitespace-nowrap"
                 >
                   <Printer className="w-3.5 h-3.5 text-[#0071E3]" />
-                  <span>Browser Print / PDF</span>
+                  <span>{t('export.printPdf')}</span>
                 </button>
               </div>
             </div>
 
             {/* Right Preview */}
-            <div className="flex-1 flex flex-col p-5 bg-white overflow-hidden">
-              <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] mb-3">
-                <div>
-                  <span className="text-xs font-bold text-[#1F1F1F] uppercase tracking-wider">
-                    {destinationsList.find((d) => d.id === destination)?.name} Preview
+            <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 lg:p-5 bg-white overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-black/[0.06] mb-3 shrink-0">
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-[#1F1F1F] uppercase tracking-wider break-words">
+                    {t('export.previewFor', { name: destinationsList.find((d) => d.id === destination)?.name ?? '' })}
                   </span>
                   <span className="text-xs text-[#727272] ml-2">
-                    ({cardsToExport.length} cards)
+                    {t('export.cardsCount', { count: cardsToExport.length })}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={handleCopy}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0071E3] text-white text-xs font-semibold rounded-lg hover:bg-[#0071E3]/90 transition-all shadow-sm"
                   >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                    <span>{copied ? t('export.copied') : t('export.copy')}</span>
                   </button>
 
                   {htmlText && destination === 'executive_email' && (
@@ -569,10 +571,10 @@ export const ExportModal: React.FC<Props> = ({
                       type="button"
                       onClick={handleCopyRawHtml}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 bg-neutral-100 text-[#1F1F1F] text-xs font-semibold rounded-lg hover:bg-neutral-200 transition-colors"
-                      title="Copy raw HTML markup"
+                      title={t('export.rawHtmlTitle')}
                     >
                       <Code2 className="w-3.5 h-3.5" />
-                      <span>{copiedRawHtml ? 'HTML Copied!' : 'Raw HTML'}</span>
+                      <span>{copiedRawHtml ? t('export.htmlCopied') : t('export.rawHtml')}</span>
                     </button>
                   )}
 
@@ -582,12 +584,12 @@ export const ExportModal: React.FC<Props> = ({
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 text-[#1F1F1F] text-xs font-semibold rounded-lg hover:bg-neutral-200 transition-colors"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Download</span>
+                    <span>{t('export.download')}</span>
                   </button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-auto bg-[#F8FAFC] border border-black/[0.08] rounded-xl font-mono leading-relaxed select-all p-4 text-xs">
+              <div className="flex-1 min-h-0 overflow-auto overscroll-contain bg-[#F8FAFC] border border-black/[0.08] rounded-xl font-mono leading-relaxed select-all p-3 sm:p-4 text-[11px] sm:text-xs">
                 {destination === 'executive_email' && htmlText ? (
                   <div 
                     className="font-sans" 
@@ -603,16 +605,16 @@ export const ExportModal: React.FC<Props> = ({
 
         {/* MODE 2: DIRECT MESSAGE TOOL DISPATCH */}
         {modalMode === 'tools' && (
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-[460px]">
+          <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
             {/* Tool Selector Sidebar */}
-            <div className="w-full md:w-60 p-4 border-r border-black/[0.08] bg-[#FAFAFA] space-y-2 shrink-0 overflow-y-auto">
+            <div className="export-tool-nav shrink-0 p-2 sm:p-3 border-b border-black/[0.08] bg-[#FAFAFA] overflow-x-auto lg:overflow-y-auto">
               {/* Scope selector */}
               {selectedCards.length > 0 && (
-                <div className="mb-3 space-y-1">
+                <div className="export-scope mb-2 space-y-1">
                   <span className="text-[11px] font-semibold text-[#727272] uppercase tracking-wider block">
-                    Dispatch Scope
+                    {t('export.dispatchScope')}
                   </span>
-                  <div className="grid grid-cols-2 gap-1 p-1 bg-neutral-200/60 rounded-lg text-xs font-medium">
+                  <div className="grid grid-cols-2 gap-1 p-1 bg-neutral-200/60 rounded-lg text-xs font-medium max-w-sm">
                     <button
                       type="button"
                       onClick={() => setExportScope('all')}
@@ -620,7 +622,7 @@ export const ExportModal: React.FC<Props> = ({
                         exportScope === 'all' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
                       }`}
                     >
-                      All ({project.cards.length})
+                      {t('export.allOf', { count: project.cards.length })}
                     </button>
                     <button
                       type="button"
@@ -629,21 +631,21 @@ export const ExportModal: React.FC<Props> = ({
                         exportScope === 'selected' ? 'bg-white text-[#1F1F1F] shadow-xs' : 'text-[#727272]'
                       }`}
                     >
-                      Selected ({selectedCards.length})
+                      {t('export.selectedOf', { count: selectedCards.length })}
                     </button>
                   </div>
                 </div>
               )}
 
-              <span className="text-[11px] font-semibold text-[#727272] uppercase tracking-wider block mb-2">
-                Connected Message Tools
+              <span className="hidden sm:block text-[11px] font-semibold text-[#727272] uppercase tracking-wider mb-2">
+                {t('export.tools')}
               </span>
 
               {/* 1. Email Suite */}
               <button
                 type="button"
                 onClick={() => { setSelectedTool('email'); setDispatchStatus(null); }}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
                   selectedTool === 'email'
                     ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
                     : 'text-[#727272] hover:bg-neutral-200/50'
@@ -651,8 +653,8 @@ export const ExportModal: React.FC<Props> = ({
               >
                 <Mail className="w-4 h-4 text-[#0071E3]" />
                 <div>
-                  <div className="text-xs">Email Suite</div>
-                  <div className="text-[10px] text-[#727272] font-normal">Mail, Outlook, Gmail</div>
+                  <div className="text-xs">{t('export.toolEmail')}</div>
+                  <div className="text-[10px] text-[#727272] font-normal">{t('export.toolEmailSub')}</div>
                 </div>
               </button>
 
@@ -660,7 +662,7 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('slack'); setDispatchStatus(null); }}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
                   selectedTool === 'slack'
                     ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
                     : 'text-[#727272] hover:bg-neutral-200/50'
@@ -668,8 +670,8 @@ export const ExportModal: React.FC<Props> = ({
               >
                 <MessageSquare className="w-4 h-4 text-[#E01E5A]" />
                 <div>
-                  <div className="text-xs">Slack Channel</div>
-                  <div className="text-[10px] text-[#727272] font-normal">Block Kit & Webhook</div>
+                  <div className="text-xs">{t('export.toolSlack')}</div>
+                  <div className="text-[10px] text-[#727272] font-normal">{t('export.toolSlackSub')}</div>
                 </div>
               </button>
 
@@ -677,7 +679,7 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('teams'); setDispatchStatus(null); }}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
                   selectedTool === 'teams'
                     ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
                     : 'text-[#727272] hover:bg-neutral-200/50'
@@ -685,8 +687,8 @@ export const ExportModal: React.FC<Props> = ({
               >
                 <MessageSquare className="w-4 h-4 text-[#6264A7]" />
                 <div>
-                  <div className="text-xs">Microsoft Teams</div>
-                  <div className="text-[10px] text-[#727272] font-normal">Adaptive Card 1.4</div>
+                  <div className="text-xs">{t('export.toolTeams')}</div>
+                  <div className="text-[10px] text-[#727272] font-normal">{t('export.toolTeamsSub')}</div>
                 </div>
               </button>
 
@@ -694,7 +696,7 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('google_chat'); setDispatchStatus(null); }}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
                   selectedTool === 'google_chat'
                     ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
                     : 'text-[#727272] hover:bg-neutral-200/50'
@@ -702,8 +704,8 @@ export const ExportModal: React.FC<Props> = ({
               >
                 <MessageSquare className="w-4 h-4 text-[#00AC47]" />
                 <div>
-                  <div className="text-xs">Google Chat</div>
-                  <div className="text-[10px] text-[#727272] font-normal">Card v2 Spaces Webhook</div>
+                  <div className="text-xs">{t('export.toolGchat')}</div>
+                  <div className="text-[10px] text-[#727272] font-normal">{t('export.toolGchatSub')}</div>
                 </div>
               </button>
 
@@ -711,7 +713,7 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('discord'); setDispatchStatus(null); }}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
                   selectedTool === 'discord'
                     ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
                     : 'text-[#727272] hover:bg-neutral-200/50'
@@ -719,8 +721,8 @@ export const ExportModal: React.FC<Props> = ({
               >
                 <MessageSquare className="w-4 h-4 text-[#5865F2]" />
                 <div>
-                  <div className="text-xs">Discord Channel</div>
-                  <div className="text-[10px] text-[#727272] font-normal">Rich Embed Webhook</div>
+                  <div className="text-xs">{t('export.toolDiscord')}</div>
+                  <div className="text-[10px] text-[#727272] font-normal">{t('export.toolDiscordSub')}</div>
                 </div>
               </button>
 
@@ -728,7 +730,7 @@ export const ExportModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => { setSelectedTool('mobile'); setDispatchStatus(null); }}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
+                className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center gap-2 ${
                   selectedTool === 'mobile'
                     ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
                     : 'text-[#727272] hover:bg-neutral-200/50'
@@ -736,17 +738,17 @@ export const ExportModal: React.FC<Props> = ({
               >
                 <Smartphone className="w-4 h-4 text-[#25D366]" />
                 <div>
-                  <div className="text-xs">Quick Mobile Share</div>
-                  <div className="text-[10px] text-[#727272] font-normal">WhatsApp & Telegram</div>
+                  <div className="text-xs">{t('export.toolMobile')}</div>
+                  <div className="text-[10px] text-[#727272] font-normal">{t('export.toolMobileSub')}</div>
                 </div>
               </button>
 
               {/* 7. Delivery Audit Log */}
-              <div className="pt-2 border-t border-black/[0.08]">
+              <div className="export-audit-nav pt-0 sm:pt-2 border-t-0 sm:border-t border-black/[0.08]">
                 <button
                   type="button"
                   onClick={() => { setSelectedTool('audit_log'); setDispatchStatus(null); }}
-                  className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between ${
+                  className={`export-tool-button w-full sm:w-auto sm:min-w-[145px] text-left p-2 sm:p-2.5 rounded-xl transition-all flex items-center justify-between ${
                     selectedTool === 'audit_log'
                       ? 'bg-white shadow-xs border border-black/10 font-bold text-[#1F1F1F]'
                       : 'text-[#727272] hover:bg-neutral-200/50'
@@ -754,7 +756,7 @@ export const ExportModal: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2">
                     <History className="w-4 h-4 text-[#F59E0B]" />
-                    <div className="text-xs">Audit History</div>
+                    <div className="text-xs">{t('export.audit')}</div>
                   </div>
                   {auditLogs.length > 0 && (
                     <span className="text-[10px] font-bold bg-[#0071E3]/10 text-[#0071E3] px-1.5 py-0.5 rounded-full">
@@ -766,30 +768,30 @@ export const ExportModal: React.FC<Props> = ({
             </div>
 
             {/* Tool Active Workspace */}
-            <div className="flex-1 p-6 overflow-y-auto bg-white space-y-5">
+            <div className="flex-1 min-h-0 p-3 sm:p-4 lg:p-6 overflow-y-auto overscroll-contain bg-white space-y-4 sm:space-y-5">
               {selectedTool !== 'audit_log' && <details className="rounded-2xl border border-black/[0.08] bg-[#FAFAFA] overflow-hidden" open={selectedTool === 'email'}>
-                <summary className="px-4 py-3 cursor-pointer text-[13px] font-semibold text-[#1D1D1F]">{selectedTool === 'email' ? 'Executive email preview · graphs included' : 'Metric graphs included in this message'}</summary>
+                <summary className="px-4 py-3 cursor-pointer text-[13px] font-semibold text-[#1D1D1F]">{selectedTool === 'email' ? t('export.emailPreview') : t('export.graphsIncluded')}</summary>
                 {selectedTool === 'email' ? <div>
-                  <div className="px-4 pb-3 flex flex-wrap items-center gap-3"><button type="button" onClick={handleCopyEmail} className="rounded-full bg-[#0071E3] text-white px-4 py-2 text-xs font-medium">Copy email with graphs</button><span className="text-[11px] text-[#6E6E73]">Compose links use plain text. Paste the copied email into the message body for graphs.</span></div>
+                  <div className="px-4 pb-3 flex flex-wrap items-center gap-3"><button type="button" onClick={handleCopyEmail} className="rounded-full bg-[#0071E3] text-white px-4 py-2 text-xs font-medium">{t('export.copyEmailGraphs')}</button><span className="text-[11px] text-[#6E6E73]">{t('export.composeHint')}</span></div>
                   <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: emailHtml }} />
                 </div> : <div className="px-4 pb-4 space-y-3">
-                  <p className="text-[11px] text-[#6E6E73]">Portable text graphs preserve your values in webhook messages without external image hosting.</p>
-                  {dispatchGraphs.length ? dispatchGraphs.map((metric, index) => <div key={index} className="rounded-xl bg-white border border-black/[0.06] p-3"><div className="text-xs font-medium mb-2">{metric.label}</div><pre className="text-[11px] whitespace-pre-wrap text-[#424245] leading-relaxed">{metric.graph}</pre></div>) : <p className="text-xs text-[#6E6E73]">Choose a bar, donut, or comparison form for a metric to include its graph.</p>}
+                  <p className="text-[11px] text-[#6E6E73]">{t('export.portableGraphs')}</p>
+                  {dispatchGraphs.length ? dispatchGraphs.map((metric, index) => <div key={index} className="rounded-xl bg-white border border-black/[0.06] p-3"><div className="text-xs font-medium mb-2">{metric.label}</div><pre className="text-[11px] whitespace-pre-wrap text-[#424245] leading-relaxed">{metric.graph}</pre></div>) : <p className="text-xs text-[#6E6E73]">{t('export.chooseGraph')}</p>}
                 </div>}
               </details>}
               {/* TOOL 1: EMAIL SUITE */}
               {selectedTool === 'email' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-bold text-[#1F1F1F]">Email Client & Web Composer Dispatch</h3>
+                    <h3 className="text-sm font-bold text-[#1F1F1F]">{t('export.emailTitle')}</h3>
                     <p className="text-xs text-[#727272]">
-                      Launch formatted executive status updates into Apple Mail, Outlook, or Gmail with custom recipients.
+                      {t('export.emailDesc')}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">To: Primary Recipient(s)</label>
+                      <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">{t('export.toLabel')}</label>
                       <input
                         type="text"
                         value={emailTo}
@@ -799,7 +801,7 @@ export const ExportModal: React.FC<Props> = ({
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">CC: Team / Observers</label>
+                      <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">{t('export.ccLabel')}</label>
                       <input
                         type="text"
                         value={emailCc}
@@ -811,7 +813,7 @@ export const ExportModal: React.FC<Props> = ({
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">Subject</label>
+                    <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">{t('export.subjectLabel')}</label>
                     <input
                       type="text"
                       value={emailSubject}
@@ -843,7 +845,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-3.5 py-2 bg-[#0071E3] text-white text-xs font-semibold rounded-xl hover:bg-[#0071E3]/90 flex items-center gap-2 shadow-xs transition-transform active:scale-[0.99]"
                     >
                       <Mail className="w-3.5 h-3.5" />
-                      <span>Open in Default Mail App</span>
+                      <span>{t('export.openMailApp')}</span>
                     </button>
 
                     <button
@@ -852,7 +854,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-[#1F1F1F] text-xs font-semibold rounded-xl flex items-center gap-2 transition-colors"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-[#EA4335]" />
-                      <span>Compose in Gmail Web</span>
+                      <span>{t('export.gmailWeb')}</span>
                     </button>
 
                     <button
@@ -861,7 +863,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-[#1F1F1F] text-xs font-semibold rounded-xl flex items-center gap-2 transition-colors"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-[#0078D4]" />
-                      <span>Compose in Outlook Web</span>
+                      <span>{t('export.outlookWeb')}</span>
                     </button>
 
                     <button
@@ -872,7 +874,7 @@ export const ExportModal: React.FC<Props> = ({
                       title="Simulate enterprise SMTP delivery"
                     >
                       <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Simulate Direct Send</span>
+                      <span>{t('export.simulateSend')}</span>
                     </button>
                   </div>
                 </div>
@@ -882,16 +884,16 @@ export const ExportModal: React.FC<Props> = ({
               {selectedTool === 'slack' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-bold text-[#1F1F1F]">Slack Channel Incoming Webhook</h3>
+                    <h3 className="text-sm font-bold text-[#1F1F1F]">{t('export.slackTitle')}</h3>
                     <p className="text-xs text-[#727272]">
-                      Dispatch structured Block Kit notifications directly into your team's Slack channel.
+                      {t('export.slackDesc')}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">
-                        Channel Identifier
+                        {t('export.channelId')}
                       </label>
                       <input
                         type="text"
@@ -903,7 +905,7 @@ export const ExportModal: React.FC<Props> = ({
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">
-                        Slack Incoming Webhook URL
+                        {t('export.slackUrl')}
                       </label>
                       <input
                         type="url"
@@ -916,7 +918,7 @@ export const ExportModal: React.FC<Props> = ({
                   </div>
 
                   <p className="text-[11px] text-[#727272]">
-                    Leave Webhook URL empty to execute a simulated sandbox delivery with HTTP 200 verification.
+                    {t('export.webhookHint')}
                   </p>
 
                   {dispatchStatus && (
@@ -949,7 +951,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-4 py-2 bg-[#E01E5A] hover:bg-[#c0184b] text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>{isDispatching ? 'Posting to Slack...' : `Post to ${slackChannelName || 'Slack'}`}</span>
+                      <span>{isDispatching ? t('export.postingTo', { name: slackChannelName || t('export.toolSlack') }) : t('export.postTo', { name: slackChannelName || t('export.toolSlack') })}</span>
                     </button>
 
                     <button
@@ -959,7 +961,7 @@ export const ExportModal: React.FC<Props> = ({
                       title="Simulate dispatch without external webhook"
                     >
                       <Zap className="w-3.5 h-3.5 text-[#E01E5A]" />
-                      <span>Test Simulation</span>
+                      <span>{t('export.testSim')}</span>
                     </button>
 
                     <button
@@ -967,7 +969,7 @@ export const ExportModal: React.FC<Props> = ({
                       onClick={() => setShowPayloadInspector(!showPayloadInspector)}
                       className="text-xs text-[#727272] hover:text-[#1F1F1F] ml-auto font-medium"
                     >
-                      {showPayloadInspector ? 'Hide Payload' : 'Inspect Block Kit JSON'}
+                      {showPayloadInspector ? t('export.hidePayload') : t('export.inspectSlack')}
                     </button>
                   </div>
 
@@ -983,16 +985,16 @@ export const ExportModal: React.FC<Props> = ({
               {selectedTool === 'teams' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-bold text-[#1F1F1F]">Microsoft Teams Connector Webhook</h3>
+                    <h3 className="text-sm font-bold text-[#1F1F1F]">{t('export.teamsTitle')}</h3>
                     <p className="text-xs text-[#727272]">
-                      Deliver formatted Adaptive Card reports into Microsoft Teams channels or Power Automate flows.
+                      {t('export.teamsDesc')}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">
-                        Channel / Team Name
+                        {t('export.teamName')}
                       </label>
                       <input
                         type="text"
@@ -1004,7 +1006,7 @@ export const ExportModal: React.FC<Props> = ({
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">
-                        Teams Webhook URL
+                        {t('export.teamsUrl')}
                       </label>
                       <input
                         type="url"
@@ -1046,7 +1048,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-4 py-2 bg-[#6264A7] hover:bg-[#525492] text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>{isDispatching ? 'Posting to Teams...' : `Post to ${teamsChannelName || 'Teams'}`}</span>
+                      <span>{isDispatching ? t('export.postingTo', { name: teamsChannelName || t('export.toolTeams') }) : t('export.postTo', { name: teamsChannelName || t('export.toolTeams') })}</span>
                     </button>
 
                     <button
@@ -1056,7 +1058,7 @@ export const ExportModal: React.FC<Props> = ({
                       title="Simulate dispatch without external webhook"
                     >
                       <Zap className="w-3.5 h-3.5 text-[#6264A7]" />
-                      <span>Test Simulation</span>
+                      <span>{t('export.testSim')}</span>
                     </button>
 
                     <button
@@ -1064,7 +1066,7 @@ export const ExportModal: React.FC<Props> = ({
                       onClick={() => setShowPayloadInspector(!showPayloadInspector)}
                       className="text-xs text-[#727272] hover:text-[#1F1F1F] ml-auto font-medium"
                     >
-                      {showPayloadInspector ? 'Hide Payload' : 'Inspect Adaptive Card'}
+                      {showPayloadInspector ? t('export.hidePayload') : t('export.inspectAdaptive')}
                     </button>
                   </div>
 
@@ -1080,16 +1082,16 @@ export const ExportModal: React.FC<Props> = ({
               {selectedTool === 'google_chat' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-bold text-[#1F1F1F]">Google Chat & Spaces Webhook (Card v2)</h3>
+                    <h3 className="text-sm font-bold text-[#1F1F1F]">{t('export.gchatTitle')}</h3>
                     <p className="text-xs text-[#727272]">
-                      Deliver interactive Card v2 updates directly into Google Workspace Spaces channels.
+                      {t('export.gchatDesc')}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">
-                        Google Space Name
+                        {t('export.spaceName')}
                       </label>
                       <input
                         type="text"
@@ -1101,7 +1103,7 @@ export const ExportModal: React.FC<Props> = ({
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">
-                        Google Chat Webhook URL
+                        {t('export.gchatUrl')}
                       </label>
                       <input
                         type="url"
@@ -1139,7 +1141,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-4 py-2 bg-[#00AC47] hover:bg-[#008f3a] text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>{isDispatching ? 'Posting to Google Chat...' : `Post to ${googleChatSpaceName || 'Google Chat'}`}</span>
+                      <span>{isDispatching ? t('export.postingTo', { name: googleChatSpaceName || t('export.toolGchat') }) : t('export.postTo', { name: googleChatSpaceName || t('export.toolGchat') })}</span>
                     </button>
 
                     <button
@@ -1149,7 +1151,7 @@ export const ExportModal: React.FC<Props> = ({
                       title="Simulate dispatch without external webhook"
                     >
                       <Zap className="w-3.5 h-3.5 text-[#00AC47]" />
-                      <span>Test Simulation</span>
+                      <span>{t('export.testSim')}</span>
                     </button>
 
                     <button
@@ -1157,7 +1159,7 @@ export const ExportModal: React.FC<Props> = ({
                       onClick={() => setShowPayloadInspector(!showPayloadInspector)}
                       className="text-xs text-[#727272] hover:text-[#1F1F1F] ml-auto font-medium"
                     >
-                      {showPayloadInspector ? 'Hide Payload' : 'Inspect Card v2 JSON'}
+                      {showPayloadInspector ? t('export.hidePayload') : t('export.inspectCardV2')}
                     </button>
                   </div>
 
@@ -1173,16 +1175,16 @@ export const ExportModal: React.FC<Props> = ({
               {selectedTool === 'discord' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-bold text-[#1F1F1F]">Discord Webhook Embed</h3>
+                    <h3 className="text-sm font-bold text-[#1F1F1F]">{t('export.discordTitle')}</h3>
                     <p className="text-xs text-[#727272]">
-                      Dispatch styled Rich Embed updates directly to Discord developer or team channels.
+                      {t('export.discordDesc')}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">
-                        Channel Name
+                        {t('export.channelName')}
                       </label>
                       <input
                         type="text"
@@ -1194,7 +1196,7 @@ export const ExportModal: React.FC<Props> = ({
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-[#1F1F1F] block mb-1">
-                        Discord Webhook URL
+                        {t('export.discordUrl')}
                       </label>
                       <input
                         type="url"
@@ -1232,7 +1234,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-4 py-2 bg-[#5865F2] hover:bg-[#4752c4] text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>{isDispatching ? 'Posting to Discord...' : `Post to ${discordChannelName || 'Discord'}`}</span>
+                      <span>{isDispatching ? t('export.postingTo', { name: discordChannelName || t('export.toolDiscord') }) : t('export.postTo', { name: discordChannelName || t('export.toolDiscord') })}</span>
                     </button>
 
                     <button
@@ -1242,7 +1244,7 @@ export const ExportModal: React.FC<Props> = ({
                       title="Simulate dispatch without external webhook"
                     >
                       <Zap className="w-3.5 h-3.5 text-[#5865F2]" />
-                      <span>Test Simulation</span>
+                      <span>{t('export.testSim')}</span>
                     </button>
 
                     <button
@@ -1250,7 +1252,7 @@ export const ExportModal: React.FC<Props> = ({
                       onClick={() => setShowPayloadInspector(!showPayloadInspector)}
                       className="text-xs text-[#727272] hover:text-[#1F1F1F] ml-auto font-medium"
                     >
-                      {showPayloadInspector ? 'Hide Payload' : 'Inspect Embed JSON'}
+                      {showPayloadInspector ? t('export.hidePayload') : t('export.inspectEmbed')}
                     </button>
                   </div>
 
@@ -1266,16 +1268,16 @@ export const ExportModal: React.FC<Props> = ({
               {selectedTool === 'mobile' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-bold text-[#1F1F1F]">Quick Mobile & Chat Share</h3>
+                    <h3 className="text-sm font-bold text-[#1F1F1F]">{t('export.mobileTitle')}</h3>
                     <p className="text-xs text-[#727272]">
-                      Instantly open prefilled summaries in WhatsApp, Telegram, or copy mobile-optimized snippets.
+                      {t('export.mobileDesc')}
                     </p>
                   </div>
 
                   <div className="p-4 bg-[#F8FAFC] border border-black/[0.08] rounded-xl space-y-3">
                     <div className="text-xs font-semibold text-[#1F1F1F] flex items-center gap-2">
                       <Smartphone className="w-4 h-4 text-[#0071E3]" />
-                      <span>Mobile Executive Digest Preview</span>
+                      <span>{t('export.digestPreview')}</span>
                     </div>
                     <p className="text-xs text-[#727272] font-mono leading-relaxed line-clamp-4">
                       {plainText}
@@ -1289,7 +1291,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-4 py-2 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-xs transition-transform active:scale-[0.99]"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>Share via WhatsApp</span>
+                      <span>{t('export.shareWhatsApp')}</span>
                     </button>
 
                     <button
@@ -1298,7 +1300,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-4 py-2 bg-[#229ED9] hover:bg-[#1d8bc0] text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-xs transition-transform active:scale-[0.99]"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>Share via Telegram</span>
+                      <span>{t('export.shareTelegram')}</span>
                     </button>
 
                     <button
@@ -1307,7 +1309,7 @@ export const ExportModal: React.FC<Props> = ({
                       className="px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-[#1F1F1F] text-xs font-semibold rounded-xl flex items-center gap-2 transition-colors ml-auto"
                     >
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Copy Mobile Text</span>
+                      <span>{t('export.copyMobile')}</span>
                     </button>
                   </div>
                 </div>
@@ -1318,9 +1320,9 @@ export const ExportModal: React.FC<Props> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-[#1F1F1F]">Message Dispatch Audit Trail</h3>
+                      <h3 className="text-sm font-bold text-[#1F1F1F]">{t('export.auditTitle')}</h3>
                       <p className="text-xs text-[#727272]">
-                        Complete log of all message dispatches, destinations, and verification receipts.
+                        {t('export.auditDesc')}
                       </p>
                     </div>
 
@@ -1331,7 +1333,7 @@ export const ExportModal: React.FC<Props> = ({
                         className="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1"
                       >
                         <Trash2 className="w-3 h-3" />
-                        <span>Clear History</span>
+                        <span>{t('export.clearHistory')}</span>
                       </button>
                     )}
                   </div>
@@ -1339,9 +1341,9 @@ export const ExportModal: React.FC<Props> = ({
                   {auditLogs.length === 0 ? (
                     <div className="p-8 text-center border border-dashed border-black/15 rounded-xl bg-neutral-50/50 space-y-2">
                       <History className="w-6 h-6 text-[#727272] mx-auto" />
-                      <div className="text-xs font-semibold text-[#1F1F1F]">No Dispatches Recorded Yet</div>
+                      <div className="text-xs font-semibold text-[#1F1F1F]">{t('export.noDispatch')}</div>
                       <p className="text-[11px] text-[#727272] max-w-xs mx-auto">
-                        Use Email, Slack, Teams, Google Chat, or Discord dispatch above to record deliveries in this session.
+                        {t('export.noDispatchHint')}
                       </p>
                     </div>
                   ) : (
@@ -1361,7 +1363,7 @@ export const ExportModal: React.FC<Props> = ({
                                   ? 'bg-emerald-100 text-emerald-800' 
                                   : 'bg-blue-100 text-blue-800'
                               }`}>
-                                {log.status}
+                                {log.status === 'delivered' ? t('export.delivered') : t('export.scheduled')}
                               </span>
                             </div>
                             <div className="text-[11px] text-[#727272] line-clamp-1">{log.summary}</div>

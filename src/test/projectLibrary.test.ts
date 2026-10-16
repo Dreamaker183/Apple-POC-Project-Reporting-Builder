@@ -15,6 +15,7 @@ import {
   loadLibrary,
   makeSnapshot,
   migrateLegacyDraft,
+  normalizeReportingPeriod,
   saveLibrary,
   snapshotLabelFor,
   snapshotsForProject,
@@ -130,8 +131,14 @@ describe('Project library: folders, time flow & migration', () => {
   });
 
   it('derives snapshot labels from the reporting period with a date fallback', () => {
-    expect(snapshotLabelFor({ reportingPeriod: '5–9 October 2026' })).toBe('5–9 October 2026');
+    expect(snapshotLabelFor({ reportingPeriod: '2026-10-09' })).toBe('2026-10-09');
     expect(snapshotLabelFor({ reportingPeriod: '   ' }).length).toBeGreaterThan(0);
+  });
+
+  it('normalizes legacy free-text periods to empty ISO dates', () => {
+    expect(normalizeReportingPeriod('2026-10-09')).toBe('2026-10-09');
+    expect(normalizeReportingPeriod('5–9 October 2026')).toBe('');
+    expect(normalizeReportingPeriod('')).toBe('');
   });
 
   it('creates blank projects and folders with sane defaults', () => {

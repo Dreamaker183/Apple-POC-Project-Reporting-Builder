@@ -4,13 +4,26 @@
  */
 
 import { ReportProject, ReadinessScore, ReadinessItem } from '../../types/report';
+import { DictKey, en } from '../i18n/dictionaries';
+
+export type ScoreT = (key: DictKey, vars?: Record<string, string | number>) => string;
+
+const englishT: ScoreT = (key, vars) => {
+  let text: string = en[key] ?? key;
+  if (vars) {
+    for (const [name, value] of Object.entries(vars)) {
+      text = text.replaceAll(`{${name}}`, String(value));
+    }
+  }
+  return text;
+};
 
 /**
  * Evaluates an explainable Executive-Ready score and diagnostic checklist.
  * Note: Checks structural completeness, accessibility, and clarity.
  * Does not claim to independently verify underlying factual accuracy.
  */
-export function calculateExecutiveScore(project: ReportProject): ReadinessScore {
+export function calculateExecutiveScore(project: ReportProject, t: ScoreT = englishT): ReadinessScore {
   const items: ReadinessItem[] = [];
 
   // Check 1: Executive Summary presence
@@ -19,9 +32,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-exec-summary',
       category: 'completeness',
-      label: 'Executive Summary Card',
+      label: t('score.execLabel'),
       status: 'fail',
-      description: 'Senior leaders require a concise executive summary before reviewing detailed cards.',
+      description: t('score.execMissing'),
       actionableFix: 'Add Executive Summary card summarizing bottom-line achievements.',
       spotlight: 'add-card',
       spotlightCardType: 'executive_summary',
@@ -30,9 +43,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-exec-summary',
       category: 'completeness',
-      label: 'Executive Summary Card',
+      label: t('score.execLabel'),
       status: 'pass',
-      description: 'Executive summary is present with concise accomplishments.',
+      description: t('score.execPresent'),
       actionableFix: 'Looking great.',
       cardId: execCard.id,
     });
@@ -46,9 +59,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-unconfirmed-release',
       category: 'completeness',
-      label: 'Release Schedule Clarity',
+      label: t('score.releaseLabel'),
       status: 'warning',
-      description: 'Report notes release date is unconfirmed. Senior leaders will ask about timeline dependencies.',
+      description: t('score.releaseWarn'),
       actionableFix: 'Clarify release date target window or specify security gating dependency.',
       cardId: unconfirmedCard.id,
     });
@@ -56,9 +69,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-unconfirmed-release',
       category: 'completeness',
-      label: 'Release Schedule Clarity',
+      label: t('score.releaseLabel'),
       status: 'pass',
-      description: 'Release timeline status is unambiguously stated.',
+      description: t('score.releaseOk'),
       actionableFix: 'Looking great.',
     });
   }
@@ -68,9 +81,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-reporting-period',
       category: 'completeness',
-      label: 'Reporting Period Header',
+      label: t('score.periodLabel'),
       status: 'warning',
-      description: 'Report header lacks active date window (e.g. 5–9 October 2026).',
+      description: t('score.periodMissing'),
       actionableFix: 'Set the reporting period window in header.',
       spotlight: 'header',
     });
@@ -78,9 +91,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-reporting-period',
       category: 'completeness',
-      label: 'Reporting Period Header',
+      label: t('score.periodLabel'),
       status: 'pass',
-      description: `Period defined: ${project.reportingPeriod}`,
+      description: t('score.periodDefined', { period: project.reportingPeriod }),
       actionableFix: 'Looking great.',
     });
   }
@@ -91,9 +104,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-metrics-presence',
       category: 'metrics',
-      label: 'Quantitative KPI Metrics',
+      label: t('score.metricsLabel'),
       status: 'warning',
-      description: 'Status reports carry more weight with at least one quantitative metric.',
+      description: t('score.metricsMissing'),
       actionableFix: 'Add at least one KPI metric (e.g. velocity, latency, or defects).',
       spotlight: 'add-card',
       spotlightCardType: 'kpi_metric',
@@ -104,9 +117,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       items.push({
         id: 'check-metrics-targets',
         category: 'metrics',
-        label: 'Metric Benchmark Targets',
+        label: t('score.targetsLabel'),
         status: 'warning',
-        description: `${missingTargets.length} metric(s) lack a target benchmark for comparison.`,
+        description: t('score.targetsMissing', { count: missingTargets.length }),
         actionableFix: `Set target benchmark for "${missingTargets[0].title}".`,
         cardId: missingTargets[0].id,
       });
@@ -114,9 +127,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       items.push({
         id: 'check-metrics-targets',
         category: 'metrics',
-        label: 'Metric Benchmark Targets',
+        label: t('score.targetsLabel'),
         status: 'pass',
-        description: 'All metrics have clear comparative targets established.',
+        description: t('score.targetsOk'),
         actionableFix: 'Looking great.',
       });
     }
@@ -142,9 +155,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-action-ownership',
       category: 'ownership',
-      label: 'Action Item Ownership',
+      label: t('score.ownershipLabel'),
       status: 'warning',
-      description: `${unassignedSteps} next step(s) lack a named DRI (Directly Responsible Individual).`,
+      description: t('score.ownershipMissing', { count: unassignedSteps }),
       actionableFix: 'Assign DRI owner to next steps for accountability.',
       cardId: ownerlessCard?.id,
     });
@@ -152,18 +165,18 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
     items.push({
       id: 'check-action-ownership',
       category: 'ownership',
-      label: 'Action Item Ownership',
+      label: t('score.ownershipLabel'),
       status: 'pass',
-      description: 'All next steps have named DRIs assigned.',
+      description: t('score.ownershipOk'),
       actionableFix: 'Looking great.',
     });
   } else {
     items.push({
       id: 'check-action-ownership',
       category: 'ownership',
-      label: 'Action Plan Defined',
+      label: t('score.actionPlanLabel'),
       status: 'fail',
-      description: 'No actionable next steps identified for upcoming review cycle.',
+      description: t('score.actionPlanMissing'),
       actionableFix: 'Add a Next Steps card with prioritized action items.',
       spotlight: 'add-card',
       spotlightCardType: 'next_steps',
@@ -178,9 +191,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       items.push({
         id: 'check-accessibility-alt',
         category: 'accessibility',
-        label: 'Image Alternative Text (WCAG AA)',
+        label: t('score.altLabel'),
         status: 'fail',
-        description: `${missingAlt.length} visual asset(s) lack descriptive alternative text for screen readers.`,
+        description: t('score.altMissing', { count: missingAlt.length }),
         actionableFix: `Provide descriptive alt text for "${missingAlt[0].title}".`,
         cardId: missingAlt[0].id,
       });
@@ -188,9 +201,9 @@ export function calculateExecutiveScore(project: ReportProject): ReadinessScore 
       items.push({
         id: 'check-accessibility-alt',
         category: 'accessibility',
-        label: 'Image Alternative Text (WCAG AA)',
+        label: t('score.altLabel'),
         status: 'pass',
-        description: 'All visual assets have descriptive, accessible alternative text.',
+        description: t('score.altOk'),
         actionableFix: 'Looking great.',
       });
     }

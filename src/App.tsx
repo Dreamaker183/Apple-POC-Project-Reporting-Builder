@@ -47,9 +47,11 @@ import { SnapshotComparisonModal } from './components/composition/SnapshotCompar
 import { GuidedTour, TourStep } from './components/guided-demo/GuidedTour';
 import { ShortcutsModal } from './components/common/ShortcutsModal';
 import { Toast, ToastMessage } from './components/common/Toast';
+import { useLanguage } from './lib/i18n/LanguageContext';
 import { Eye, Folder } from 'lucide-react';
 
 export default function App() {
+  const { t } = useLanguage();
   // 1. Project library (folders + projects + time-flow snapshots), local-only.
   //    First run migrates the legacy single draft or seeds the sample workspace.
   const [library, setLibrary] = useState<ProjectLibrary>(() => loadLibrary());
@@ -393,7 +395,7 @@ export default function App() {
   const handleApplyAllFixes = () => {
     recordHistory();
     let current = { ...project };
-    const score = calculateExecutiveScore(current);
+    const score = calculateExecutiveScore(current, t);
     score.items.forEach((item) => {
       if (item.status !== 'pass') {
         current = applyQuickFixToProject(current, item.id);
@@ -830,19 +832,19 @@ export default function App() {
   };
 
   // Computed per-project readiness (sidebar dots + active canvas badge)
-  const readinessScore = useMemo(() => calculateExecutiveScore(project), [project]);
+  const readinessScore = useMemo(() => calculateExecutiveScore(project, t), [project, t]);
 
   const readinessByProject = useMemo(() => {
     const map: Record<string, number> = {};
     for (const p of library.projects) {
       try {
-        map[p.id] = calculateExecutiveScore(p).score;
+        map[p.id] = calculateExecutiveScore(p, t).score;
       } catch {
         map[p.id] = 0;
       }
     }
     return map;
-  }, [library.projects]);
+  }, [library.projects, t]);
 
   const activeSnapshots = useMemo(
     () => snapshotsForProject(library.snapshots, library.activeProjectId),

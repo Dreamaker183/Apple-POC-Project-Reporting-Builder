@@ -51,6 +51,7 @@ describe('Export & Serialization Reliability', () => {
     expect(html).toContain('<!DOCTYPE html>');
     expect(html).toContain('<title>Customer Portal Modernization — Executive Report</title>');
     expect(html).toContain('snippet-card');
+    expect(html).toContain('data-metric-graph="bar"');
   });
 
   it('formats correctly across all 4 destinations using exact same underlying facts', () => {

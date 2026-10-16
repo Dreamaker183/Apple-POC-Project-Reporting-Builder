@@ -24,6 +24,17 @@ import { MetricInput, ImageAssetInput, MetricChartStyle } from '../../types/repo
 import { MetricChart, CHART_STYLE_OPTIONS } from '../cards/MetricChart';
 import { ClassificationFinding, FindingCategory, cardsFromFindings, classifyPassages } from '../../lib/parsing/classifier';
 import { SnippetCard } from '../../types/report';
+import { useLanguage } from '../../lib/i18n/LanguageContext';
+import { DictKey } from '../../lib/i18n/dictionaries';
+
+type TFn = (key: DictKey, vars?: Record<string, string | number>) => string;
+
+const CHART_LABEL_KEYS: Record<MetricChartStyle, { label: DictKey; hint: DictKey }> = {
+  number: { label: 'composer.chartNumber', hint: 'composer.chartNumberHint' },
+  bar: { label: 'composer.chartBar', hint: 'composer.chartBarHint' },
+  donut: { label: 'composer.chartDonut', hint: 'composer.chartDonutHint' },
+  trend: { label: 'composer.chartTrend', hint: 'composer.chartTrendHint' },
+};
 
 const ChartStyleIcon: React.FC<{ id: MetricChartStyle; className?: string }> = ({ id, className }) => {
   const Icon = id === 'bar' ? ChartColumn : id === 'donut' ? ChartPie : id === 'trend' ? TrendingUp : Hash;
@@ -35,20 +46,23 @@ const ChartStyleIconButton: React.FC<{
   label: string;
   active?: boolean;
   onClick?: () => void;
-}> = ({ id, label, active, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    title={label}
-    aria-label={`${label} graph`}
-    aria-pressed={active}
-    className={`p-1.5 rounded-lg transition-colors ${
-      active ? 'bg-[#0071E3]/15 text-[#0071E3]' : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.05]'
-    }`}
-  >
-    <ChartStyleIcon id={id} className="w-4 h-4" />
-  </button>
-);
+}> = ({ id, label, active, onClick }) => {
+  const { t } = useLanguage();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={t('composer.graphLabel', { label })}
+      aria-pressed={active}
+      className={`p-1.5 rounded-lg transition-colors ${
+        active ? 'bg-[#0071E3]/15 text-[#0071E3]' : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.05]'
+      }`}
+    >
+      <ChartStyleIcon id={id} className="w-4 h-4" />
+    </button>
+  );
+};
 
 interface Props {
   projectId: string;
@@ -86,6 +100,7 @@ export const ChatComposer: React.FC<Props> = ({
   onApplyFindings,
   onNotify,
 }) => {
+  const { t } = useLanguage();
   const [showMetrics, setShowMetrics] = useState(false);
   const [submittedAttachments, setSubmittedAttachments] = useState<Set<string>>(() => {
     try {
@@ -165,18 +180,18 @@ export const ChatComposer: React.FC<Props> = ({
   const handleAddMetric = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!metricName.trim()) {
-      setMetricError('Metric name is required');
+      setMetricError(t('composer.errNameRequired'));
       return;
     }
     const val = metricValue.trim() ? Number(metricValue) : NaN;
     if (!Number.isFinite(val)) {
-      setMetricError('Value must be a valid number');
+      setMetricError(t('composer.errValueNumber'));
       return;
     }
     const targetNum = metricTarget.trim() ? Number(metricTarget) : undefined;
     const prevNum = metricPrev.trim() ? Number(metricPrev) : undefined;
     if ((targetNum !== undefined && !Number.isFinite(targetNum)) || (prevNum !== undefined && !Number.isFinite(prevNum))) {
-      setMetricError('Target and previous value must be valid numbers');
+      setMetricError(t('composer.errTargetPrevNumber'));
       return;
     }
     onMetricsChange([
@@ -200,7 +215,7 @@ export const ChatComposer: React.FC<Props> = ({
     setMetricPrev('');
     setMetricNote('');
     setMetricError(null);
-    notify(`Metric added (${metrics.length + 1} total)`);
+    notify(t('composer.metricAdded', { count: metrics.length + 1 }));
     // Stay ready for the next entry: keep panel + style, refocus name
     requestAnimationFrame(() => metricNameRef.current?.focus());
   };
@@ -223,7 +238,7 @@ export const ChatComposer: React.FC<Props> = ({
   const handleDeleteSelectedMetrics = () => {
     if (selectedMetricIds.size === 0) return;
     onMetricsChange(metrics.filter((m) => !selectedMetricIds.has(m.id)));
-    notify(`Removed ${selectedMetricIds.size} metric${selectedMetricIds.size === 1 ? '' : 's'}`, 'info');
+    notify(t('composer.metricsRemoved', { count: selectedMetricIds.size }), 'info');
     setSelectedMetricIds(new Set());
   };
 
@@ -231,13 +246,13 @@ export const ChatComposer: React.FC<Props> = ({
   const processFile = (file: File) => {
     setMediaError(null);
     if (!ALLOWED_TYPES.includes(file.type)) {
-      const msg = `Unsupported format: ${file.type}. Allowed: PNG, JPEG, WebP, SVG.`;
+      const msg = t('composer.errFormat', { type: file.type });
       setMediaError(msg);
       notify(msg, 'error');
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      const msg = `File exceeds 5MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`;
+      const msg = t('composer.errTooBig', { size: (file.size / (1024 * 1024)).toFixed(1) });
       setMediaError(msg);
       notify(msg, 'error');
       return;
@@ -257,8 +272,8 @@ export const ChatComposer: React.FC<Props> = ({
       ]);
     };
     reader.onerror = () => {
-      setMediaError('Failed to read image file.');
-      notify('Failed to read image file.', 'error');
+      setMediaError(t('composer.errReadFailed'));
+      notify(t('composer.errReadFailed'), 'error');
     };
     reader.readAsDataURL(file);
   };
@@ -321,12 +336,12 @@ export const ChatComposer: React.FC<Props> = ({
   };
 
   const categoryLabels: Record<FindingCategory, string> = {
-    accomplishment: 'Accomplishment',
-    metric: 'Metric',
-    risk: 'Risk / blocker',
-    action: 'Action',
-    milestone: 'Milestone',
-    context: 'Context',
+    accomplishment: t('composer.catAccomplishment'),
+    metric: t('composer.catMetric'),
+    risk: t('composer.catRisk'),
+    action: t('composer.catAction'),
+    milestone: t('composer.catMilestone'),
+    context: t('composer.catContext'),
   };
 
   useEffect(() => {
@@ -357,18 +372,18 @@ export const ChatComposer: React.FC<Props> = ({
         >
         {reviewFindings && <div className="absolute inset-x-0 bottom-0 z-40 max-h-[68vh] overflow-y-auto rounded-[26px] border border-black/[0.08] bg-[#FAFAFA] p-4 sm:p-5 shadow-[0_16px_48px_rgba(0,0,0,0.18)]">
           <div className="flex items-start justify-between gap-4 mb-3">
-            <div><h2 className="text-[16px] font-semibold text-[#1D1D1F]">Review findings</h2><p className="mt-0.5 text-xs text-[#6E6E73]">Check the category and evidence. Nothing is added until you confirm.</p></div>
-            <button type="button" onClick={() => setReviewFindings(null)} aria-label="Close review" className="p-1.5 rounded-full hover:bg-black/[0.06]"><X className="w-4 h-4" /></button>
+            <div><h2 className="text-[16px] font-semibold text-[#1D1D1F]">{t('composer.reviewTitle')}</h2><p className="mt-0.5 text-xs text-[#6E6E73]">{t('composer.reviewSubtitle')}</p></div>
+            <button type="button" onClick={() => setReviewFindings(null)} aria-label={t('composer.closeReview')} className="p-1.5 rounded-full hover:bg-black/[0.06]"><X className="w-4 h-4" /></button>
           </div>
-          {reviewFindings.length === 0 ? <div className="rounded-xl border border-black/[0.08] bg-white p-4 text-sm text-[#6E6E73]">No clear facts found. You can keep the note as source context without creating cards.</div> : <div className="space-y-2 max-h-[min(46vh,380px)] overflow-y-auto">
+          {reviewFindings.length === 0 ? <div className="rounded-xl border border-black/[0.08] bg-white p-4 text-sm text-[#6E6E73]">{t('composer.noFindings')}</div> : <div className="space-y-2 max-h-[min(46vh,380px)] overflow-y-auto">
             {reviewFindings.map((finding) => <div key={finding.id} className={`rounded-xl border bg-white p-3 ${finding.selected ? 'border-[#0071E3]/25' : 'border-black/[0.08] opacity-70'}`}>
               <div className="flex items-start gap-2.5">
-                <input type="checkbox" checked={finding.selected} onChange={(e) => setFinding(finding.id, { selected: e.target.checked })} aria-label={`Include ${finding.title}`} className="mt-1 accent-[#0071E3]" />
+                <input type="checkbox" checked={finding.selected} onChange={(e) => setFinding(finding.id, { selected: e.target.checked })} aria-label={t('composer.includeFinding', { title: finding.title })} className="mt-1 accent-[#0071E3]" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap gap-2 items-center">
                     <strong className="text-[13px] text-[#1D1D1F]">{finding.title}</strong>
                     <select
-                      aria-label={`Category for ${finding.title}`}
+                      aria-label={t('composer.categoryFor', { title: finding.title })}
                       value={finding.category}
                       onChange={(e) => {
                         const nextCat = e.target.value as FindingCategory;
@@ -390,28 +405,28 @@ export const ChatComposer: React.FC<Props> = ({
                     >
                       {(Object.keys(categoryLabels) as FindingCategory[]).map(c => <option key={c} value={c}>{categoryLabels[c]}</option>)}
                     </select>
-                    {finding.confidence === 'review' && <span className="text-[10px] rounded-full bg-amber-50 text-amber-800 px-2 py-1">Check extracted numbers</span>}
+                    {finding.confidence === 'review' && <span className="text-[10px] rounded-full bg-amber-50 text-amber-800 px-2 py-1">{t('composer.checkNumbers')}</span>}
                   </div>
                   <p className="text-xs text-[#424245] mt-1">{finding.detail}</p>
                   <blockquote className="mt-2 border-l-2 border-[#0071E3]/40 pl-2 text-[11px] leading-relaxed text-[#6E6E73]">“{finding.evidence}”</blockquote>
                   {finding.metric && finding.category === 'metric' && <div className="mt-2 grid grid-cols-4 gap-1.5">
-                    <input aria-label="Extracted metric name" value={finding.metric.name} onChange={(e) => setFinding(finding.id, { title: e.target.value, metric: { ...finding.metric!, name: e.target.value } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
-                    <input aria-label="Extracted metric value" type="number" value={finding.metric.value} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, value: Number(e.target.value) } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
-                    <input aria-label="Extracted metric unit" value={finding.metric.unit} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, unit: e.target.value } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
-                    <input aria-label="Extracted metric target" type="number" placeholder="Target" value={finding.metric.target ?? ''} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, target: e.target.value ? Number(e.target.value) : undefined } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                    <input aria-label={t('composer.metricNameAria')} value={finding.metric.name} onChange={(e) => setFinding(finding.id, { title: e.target.value, metric: { ...finding.metric!, name: e.target.value } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                    <input aria-label={t('composer.metricValueAria')} type="number" value={finding.metric.value} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, value: Number(e.target.value) } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                    <input aria-label={t('composer.metricUnitAria')} value={finding.metric.unit} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, unit: e.target.value } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                    <input aria-label={t('composer.metricTargetAria')} type="number" placeholder={t('composer.fieldTarget')} value={finding.metric.target ?? ''} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, target: e.target.value ? Number(e.target.value) : undefined } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
                   </div>}
                 </div>
               </div>
             </div>)}
           </div>}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-3 border-t border-black/[0.06]"><span className="text-[11px] text-[#6E6E73]">Analyzed locally · passage sent nowhere</span><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => setReviewFindings(null)} className="px-3 py-2 text-xs text-[#6E6E73]">Back</button><button type="button" onClick={keepAsContext} className="px-3 py-2 rounded-full border border-black/10 text-[#424245] text-xs">Keep as context</button><button type="button" disabled={!reviewFindings.some(f => f.selected)} onClick={applyReviewedFindings} className="px-4 py-2 rounded-full bg-[#0071E3] text-white text-xs font-medium disabled:opacity-40">Add {reviewFindings.filter(f => f.selected).length} findings</button></div></div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-3 border-t border-black/[0.06]"><span className="text-[11px] text-[#6E6E73]">{t('composer.analyzedLocally')}</span><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => setReviewFindings(null)} className="px-3 py-2 text-xs text-[#6E6E73]">{t('composer.reviewBack')}</button><button type="button" onClick={keepAsContext} className="px-3 py-2 rounded-full border border-black/10 text-[#424245] text-xs">{t('composer.keepAsContext')}</button><button type="button" disabled={!reviewFindings.some(f => f.selected)} onClick={applyReviewedFindings} className="px-4 py-2 rounded-full bg-[#0071E3] text-white text-xs font-medium disabled:opacity-40">{t('composer.addFindings', { count: reviewFindings.filter(f => f.selected).length })}</button></div></div>
         </div>}
         {/* Metrics sheet: placed directly on the chatbot when open, content-sized like before */}
         {showMetrics && (
           <div className="absolute inset-x-0 bottom-0 z-30 max-h-[62vh] overflow-y-auto rounded-[26px] border border-black/[0.08] bg-[#FAFAFA] p-3 shadow-[0_16px_48px_rgba(0,0,0,0.18)]">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold tracking-wide uppercase text-[#86868B]">
-                  Metrics ({metrics.length})
+                  {t('composer.metricsTitle', { count: metrics.length })}
                 </span>
                 <div className="flex items-center gap-1">
                   {selectedMetricIds.size > 0 && (
@@ -421,14 +436,14 @@ export const ChatComposer: React.FC<Props> = ({
                       className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                     >
                       <Trash2 className="w-3 h-3" />
-                      <span>Delete ({selectedMetricIds.size})</span>
+                      <span>{t('composer.deleteMetrics', { count: selectedMetricIds.size })}</span>
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={() => setShowMetrics(false)}
                     className="p-1 text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.05] rounded-full transition-colors"
-                    aria-label="Close metrics"
+                    aria-label={t('composer.closeMetrics')}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -448,14 +463,14 @@ export const ChatComposer: React.FC<Props> = ({
                         setSelectedMetricIds(allMetricsSelected ? new Set() : new Set(metrics.map((m) => m.id)))
                       }
                       className="w-3.5 h-3.5 accent-[#0071E3] cursor-pointer justify-self-center"
-                      aria-label="Select all metrics"
+                      aria-label={t('composer.selectAllMetrics')}
                     />
-                    <span>Metric</span>
-                    <span>Value</span>
-                    <span>Unit</span>
-                    <span>Target</span>
-                    <span>Prev</span>
-                    <span>Graph</span>
+                    <span>{t('composer.colMetric')}</span>
+                    <span>{t('composer.colValue')}</span>
+                    <span>{t('composer.colUnit')}</span>
+                    <span>{t('composer.colTarget')}</span>
+                    <span>{t('composer.colPrev')}</span>
+                    <span>{t('composer.colGraph')}</span>
                     <span />
                   </div>
                   {/* Table rows: tap checkbox to select, tap fields to edit */}
@@ -471,14 +486,14 @@ export const ChatComposer: React.FC<Props> = ({
                         checked={selectedMetricIds.has(m.id)}
                         onChange={() => toggleSelectMetric(m.id)}
                         className="w-3.5 h-3.5 accent-[#0071E3] cursor-pointer justify-self-center"
-                        aria-label={`Select metric ${m.name}`}
+                        aria-label={t('composer.selectMetric', { name: m.name })}
                       />
                       <input
                         type="text"
                         value={m.name}
                         onChange={(e) => handleUpdateMetric(m.id, { name: e.target.value })}
                         className="min-w-0 text-xs text-[#1D1D1F] bg-transparent border-b border-transparent hover:border-black/20 focus:border-[#0071E3] focus:outline-none py-0.5"
-                        aria-label="Metric name"
+                        aria-label={t('composer.metricNameAria')}
                       />
                       <input
                         type="number"
@@ -489,7 +504,7 @@ export const ChatComposer: React.FC<Props> = ({
                           if (!isNaN(v)) handleUpdateMetric(m.id, { value: v });
                         }}
                         className="min-w-0 text-xs text-[#1D1D1F] bg-transparent border-b border-transparent hover:border-black/20 focus:border-[#0071E3] focus:outline-none py-0.5"
-                        aria-label="Metric value"
+                        aria-label={t('composer.metricValueAria')}
                       />
                       <input
                         type="text"
@@ -497,7 +512,7 @@ export const ChatComposer: React.FC<Props> = ({
                         onChange={(e) => handleUpdateMetric(m.id, { unit: e.target.value })}
                         placeholder="—"
                         className="min-w-0 text-xs text-[#1D1D1F] bg-transparent border-b border-transparent hover:border-black/20 focus:border-[#0071E3] focus:outline-none py-0.5"
-                        aria-label="Metric unit"
+                        aria-label={t('composer.metricUnitAria')}
                       />
                       <input
                         type="number"
@@ -510,7 +525,7 @@ export const ChatComposer: React.FC<Props> = ({
                         }
                         placeholder="—"
                         className="min-w-0 text-xs text-[#1D1D1F] bg-transparent border-b border-transparent hover:border-black/20 focus:border-[#0071E3] focus:outline-none py-0.5"
-                        aria-label="Metric target"
+                        aria-label={t('composer.metricTargetAria')}
                       />
                       <input
                         type="number"
@@ -523,17 +538,17 @@ export const ChatComposer: React.FC<Props> = ({
                         }
                         placeholder="—"
                         className="min-w-0 text-xs text-[#1D1D1F] bg-transparent border-b border-transparent hover:border-black/20 focus:border-[#0071E3] focus:outline-none py-0.5"
-                        aria-label="Metric previous value"
+                        aria-label={t('composer.metricPrevAria')}
                       />
                       <select
                         value={m.chartStyle ?? 'number'}
                         onChange={(e) => handleUpdateMetric(m.id, { chartStyle: e.target.value as MetricChartStyle })}
                         className="min-w-0 text-[11px] text-[#1D1D1F] bg-transparent border-b border-transparent hover:border-black/20 focus:border-[#0071E3] focus:outline-none py-0.5 capitalize cursor-pointer"
-                        aria-label={`Graph form for ${m.name}`}
+                        aria-label={t('composer.graphFor', { name: m.name })}
                       >
                         {CHART_STYLE_OPTIONS.map((o) => (
                           <option key={o.id} value={o.id} className="capitalize">
-                            {o.label}
+                            {t(CHART_LABEL_KEYS[o.id].label)}
                           </option>
                         ))}
                       </select>
@@ -546,8 +561,8 @@ export const ChatComposer: React.FC<Props> = ({
                               ? 'text-[#0071E3]'
                               : 'text-[#86868B] hover:text-[#1D1D1F]'
                           }`}
-                          title={m.explanation || 'Add a context note'}
-                          aria-label={`Context note for ${m.name}`}
+                          title={m.explanation || t('composer.addNoteTitle')}
+                          aria-label={t('composer.noteFor', { name: m.name })}
                           aria-expanded={expandedNoteId === m.id}
                         >
                           <StickyNote className="w-3.5 h-3.5" />
@@ -555,8 +570,8 @@ export const ChatComposer: React.FC<Props> = ({
                         <button
                           type="button"
                           onClick={() => onMetricsChange(metrics.filter((x) => x.id !== m.id))}
-                          className="p-0.5 text-[#86868B] hover:text-rose-600 rounded"
-                          aria-label={`Remove metric ${m.name}`}
+                            className="p-0.5 text-[#86868B] hover:text-rose-600 rounded"
+                            aria-label={t('composer.removeMetric', { name: m.name })}
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -574,9 +589,9 @@ export const ChatComposer: React.FC<Props> = ({
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === 'Escape') setExpandedNoteId(null);
                           }}
-                          placeholder="Context note, e.g. On track against sprint commitment…"
+                          placeholder={t('composer.noteExample')}
                           className="w-full text-xs p-1.5 bg-white border border-black/10 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
-                          aria-label={`Context note for ${m.name}`}
+                          aria-label={t('composer.noteFor', { name: m.name })}
                         />
                       </div>
                     )}
@@ -586,26 +601,26 @@ export const ChatComposer: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-black/15 bg-white px-3 py-4 mb-2 text-center text-xs text-[#86868B]">
-                  No metrics yet — add your first one below.
+                  {t('composer.noMetrics')}
                 </div>
               )}
 
               {/* Quick-add row: Enter adds, focus returns here for rapid entry */}
               <div className="flex items-center gap-1 mb-2">
-                <span className="text-[11px] text-[#86868B] mr-1">New graph:</span>
+                <span className="text-[11px] text-[#86868B] mr-1">{t('composer.newGraph')}</span>
                 {CHART_STYLE_OPTIONS.map((opt) => (
                   <ChartStyleIconButton
                     key={opt.id}
                     id={opt.id}
-                    label={opt.label}
+                    label={t(CHART_LABEL_KEYS[opt.id].label)}
                     active={newMetricStyle === opt.id}
                     onClick={() => setNewMetricStyle(opt.id)}
                   />
                 ))}
-                <select aria-label="Metric success direction" value={metricDirection} onChange={(e) => setMetricDirection(e.target.value as MetricInput['direction'])} className="ml-auto min-w-0 bg-white border border-black/10 rounded-lg text-xs p-1.5">
-                  <option value="neutral">No status judgement</option>
-                  <option value="higher">Higher is better</option>
-                  <option value="lower">Lower is better</option>
+                <select aria-label={t('composer.directionAria')} value={metricDirection} onChange={(e) => setMetricDirection(e.target.value as MetricInput['direction'])} className="ml-auto min-w-0 bg-white border border-black/10 rounded-lg text-xs p-1.5">
+                  <option value="neutral">{t('composer.directionNeutral')}</option>
+                  <option value="higher">{t('composer.directionHigher')}</option>
+                  <option value="lower">{t('composer.directionLower')}</option>
                 </select>
               </div>
               <form onSubmit={handleAddMetric} className="flex flex-wrap gap-2">
@@ -617,7 +632,7 @@ export const ChatComposer: React.FC<Props> = ({
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') setShowMetrics(false);
                   }}
-                  placeholder="Metric name *"
+                  placeholder={t('composer.fieldName')}
                   className="flex-[2_1_140px] min-w-0 text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <input
@@ -625,14 +640,14 @@ export const ChatComposer: React.FC<Props> = ({
                   step="any"
                   value={metricValue}
                   onChange={(e) => setMetricValue(e.target.value)}
-                  placeholder="Value *"
+                  placeholder={t('composer.fieldValue')}
                   className="flex-1 min-w-[84px] text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <input
                   type="text"
                   value={metricUnit}
                   onChange={(e) => setMetricUnit(e.target.value)}
-                  placeholder="Unit"
+                  placeholder={t('composer.fieldUnit')}
                   className="flex-1 min-w-[64px] text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <input
@@ -640,7 +655,7 @@ export const ChatComposer: React.FC<Props> = ({
                   step="any"
                   value={metricTarget}
                   onChange={(e) => setMetricTarget(e.target.value)}
-                  placeholder="Target"
+                  placeholder={t('composer.fieldTarget')}
                   className="flex-1 min-w-[84px] text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <input
@@ -648,30 +663,30 @@ export const ChatComposer: React.FC<Props> = ({
                   step="any"
                   value={metricPrev}
                   onChange={(e) => setMetricPrev(e.target.value)}
-                  placeholder="Previous"
+                  placeholder={t('composer.fieldPrev')}
                   className="flex-1 min-w-[84px] text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <input
                   type="text"
                   value={metricNote}
                   onChange={(e) => setMetricNote(e.target.value)}
-                  placeholder="Context note (optional)"
+                  placeholder={t('composer.fieldNote')}
                   className="flex-[3_1_160px] min-w-0 text-xs p-2 bg-white border border-black/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
                 />
                 <button
                   type="submit"
                   className="px-3 py-2 bg-[#1D1D1F] text-white text-xs font-medium rounded-xl hover:bg-black transition-colors flex items-center justify-center gap-1"
-                  title="Add metric (Enter)"
+                  title={t('composer.addTitle')}
                 >
-                  <Check className="w-3.5 h-3.5" /> Add ⏎
+                  <Check className="w-3.5 h-3.5" /> {t('composer.addButton')}
                 </button>
                 {metricError && (
                   <div className="basis-full text-[11px] text-rose-600 bg-rose-50 px-2 py-1 rounded-lg">{metricError}</div>
                 )}
               </form>
-              {(metricValue.trim() && Number.isFinite(Number(metricValue))) && <div className="mt-3 rounded-xl bg-white border border-black/[0.06] p-3"><div className="text-[11px] text-[#6E6E73] mb-2">Preview · {metricName || 'Your metric'}</div>{newMetricStyle === 'number' ? <span className="text-2xl font-semibold">{metricValue}{metricUnit}</span> : <MetricChart datum={{ value: Number(metricValue), unit: metricUnit, target: metricTarget.trim() ? Number(metricTarget) : undefined, previousValue: metricPrev.trim() ? Number(metricPrev) : undefined }} style={newMetricStyle} />}</div>}
+              {(metricValue.trim() && Number.isFinite(Number(metricValue))) && <div className="mt-3 rounded-xl bg-white border border-black/[0.06] p-3"><div className="text-[11px] text-[#6E6E73] mb-2">{t('composer.preview')} · {metricName || t('composer.yourMetric')}</div>{newMetricStyle === 'number' ? <span className="text-2xl font-semibold">{metricValue}{metricUnit}</span> : <MetricChart datum={{ value: Number(metricValue), unit: metricUnit, target: metricTarget.trim() ? Number(metricTarget) : undefined, previousValue: metricPrev.trim() ? Number(metricPrev) : undefined }} style={newMetricStyle} />}</div>}
               <div className="text-[10px] text-[#86868B] pt-1">
-                Tip: press Enter to add, then keep typing the next metric — graph stays on {CHART_STYLE_OPTIONS.find((o) => o.id === newMetricStyle)?.label}.
+                {t('composer.metricTip', { label: t(CHART_LABEL_KEYS[newMetricStyle].label) })}
               </div>
               </>
             </div>
@@ -699,7 +714,7 @@ export const ChatComposer: React.FC<Props> = ({
                 type="button"
                 onClick={() => setMediaError(null)}
                 className="p-0.5 text-rose-400 hover:text-rose-700 rounded"
-                aria-label="Dismiss error"
+                aria-label={t('composer.dismissError')}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -719,7 +734,7 @@ export const ChatComposer: React.FC<Props> = ({
                     onClick={() => {
                       setShowMetrics(true);
                     }}
-                    title="Open metrics table"
+                    title={t('composer.openMetricsTable')}
                     className="flex items-center gap-1 hover:bg-[#0071E3]/15 rounded-full transition-colors"
                   >
                     <BarChart2 className="w-3 h-3 text-[#0071E3]" />
@@ -731,7 +746,7 @@ export const ChatComposer: React.FC<Props> = ({
                     type="button"
                     onClick={() => onMetricsChange(metrics.filter((x) => x.id !== m.id))}
                     className="p-0.5 text-[#86868B] hover:text-rose-600 rounded-full"
-                    aria-label={`Remove metric ${m.name}`}
+                    aria-label={t('composer.removeMetric', { name: m.name })}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -744,7 +759,7 @@ export const ChatComposer: React.FC<Props> = ({
                     type="button"
                     onClick={() => onImagesChange(images.filter((x) => x.id !== img.id))}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#1D1D1F] text-white rounded-full flex items-center justify-center opacity-70 hover:opacity-100 hover:bg-rose-600 focus:opacity-100 transition-opacity"
-                    aria-label={`Remove ${img.name}`}
+                    aria-label={t('composer.removeNamed', { name: img.name })}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -753,12 +768,12 @@ export const ChatComposer: React.FC<Props> = ({
             </div>
           )}
 
-          {showSources && <div className="mx-4 mt-3 rounded-xl bg-[#F5F5F7] p-3 max-h-40 overflow-y-auto"><div className="text-[11px] font-medium text-[#6E6E73] mb-2">Project source notes</div><textarea aria-label="Edit project source notes" value={rawNotes} onChange={(e) => onNotesChange(e.target.value)} rows={4} className="w-full bg-transparent text-[13px] leading-relaxed resize-y focus:outline-none" /></div>}
+          {showSources && <div className="mx-4 mt-3 rounded-xl bg-[#F5F5F7] p-3 max-h-40 overflow-y-auto"><div className="text-[11px] font-medium text-[#6E6E73] mb-2">{t('composer.sourceNotesTitle')}</div><textarea aria-label={t('composer.editSources')} value={rawNotes} onChange={(e) => onNotesChange(e.target.value)} rows={4} className="w-full bg-transparent text-[13px] leading-relaxed resize-y focus:outline-none" /></div>}
           {/* Main text field */}
           <div className="px-4 pt-3">
             <textarea
               ref={draftRef}
-              aria-label="Add a project update"
+              aria-label={t('composer.updateAria')}
               value={draft}
               onChange={(e) => {
                 setDraft(e.target.value);
@@ -766,7 +781,7 @@ export const ChatComposer: React.FC<Props> = ({
               }}
               onKeyDown={handleKeyDown}
               rows={2}
-              placeholder="Add an update. Attach data or photos."
+              placeholder={t('composer.updatePlaceholder')}
               className="w-full bg-transparent text-[15px] leading-relaxed text-[#1D1D1F] placeholder:text-[#76767B] focus:outline-none resize-none min-h-[52px] max-h-[160px]"
             />
           </div>
@@ -783,8 +798,8 @@ export const ChatComposer: React.FC<Props> = ({
                 className={`p-2 rounded-full transition-colors ${
                   showAttach ? 'bg-black/[0.06] text-[#1D1D1F]' : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.04]'
                 }`}
-                title="Attach metrics or photos"
-                aria-label="Attach"
+                title={t('composer.attachTitle')}
+                aria-label={t('composer.attach')}
                 aria-expanded={showAttach}
               >
                 <Plus className="w-5 h-5" />
@@ -806,7 +821,7 @@ export const ChatComposer: React.FC<Props> = ({
                       aria-expanded={showMetricForms}
                     >
                       <BarChart2 className="w-4 h-4 text-[#0071E3]" />
-                      <span className="flex-1">Add metric</span>
+                      <span className="flex-1">{t('composer.addMetric')}</span>
                       {metrics.length > 0 && (
                         <span className="text-[11px] text-[#86868B]">{metrics.length}</span>
                       )}
@@ -815,11 +830,11 @@ export const ChatComposer: React.FC<Props> = ({
                     {showMetricForms && (
                       <div
                         role="menu"
-                        aria-label="Pick a graph form"
+                        aria-label={t('composer.pickGraph')}
                         className="absolute left-0 bottom-full mb-1 sm:mb-0 sm:left-full sm:bottom-0 z-30 sm:ml-2 w-52 bg-white/95 backdrop-blur-xl rounded-2xl border border-black/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.14)] py-1.5 text-[13px] before:absolute before:-left-2 before:top-0 before:bottom-0 before:w-2 before:content-['']"
                       >
                         <div className="px-3.5 pt-1 pb-1 text-[10px] font-semibold tracking-wide uppercase text-[#86868B]">
-                          Graph form
+                          {t('composer.graphForm')}
                         </div>
                         {CHART_STYLE_OPTIONS.map((opt) => (
                           <button
@@ -836,8 +851,8 @@ export const ChatComposer: React.FC<Props> = ({
                           >
                             <ChartStyleIcon id={opt.id} className="w-4 h-4 text-[#0071E3] shrink-0" />
                             <span className="flex-1">
-                              <span className="block leading-tight">{opt.label}</span>
-                              <span className="block text-[10px] text-[#86868B] leading-tight">{opt.hint}</span>
+                              <span className="block leading-tight">{t(CHART_LABEL_KEYS[opt.id].label)}</span>
+                              <span className="block text-[10px] text-[#86868B] leading-tight">{t(CHART_LABEL_KEYS[opt.id].hint)}</span>
                             </span>
                           </button>
                         ))}
@@ -850,7 +865,7 @@ export const ChatComposer: React.FC<Props> = ({
                     className="w-full flex items-center gap-2.5 px-3.5 py-2 hover:bg-black/[0.04] text-[#1D1D1F] transition-colors text-left"
                   >
                     <ImageIcon className="w-4 h-4 text-[#0071E3]" />
-                    <span className="flex-1">Attach photo</span>
+                    <span className="flex-1">{t('composer.attachPhoto')}</span>
                     {images.length > 0 && (
                       <span className="text-[11px] text-[#86868B]">{images.length}</span>
                     )}
@@ -864,8 +879,8 @@ export const ChatComposer: React.FC<Props> = ({
                 type="button"
                 onClick={() => setShowSources(!showSources)}
                 className="p-2 text-[#86868B] hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors"
-                title="Project source notes"
-                aria-label="Toggle project source notes"
+                title={t('composer.sourceNotes')}
+                aria-label={t('composer.toggleSources')}
                 aria-expanded={showSources}
               >
                 <FileText className="w-4 h-4" />
@@ -875,26 +890,26 @@ export const ChatComposer: React.FC<Props> = ({
             <div className="flex-1" />
 
             <span className="text-[11px] text-[#86868B] hidden sm:block pr-1">
-              {draft.length > 0 ? `${draft.length} characters` : '⌘ Enter'}
-              {(pendingMetrics.length > 0 || pendingImages.length > 0) && ` · ${pendingMetrics.length} metrics · ${pendingImages.length} images`}
-              {highlightPassage?.text ? ' · trace linked' : ''}
+              {draft.length > 0 ? t('composer.characters', { n: draft.length }) : t('composer.cmdEnter')}
+              {(pendingMetrics.length > 0 || pendingImages.length > 0) && t('composer.pendingCounts', { metrics: pendingMetrics.length, images: pendingImages.length })}
+              {highlightPassage?.text ? t('composer.traceLinked') : ''}
             </span>
 
             <button
               type="button"
               onClick={submitUpdate}
               disabled={!draft.trim() && !rawNotes.trim() && !metrics.length && !images.length}
-              aria-label={hasCards ? 'Update report' : 'Build report'}
+              aria-label={hasCards ? t('composer.updateReport') : t('composer.buildReport')}
               className="h-9 px-3.5 gap-2 flex items-center justify-center bg-[#0071E3] hover:bg-[#0077ED] text-white rounded-full shadow-sm text-[12px] font-medium transition-all active:scale-95 disabled:opacity-40"
             >
-              <span>{hasCards ? 'Update report' : 'Build report'}</span>
+              <span>{hasCards ? t('composer.updateReport') : t('composer.buildReport')}</span>
               <Send className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         <p className="text-[10px] text-center text-[#86868B] mt-1.5">
-          Your updates stay on this device. Click any card text to edit.
+          {t('composer.privacyNote')}
         </p>
       </div>
     </div>

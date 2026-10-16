@@ -37,6 +37,91 @@
 .workspace-report article { break-inside: avoid; }
 .workspace-report article > div:first-child { border-bottom-color: transparent; margin-bottom: 8px; padding-bottom: 8px; }
 .workspace-report article:focus-visible { outline: 3px solid #0071E3; outline-offset: 3px; }
+
+/* Export modal app layout: horizontal destination/tool rails on compact screens,
+   with a stable two-column workspace when a full desktop viewport is available. */
+.export-destination-nav,
+.export-tool-nav {
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.export-destinations,
+.export-tool-nav > .export-scope,
+.export-tool-nav > .export-tool-button,
+.export-tool-nav > .export-audit-nav {
+  scroll-snap-align: start;
+}
+@media (max-width: 1023px) {
+  .export-destinations,
+  .export-tool-nav {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.375rem;
+    scroll-snap-type: x proximity;
+  }
+  .export-destinations > button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+  .export-tool-nav > .export-scope {
+    flex: 0 0 min(76vw, 20rem);
+    margin: 0 0.25rem 0 0;
+    scroll-snap-align: start;
+  }
+  .export-tool-nav > .export-tool-button,
+  .export-tool-nav > .export-audit-nav {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: max-content;
+    scroll-snap-align: start;
+  }
+  .export-tool-button > div:last-child {
+    white-space: nowrap;
+  }
+  .export-audit-nav {
+    border-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  .export-print-action {
+    width: 100%;
+    border: 0 !important;
+    padding: 0.25rem 0 0 !important;
+  }
+}
+@media (min-width: 1024px) {
+  .export-destination-nav {
+    width: 16rem;
+    border-right: 1px solid rgba(0, 0, 0, .08);
+    border-bottom: 0;
+  }
+  .export-destinations {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .export-destinations > button {
+    width: 100%;
+  }
+  .export-print-action {
+    border-top: 1px solid rgba(0, 0, 0, .08) !important;
+    padding-top: .5rem !important;
+  }
+  .export-tool-nav {
+    width: 15rem;
+    border-right: 1px solid rgba(0, 0, 0, .08);
+    border-bottom: 0;
+  }
+  .export-tool-nav > .export-tool-button,
+  .export-tool-nav > .export-audit-nav {
+    width: 100%;
+  }
+  .export-audit-nav {
+    border-top: 1px solid rgba(0, 0, 0, .08) !important;
+    padding-top: .5rem !important;
+  }
+}
+
 @media (pointer: coarse) {
   button { min-height: 40px; }
   input, textarea, select { font-size: 16px !important; }

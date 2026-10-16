@@ -23,6 +23,7 @@ import {
   Link2,
   GripVertical
 } from 'lucide-react';
+import { useLanguage } from '../../lib/i18n/LanguageContext';
 
 interface DragHandleProps {
   onPointerDown: (e: React.PointerEvent) => void;
@@ -66,6 +67,7 @@ export const CardRenderer: React.FC<Props> = ({
   onShareCard,
   onUpdateCard,
 }) => {
+  const { t } = useLanguage();
   const [showMenu, setShowMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [showSource, setShowSource] = useState(false);
@@ -98,12 +100,12 @@ export const CardRenderer: React.FC<Props> = ({
   const stopEditing = () => setEditing(false);
 
   const cardTypeNames: Record<string, string> = {
-    executive_summary: 'Executive Summary',
-    kpi_metric: 'Metric',
-    risk_blocker: 'Risk or Blocker',
-    next_steps: 'Next Steps',
-    milestone: 'Milestone',
-    visual_update: 'Visual Asset',
+    executive_summary: t('canvas.cardTypeExecutive'),
+    kpi_metric: t('canvas.cardTypeMetric'),
+    risk_blocker: t('canvas.cardTypeRisk'),
+    next_steps: t('canvas.cardTypeNext'),
+    milestone: t('canvas.cardTypeMilestone'),
+    visual_update: t('canvas.cardTypeVisual'),
   };
 
   return (
@@ -147,8 +149,8 @@ export const CardRenderer: React.FC<Props> = ({
           {dragHandle && (
             <button
               type="button"
-              aria-label={`Drag ${card.title} to reorder`}
-              title="Drag to reorder (or press & hold the card)"
+              aria-label={t('card.dragCard', { title: card.title })}
+              title={t('card.dragHint')}
               onPointerDown={dragHandle.onPointerDown}
               className={`p-1 -ml-1.5 rounded-lg transition-colors touch-none cursor-grab active:cursor-grabbing ${
                 dragHandle.active
@@ -164,7 +166,7 @@ export const CardRenderer: React.FC<Props> = ({
             type="checkbox"
             checked={isSelected}
             onChange={() => onToggleSelect(card.id)}
-            aria-label={`Select ${card.title}`}
+            aria-label={t('card.selectCard', { title: card.title })}
             className="w-3.5 h-3.5 rounded border-black/20 text-[#0071E3] focus:ring-0 focus:outline-none cursor-pointer"
           />
 
@@ -173,26 +175,26 @@ export const CardRenderer: React.FC<Props> = ({
           </span>
           {card.sourceRef && (
             <span className="text-[11px] text-[#86868B] hidden sm:inline">
-              · Source verified
+              {t('card.sourceVerified')}
             </span>
           )}
           {card.type === 'visual_update' && card.altText && card.altText.length > 5 && (
             <span className="text-[11px] text-emerald-700 hidden sm:inline">
-              · WCAG Alt Text
+              {t('card.altTextBadge')}
             </span>
           )}
         </div>
 
         {/* Clean Hover Actions */}
         <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-          <button type="button" onClick={() => setEditing(!editing)} aria-label="Edit card details" title="Edit details" className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg"><Pencil className="w-3.5 h-3.5" /></button>
-          {card.sourceRef && <button type="button" onClick={() => setShowSource(!showSource)} aria-label="Show source reference" aria-expanded={showSource} className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg"><Link2 className="w-3.5 h-3.5" /></button>}
+          <button type="button" onClick={() => setEditing(!editing)} aria-label={t('card.editDetails')} title={t('card.editTitle')} className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg"><Pencil className="w-3.5 h-3.5" /></button>
+          {card.sourceRef && <button type="button" onClick={() => setShowSource(!showSource)} aria-label={t('card.showSource')} aria-expanded={showSource} className="p-1.5 text-[#6E6E73] hover:bg-black/[0.04] rounded-lg"><Link2 className="w-3.5 h-3.5" /></button>}
           {/* Quick Duplicate (immediately appends a copy below) */}
           <button
             type="button"
             onClick={() => onCopyCard(card)}
-            title="Duplicate card"
-            aria-label="Duplicate card"
+            title={t('card.duplicate')}
+            aria-label={t('card.duplicate')}
             className="p-1.5 text-[#86868B] hover:text-[#1D1D1F] rounded-lg hover:bg-black/[0.04] transition-colors"
           >
             <CopyPlus className="w-3.5 h-3.5" />
@@ -203,8 +205,8 @@ export const CardRenderer: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowMenu((prev) => !prev)}
-              title="Card options"
-              aria-label="Card options"
+              title={t('card.options')}
+              aria-label={t('card.options')}
               className="p-1.5 text-[#86868B] hover:text-[#1D1D1F] rounded-lg hover:bg-black/[0.04] transition-colors"
             >
               <MoreHorizontal className="w-3.5 h-3.5" />
@@ -222,7 +224,7 @@ export const CardRenderer: React.FC<Props> = ({
                     className="w-full text-left px-3.5 py-1.5 hover:bg-black/[0.04] text-[#1D1D1F] flex items-center gap-2 transition-colors"
                   >
                     <Send className="w-3.5 h-3.5 text-[#0071E3]" />
-                    <span>Send to Chat / Email</span>
+                    <span>{t('card.sendToChat')}</span>
                   </button>
                 )}
 
@@ -236,7 +238,7 @@ export const CardRenderer: React.FC<Props> = ({
                   className="w-full text-left px-3.5 py-1.5 hover:bg-black/[0.04] text-[#1D1D1F] disabled:opacity-40 flex items-center gap-2 transition-colors"
                 >
                   <ChevronUp className="w-3.5 h-3.5 text-[#86868B]" />
-                  <span>Move Up</span>
+                  <span>{t('card.moveUp')}</span>
                 </button>
 
                 <button
@@ -249,7 +251,7 @@ export const CardRenderer: React.FC<Props> = ({
                   className="w-full text-left px-3.5 py-1.5 hover:bg-black/[0.04] text-[#1D1D1F] disabled:opacity-40 flex items-center gap-2 transition-colors"
                 >
                   <ChevronDown className="w-3.5 h-3.5 text-[#86868B]" />
-                  <span>Move Down</span>
+                  <span>{t('card.moveDown')}</span>
                 </button>
 
                 <div className="my-1 border-t border-black/[0.06]" />
@@ -263,7 +265,7 @@ export const CardRenderer: React.FC<Props> = ({
                   className="w-full text-left px-3.5 py-1.5 hover:bg-rose-50 text-rose-600 flex items-center gap-2 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete</span>
+                  <span>{t('card.delete')}</span>
                 </button>
               </div>
             )}
@@ -271,7 +273,7 @@ export const CardRenderer: React.FC<Props> = ({
         </div>
       </div>
 
-      {showSource && card.sourceRef && <div className="no-print mb-4 rounded-xl bg-[#F5F5F7] p-3 text-[12px] leading-relaxed text-[#6E6E73]"><span className="block text-[#1D1D1F] font-medium mb-1">Source reference</span>{card.sourceRef.passageText}</div>}
+      {showSource && card.sourceRef && <div className="no-print mb-4 rounded-xl bg-[#F5F5F7] p-3 text-[12px] leading-relaxed text-[#6E6E73]"><span className="block text-[#1D1D1F] font-medium mb-1">{t('card.sourceRef')}</span>{card.sourceRef.passageText}</div>}
       {/* Specific Card Content (click text to edit inline) */}
       <div onClick={handleBodyClick} className={editing ? 'cursor-text' : ''}>
       {card.type === 'executive_summary' && (
@@ -327,7 +329,7 @@ export const CardRenderer: React.FC<Props> = ({
       {/* Done editing bar */}
       {editing && (
         <div className="no-print mt-3 pt-3 border-t border-black/[0.06] flex items-center justify-between">
-          <span className="text-[11px] text-[#86868B]">Editing — click Done or press Esc</span>
+          <span className="text-[11px] text-[#86868B]">{t('card.editingHint')}</span>
           <button
             type="button"
             onClick={(e) => {
@@ -337,7 +339,7 @@ export const CardRenderer: React.FC<Props> = ({
             className="flex items-center gap-1 px-3 py-1.5 bg-[#0071E3] hover:bg-[#0077ED] text-white text-xs font-medium rounded-full transition-colors"
           >
             <Check className="w-3.5 h-3.5" />
-            <span>Done</span>
+            <span>{t('card.done')}</span>
           </button>
         </div>
       )}

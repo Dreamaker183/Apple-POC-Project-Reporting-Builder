@@ -9,6 +9,7 @@ import { SnippetCard, CardType, MetricInput, ImageAssetInput, ReadinessScore, Re
 import { ReportingDate } from './ReportingDate';
 import { SortableCard } from './SortableCard';
 import { ChatComposer } from '../composer/ChatComposer';
+import { useLanguage } from '../../lib/i18n/LanguageContext';
 import { 
   Plus, 
   Trash2, 
@@ -125,6 +126,7 @@ export const ReportCanvas: React.FC<Props> = ({
   onApplyAllFixes,
   onNotify,
 }) => {
+  const { t } = useLanguage();
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showReadiness, setShowReadiness] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
@@ -197,12 +199,12 @@ export const ReportCanvas: React.FC<Props> = ({
   }, [showReadiness]);
 
   const cardTypeOptions: Array<{ type: CardType; label: string }> = [
-    { type: 'executive_summary', label: 'Executive Summary' },
-    { type: 'kpi_metric', label: 'Metric / Data chart' },
-    { type: 'risk_blocker', label: 'Risk or Blocker' },
-    { type: 'next_steps', label: 'Next Steps & Commitments' },
-    { type: 'milestone', label: 'Milestone' },
-    { type: 'visual_update', label: 'Visual Update' },
+    { type: 'executive_summary', label: t('canvas.cardTypeExecutive') },
+    { type: 'kpi_metric', label: t('canvas.cardTypeMetric') },
+    { type: 'risk_blocker', label: t('canvas.cardTypeRisk') },
+    { type: 'next_steps', label: t('canvas.cardTypeNext') },
+    { type: 'milestone', label: t('canvas.cardTypeMilestone') },
+    { type: 'visual_update', label: t('canvas.cardTypeVisual') },
   ];
 
   // Category counts
@@ -411,18 +413,18 @@ export const ReportCanvas: React.FC<Props> = ({
         }`}
       >
         <input
-          aria-label="Project title"
+          aria-label={t('canvas.titleAria')}
           type="text"
           value={title}
           onChange={(e) => onUpdateTitle(e.target.value)}
-          placeholder="Untitled Report"
+          placeholder={t('canvas.titlePlaceholder')}
            className="w-full text-3xl sm:text-[36px] font-semibold tracking-tight text-[#1D1D1F] bg-transparent border-none focus:outline-none placeholder:text-black/20"
         />
 
         <div className="flex items-center gap-2 text-xs text-[#86868B]">
           <ReportingDate value={reportingPeriod} schedule={sendSchedule} hasCards={cards.length > 0} onDateChange={onUpdatePeriod} onScheduleChange={onScheduleChange} onConfigure={onConfigureDispatch} />
           <span className="text-black/10">|</span>
-          <span>{cards.length} {cards.length === 1 ? 'card' : 'cards'}</span>
+          <span>{t(cards.length === 1 ? 'canvas.cardCountOne' : 'canvas.cardCountMany', { count: cards.length })}</span>
           {readinessScore && (
             <>
               <span className="text-black/10 no-print">|</span>
@@ -432,7 +434,7 @@ export const ReportCanvas: React.FC<Props> = ({
                   type="button"
                   onClick={() => setShowReadiness((prev) => !prev)}
                   aria-expanded={showReadiness}
-                  aria-label={`Executive readiness ${readinessScore.score}%`}
+                  aria-label={t('canvas.readinessAria', { score: readinessScore.score })}
                   className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/80 hover:bg-white border border-black/[0.06] text-[11px] font-medium text-[#1D1D1F] transition-colors"
                 >
                   <span
@@ -444,7 +446,7 @@ export const ReportCanvas: React.FC<Props> = ({
                           : 'bg-rose-500'
                     }`}
                   />
-                  <span>Readiness · {readinessScore.score}%</span>
+                  <span>{t('canvas.readinessLabel', { score: readinessScore.score })}</span>
                 </button>
                 {showReadiness && (
                   <div
@@ -457,8 +459,8 @@ export const ReportCanvas: React.FC<Props> = ({
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="font-semibold text-[#1D1D1F]">Executive readiness · {readinessScore.score}%</div>
-                        <div className="text-[11px] text-[#6E6E73]">{readinessScore.passedChecks} of {readinessScore.totalChecks} checks passed</div>
+                        <div className="font-semibold text-[#1D1D1F]">{t('canvas.readinessTitle', { score: readinessScore.score })}</div>
+                        <div className="text-[11px] text-[#6E6E73]">{t('canvas.readinessChecks', { passed: readinessScore.passedChecks, total: readinessScore.totalChecks })}</div>
                       </div>
                       {readinessScore.score < 100 && onApplyAllFixes && (
                         <button
@@ -470,7 +472,7 @@ export const ReportCanvas: React.FC<Props> = ({
                           className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white text-[11px] font-medium"
                         >
                           <Zap className="w-3 h-3" />
-                          <span>Fix all</span>
+                          <span>{t('canvas.fixAll')}</span>
                         </button>
                       )}
                     </div>
@@ -485,13 +487,14 @@ export const ReportCanvas: React.FC<Props> = ({
                             <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
                           );
                         const target = targetForItem(item);
+                        const addLabel = cardTypeOptions.find((o) => o.type === item.spotlightCardType)?.label ?? t('canvas.addCard');
                         const targetHint =
                           target?.kind === 'card'
-                            ? 'Go to card'
+                            ? t('canvas.goToCard')
                             : target?.kind === 'header'
-                            ? 'Go to header'
+                            ? t('canvas.goToHeader')
                             : target?.kind === 'add'
-                            ? `Add ${cardTypeOptions.find((o) => o.type === item.spotlightCardType)?.label ?? 'card'}`
+                            ? t('canvas.goToAdd', { label: addLabel })
                             : null;
                         const body = (
                           <>
@@ -533,10 +536,10 @@ export const ReportCanvas: React.FC<Props> = ({
                               <button
                                 type="button"
                                 onClick={() => handleFixAndGoto(item)}
-                                title="Apply fix and go to what was fixed"
+                                title={t('canvas.fixAndGo')}
                                 className="shrink-0 px-2 py-1 rounded-lg bg-white border border-black/10 text-[11px] font-medium text-[#0071E3] hover:bg-[#0071E3]/10"
                               >
-                                Fix
+                                {t('canvas.fix')}
                               </button>
                             )}
                           </div>
@@ -564,7 +567,7 @@ export const ReportCanvas: React.FC<Props> = ({
                 : 'text-[#86868B] hover:text-[#1D1D1F]'
             }`}
           >
-            All
+            {t('canvas.filterAll')}
           </button>
           {counts.kpi_metric > 0 && (
             <button
@@ -576,7 +579,7 @@ export const ReportCanvas: React.FC<Props> = ({
                   : 'text-[#86868B] hover:text-[#1D1D1F]'
               }`}
             >
-              Metrics
+              {t('canvas.filterMetrics')}
             </button>
           )}
           {counts.risk_blocker > 0 && (
@@ -589,7 +592,7 @@ export const ReportCanvas: React.FC<Props> = ({
                   : 'text-[#86868B] hover:text-[#1D1D1F]'
               }`}
             >
-              Risks
+              {t('canvas.filterRisks')}
             </button>
           )}
           {counts.next_steps > 0 && (
@@ -602,7 +605,7 @@ export const ReportCanvas: React.FC<Props> = ({
                   : 'text-[#86868B] hover:text-[#1D1D1F]'
               }`}
             >
-              Actions
+              {t('canvas.filterActions')}
             </button>
           )}
           {counts.milestone > 0 && (
@@ -615,7 +618,7 @@ export const ReportCanvas: React.FC<Props> = ({
                   : 'text-[#86868B] hover:text-[#1D1D1F]'
               }`}
             >
-              Milestones
+              {t('canvas.filterMilestones')}
             </button>
           )}
           {counts.visual_update > 0 && (
@@ -628,7 +631,7 @@ export const ReportCanvas: React.FC<Props> = ({
                   : 'text-[#86868B] hover:text-[#1D1D1F]'
               }`}
             >
-              Visuals
+              {t('canvas.filterVisuals')}
             </button>
           )}
         </div>
@@ -640,7 +643,7 @@ export const ReportCanvas: React.FC<Props> = ({
             <Search className="w-3.5 h-3.5 text-[#86868B] absolute left-2.5 top-2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Filter..."
+              placeholder={t('canvas.filterPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="text-xs pl-7 pr-3 py-1 bg-black/[0.03] hover:bg-black/[0.05] focus:bg-white rounded-full border border-transparent focus:border-black/10 focus:outline-none transition-all w-28 sm:w-36"
@@ -652,7 +655,7 @@ export const ReportCanvas: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowAddMenu((prev) => !prev)}
-              aria-label="Add card"
+              aria-label={t('canvas.goToAdd', { label: t('canvas.addCard') })}
               className={`flex items-center gap-1 px-3 py-1 text-xs font-medium text-[#0071E3] hover:text-[#0077ED] bg-[#0071E3]/10 hover:bg-[#0071E3]/15 rounded-full transition-all active:scale-[0.98] ${
                 peek?.kind === 'add' || flash === 'add'
                   ? 'ring-2 ring-[#0071E3] bg-[#0071E3]/20 shadow-[0_4px_16px_rgba(0,113,227,0.35)] scale-105'
@@ -660,7 +663,7 @@ export const ReportCanvas: React.FC<Props> = ({
               }`}
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Card</span>
+              <span>{t('canvas.addCard')}</span>
             </button>
 
             {showAddMenu && (
@@ -696,7 +699,7 @@ export const ReportCanvas: React.FC<Props> = ({
               {allSelected ? <CheckSquare className="w-3.5 h-3.5 text-[#0071E3]" /> : <Square className="w-3.5 h-3.5" />}
             </button>
             <span className="font-medium text-[#1D1D1F]">
-              {selectedCardIds.size} of {cards.length} selected
+              {t('canvas.selectedCount', { selected: selectedCardIds.size, total: cards.length })}
             </span>
           </div>
 
@@ -707,7 +710,7 @@ export const ReportCanvas: React.FC<Props> = ({
               className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[#1D1D1F] hover:bg-black/[0.04] rounded-md transition-colors"
             >
               <Copy className="w-3.5 h-3.5 text-[#0071E3]" />
-              <span>Copy</span>
+              <span>{t('canvas.copy')}</span>
             </button>
 
             {onOpenMessageToolsForSelected && (
@@ -717,7 +720,7 @@ export const ReportCanvas: React.FC<Props> = ({
                 className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[#0071E3] hover:bg-[#0071E3]/10 rounded-md transition-colors"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Send</span>
+                <span>{t('canvas.send')}</span>
               </button>
             )}
 
@@ -727,14 +730,14 @@ export const ReportCanvas: React.FC<Props> = ({
               className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete</span>
+              <span>{t('canvas.delete')}</span>
             </button>
 
             <button
               type="button"
               onClick={onDeselectAllCards}
               className="p-1 text-[#86868B] hover:text-[#1D1D1F] rounded ml-1"
-              title="Clear selection"
+              title={t('canvas.clearSelection')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -749,12 +752,12 @@ export const ReportCanvas: React.FC<Props> = ({
             <Layers className="w-5 h-5 text-[#86868B]" />
           </div>
           <h3 className="text-sm font-medium text-[#1D1D1F]">
-            {searchQuery || filterType !== 'all' ? 'No matching cards' : 'Your next report starts here'}
+            {searchQuery || filterType !== 'all' ? t('canvas.noMatchTitle') : t('canvas.emptyTitle')}
           </h3>
           <p className="text-xs text-[#86868B] max-w-xs mx-auto">
             {searchQuery || filterType !== 'all'
-              ? 'Try a different keyword or clear the search filter.'
-              : 'Add a project update below, attach your data or photos, then build your report. You can edit every card directly.'
+              ? t('canvas.noMatchBody')
+              : t('canvas.emptyBody')
             }
           </p>
         </div>
@@ -762,16 +765,16 @@ export const ReportCanvas: React.FC<Props> = ({
         <div className="space-y-3">
           {cards.length > 1 && (
             <div className="flex items-center gap-2 no-print select-none">
-              <label className="flex items-center gap-1.5 cursor-pointer" title={allSelected ? 'Deselect all cards' : 'Select all cards'}>
+              <label className="flex items-center gap-1.5 cursor-pointer" title={allSelected ? t('canvas.deselectAll') : t('canvas.selectAll')}>
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={() => (allSelected ? onDeselectAllCards() : onSelectAllCards())}
-                  aria-label={allSelected ? 'Deselect all cards' : 'Select all cards'}
+                  aria-label={allSelected ? t('canvas.deselectAll') : t('canvas.selectAll')}
                   className="w-3.5 h-3.5 rounded border-black/20 text-[#0071E3] focus:ring-0 focus:outline-none cursor-pointer"
                 />
                 <span className="text-[11px] font-medium text-[#86868B]">
-                  {allSelected ? 'Deselect all' : 'Select all'}
+                  {allSelected ? t('canvas.deselectAll') : t('canvas.selectAll')}
                 </span>
               </label>
               <span className="text-black/10 text-[11px]">|</span>
@@ -779,8 +782,8 @@ export const ReportCanvas: React.FC<Props> = ({
                 <GripVertical className="w-3.5 h-3.5 shrink-0" />
                 <span>
                   {canReorder
-                    ? 'Press & hold a card (or drag its grip) to reorder'
-                    : 'Clear search/filter to reorder cards'}
+                    ? t('canvas.holdToReorder')
+                    : t('canvas.clearFilterToReorder')}
                 </span>
               </p>
             </div>

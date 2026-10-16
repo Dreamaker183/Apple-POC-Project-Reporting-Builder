@@ -21,6 +21,10 @@ import {
   Search,
 } from 'lucide-react';
 import { ProjectLibrary, ReportProject } from '../../types/report';
+import { DictKey } from '../../lib/i18n/dictionaries';
+import { useLanguage } from '../../lib/i18n/LanguageContext';
+
+type TFn = (key: DictKey, vars?: Record<string, string | number>) => string;
 
 interface Props {
   library: ProjectLibrary;
@@ -45,17 +49,17 @@ function scoreColor(score: number): string {
   return 'bg-rose-500';
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: TFn, dateLocale: string | undefined): string {
   const diff = Date.now() - new Date(iso).getTime();
   if (isNaN(diff) || diff < 0) return '';
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('sidebar.timeJustNow');
+  if (mins < 60) return t('sidebar.timeMinutesAgo', { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('sidebar.timeHoursAgo', { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (days < 30) return t('sidebar.timeDaysAgo', { n: days });
+  return new Date(iso).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' });
 }
 
 export const ProjectSidebar: React.FC<Props> = ({
@@ -74,6 +78,7 @@ export const ProjectSidebar: React.FC<Props> = ({
   onImportProject,
   children,
 }) => {
+  const { t, dateLocale } = useLanguage();
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -138,27 +143,27 @@ export const ProjectSidebar: React.FC<Props> = ({
   };
 
   return (
-    <nav aria-label="Project library" className="flex flex-col h-full bg-[#ECECEE]/70 border-r border-black/[0.06]">
+    <nav aria-label={t('sidebar.library')} className="flex flex-col h-full bg-[#ECECEE]/70 border-r border-black/[0.06]">
       {/* Header */}
       <div className="p-3.5 pb-2.5 space-y-2.5">
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight">Library</h2>
+          <h2 className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight">{t('sidebar.library')}</h2>
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => onNewProject(library.folders[0]?.id ?? '')}
               className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-white bg-[#0071E3] hover:bg-[#0077ED] rounded-lg transition-colors"
-              title="New project in first folder"
+              title={t('sidebar.newProjectTitle')}
             >
               <Plus className="w-3 h-3" />
-              <span>Project</span>
+              <span>{t('sidebar.newProject')}</span>
             </button>
             <button
               type="button"
               onClick={() => setNewFolderMode((v) => !v)}
               className="p-1.5 text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.05] rounded-lg transition-colors"
-              title="New folder"
-              aria-label="New folder"
+              title={t('sidebar.newFolder')}
+              aria-label={t('sidebar.newFolder')}
             >
               <FolderPlus className="w-3.5 h-3.5" />
             </button>
@@ -167,8 +172,8 @@ export const ProjectSidebar: React.FC<Props> = ({
                 type="button"
                 onClick={onImportProject}
                 className="p-1.5 text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.05] rounded-lg transition-colors"
-                title="Import project (.json)"
-                aria-label="Import project JSON"
+                title={t('sidebar.importTitle')}
+                aria-label={t('sidebar.importAria')}
               >
                 <Upload className="w-3.5 h-3.5" />
               </button>
@@ -186,13 +191,13 @@ export const ProjectSidebar: React.FC<Props> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Escape') setNewFolderMode(false);
               }}
-              placeholder="Folder name…"
+              placeholder={t('sidebar.folderName')}
               className="flex-1 min-w-0 text-xs p-1.5 bg-white border border-black/15 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#0071E3]"
             />
             <button
               type="submit"
               className="p-1.5 bg-[#1D1D1F] text-white rounded-lg hover:bg-black transition-colors"
-              aria-label="Create folder"
+              aria-label={t('sidebar.createFolder')}
             >
               <Check className="w-3.5 h-3.5" />
             </button>
@@ -202,11 +207,11 @@ export const ProjectSidebar: React.FC<Props> = ({
         <div className="relative">
           <Search className="w-3.5 h-3.5 text-[#86868B] absolute left-2.5 top-2 pointer-events-none" />
           <input
-            aria-label="Search projects"
+            aria-label={t('sidebar.searchAria')}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search projects…"
+            placeholder={t('sidebar.searchPlaceholder')}
             className="w-full text-xs pl-8 pr-2.5 py-1.5 bg-black/[0.04] hover:bg-black/[0.06] focus:bg-white rounded-lg border border-transparent focus:border-black/10 focus:outline-none transition-all placeholder:text-black/30"
           />
         </div>
@@ -224,7 +229,7 @@ export const ProjectSidebar: React.FC<Props> = ({
             <div key={folder.id}>
               <div className="group flex items-center gap-1 px-1.5 py-1.5 rounded-lg hover:bg-black/[0.03]">
                 <div className="flex items-center gap-1.5 flex-1 min-w-0 text-left">
-                  <button type="button" onClick={() => toggleFolder(folder.id)} aria-label={`Toggle ${folder.name}`} aria-expanded={!isCollapsed}>
+                  <button type="button" onClick={() => toggleFolder(folder.id)} aria-label={t('sidebar.toggleFolder', { name: folder.name })} aria-expanded={!isCollapsed}>
                   <ChevronDown
                     className={`w-3 h-3 text-[#86868B] shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                   />
@@ -252,7 +257,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                     <span
                       className="text-xs font-medium text-[#1D1D1F] truncate flex-1"
                       onDoubleClick={() => setEditingFolder({ id: folder.id, value: folder.name })}
-                      title="Double-click to rename"
+                      title={t('sidebar.renameHint')}
                     >
                       {folder.name}
                     </span>
@@ -263,7 +268,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                   type="button"
                   onClick={() => onNewProject(folder.id)}
                   className="p-1 text-[#86868B] hover:text-[#0071E3] rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                  title={`New project in ${folder.name}`}
+                  title={t('sidebar.newProjectIn', { name: folder.name })}
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -283,9 +288,9 @@ export const ProjectSidebar: React.FC<Props> = ({
                       ? 'text-white bg-rose-600 text-[10px] font-medium px-1.5'
                       : 'text-[#86868B] hover:text-rose-600 opacity-0 group-hover:opacity-100 focus:opacity-100'
                   }`}
-                  title={confirmDelete === `folder:${folder.id}` ? 'Click again to confirm' : `Delete ${folder.name} (projects move to first folder)`}
+                  title={confirmDelete === `folder:${folder.id}` ? t('sidebar.confirmHint') : t('sidebar.deleteFolderHint', { name: folder.name })}
                 >
-                  {confirmDelete === `folder:${folder.id}` ? <span>Sure?</span> : <Trash2 className="w-3 h-3" />}
+                  {confirmDelete === `folder:${folder.id}` ? <span>{t('sidebar.confirmShort')}</span> : <Trash2 className="w-3 h-3" />}
                 </button>
               </div>
 
@@ -302,7 +307,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full shrink-0 ${scoreColor(scores[p.id] ?? 0)}`}
-                        title={`Readiness ${scores[p.id] ?? 0}%`}
+                        title={t('sidebar.readinessTitle', { score: scores[p.id] ?? 0 })}
                       />
                       <div className="flex-1 min-w-0 text-left">
                         {isEditingRow ? (
@@ -325,7 +330,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                               {p.title}
                             </div>
                             <div className="text-[10px] text-[#86868B] truncate">
-                              {p.reportingPeriod || 'No period'} · {p.cards.length} cards · {timeAgo(p.lastSavedAt)}
+                              {p.reportingPeriod || t('sidebar.noPeriod')} · {t('sidebar.cardsUnit', { count: p.cards.length })} · {timeAgo(p.lastSavedAt, t, dateLocale)}
                             </div>
                           </button>
                         )}
@@ -342,7 +347,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                               ? 'bg-black/[0.06] text-[#1D1D1F]'
                               : 'text-[#86868B] hover:text-[#1D1D1F] opacity-0 group-hover:opacity-100 focus:opacity-100'
                           }`}
-                          aria-label={`Actions for ${p.title}`}
+                          aria-label={t('sidebar.actionsFor', { name: p.title })}
                           aria-expanded={menuFor === p.id}
                         >
                           <MoreHorizontal className="w-3.5 h-3.5" />
@@ -358,7 +363,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                               className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-black/[0.04] text-left"
                             >
                               <Pencil className="w-3.5 h-3.5 text-[#86868B]" />
-                              <span>Rename</span>
+                              <span>{t('sidebar.rename')}</span>
                             </button>
                             <button
                               type="button"
@@ -369,13 +374,13 @@ export const ProjectSidebar: React.FC<Props> = ({
                               className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-black/[0.04] text-left"
                             >
                               <CopyPlus className="w-3.5 h-3.5 text-[#86868B]" />
-                              <span>Duplicate</span>
+                              <span>{t('sidebar.duplicate')}</span>
                             </button>
                             {library.folders.length > 1 && (
                               <div className="border-t border-black/[0.06] mt-1 pt-1 px-3 pb-1">
                                 <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#86868B] py-1">
                                   <FolderInput className="w-3 h-3" />
-                                  <span>Move to</span>
+                                  <span>{t('sidebar.moveTo')}</span>
                                 </div>
                                 {library.folders
                                   .filter((f) => f.id !== (p.folderId ?? library.folders[0]?.id))
@@ -406,7 +411,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                                   className="w-full flex items-center gap-2 px-3 py-1.5 text-white bg-rose-600 text-left"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Confirm delete</span>
+                                  <span>{t('sidebar.confirmDelete')}</span>
                                 </button>
                               ) : (
                                 <button
@@ -418,7 +423,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                                   className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-rose-50 text-rose-600 text-left"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete</span>
+                                  <span>{t('sidebar.delete')}</span>
                                 </button>
                               )}
                             </div>
@@ -434,7 +439,7 @@ export const ProjectSidebar: React.FC<Props> = ({
                   onClick={() => onNewProject(folder.id)}
                   className="ml-4 text-[11px] text-[#86868B] hover:text-[#0071E3] px-2 py-1 transition-colors"
                 >
-                  + New project here
+                  {t('sidebar.newProjectHere')}
                 </button>
               )}
             </div>
@@ -442,7 +447,7 @@ export const ProjectSidebar: React.FC<Props> = ({
         })}
         {library.folders.length === 0 && (
           <p className="text-[11px] text-[#86868B] px-2 py-4 text-center">
-            No folders yet — create one to organize projects.
+            {t('sidebar.noFolders')}
           </p>
         )}
       </div>
