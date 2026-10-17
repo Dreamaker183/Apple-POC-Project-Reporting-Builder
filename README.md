@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/Vite-8.3-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/TailwindCSS-4.3-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Zod-4.6-3E67B1?style=flat-square&logo=zod&logoColor=white" alt="Zod" />
-  <img src="https://img.shields.io/badge/Vitest-100%20Passed-34C759?style=flat-square&logo=vitest&logoColor=white" alt="Tests Passing" />
+  <img src="https://img.shields.io/badge/Vitest-103%20Passed-34C759?style=flat-square&logo=vitest&logoColor=white" alt="Tests Passing" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20On--Device-0071E3?style=flat-square" alt="Privacy" />
 </p>
 
@@ -390,7 +390,7 @@ npm test
 ```
 
 ### Verification Results: 100% Pass Rate
-- **15 Test Suites Passed** (100 / 100 tests passing)
+- **15 Test Suites Passed** (103 / 103 tests passing)
   - [`src/test/classifier.test.ts`](./src/test/classifier.test.ts): Linguistic pattern matching & heuristic classification
   - [`src/test/differentiators.test.ts`](./src/test/differentiators.test.ts): Differential snapshot comparator & card diffing
   - [`src/test/editableWords.test.ts`](./src/test/editableWords.test.ts): Word and phrase-level inline transactional editing

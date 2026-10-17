@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy, useState, useMemo, useRef, useCallback } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Eye, Folder } from 'lucide-react';
 
@@ -45,6 +45,17 @@ import type { MessageToolId } from './components/export/ExportModal';
 const ExportModal = lazy(() =>
   import('./components/export/ExportModal').then((module) => ({ default: module.ExportModal }))
 );
+
+const TOUR_SEEN_KEY = 'prb.tourSeen';
+
+function shouldAutoStartTour(): boolean {
+  try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
+    return !localStorage.getItem(TOUR_SEEN_KEY);
+  } catch {
+    return false;
+  }
+}
 
 export default function App() {
   const { t } = useLanguage();
@@ -149,9 +160,19 @@ export default function App() {
   const [exportInitialMode, setExportInitialMode] = useState<'formats' | 'tools'>('formats');
   const [exportInitialTool, setExportInitialTool] = useState<MessageToolId>('email');
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
-  const [isGuidedTourOpen, setIsGuidedTourOpen] = useState(false);
+  const [isGuidedTourOpen, setIsGuidedTourOpen] = useState(shouldAutoStartTour);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
+
+  useEffect(() => {
+    try {
+      if (typeof localStorage !== 'undefined' && !localStorage.getItem(TOUR_SEEN_KEY)) {
+        localStorage.setItem(TOUR_SEEN_KEY, 'true');
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
 
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -431,6 +452,13 @@ export default function App() {
 
   const handleTourClose = useCallback(() => {
     setIsGuidedTourOpen(false);
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(TOUR_SEEN_KEY, 'true');
+      }
+    } catch {
+      /* non-fatal */
+    }
   }, []);
 
   const handleTourJump = useCallback((idx: number) => {

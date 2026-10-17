@@ -11,20 +11,12 @@ import { DATE_LOCALE, DictKey, HTML_LANG, Locale, dictionaries, en } from './dic
 
 const STORAGE_KEY = 'prb.locale';
 
-function detectLocale(): Locale {
+export function detectLocale(): Locale {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === 'en' || saved === 'zh-Hant' || saved === 'zh-Hans') return saved;
   } catch {
-    /* storage unavailable — fall through to browser detection */
-  }
-  if (typeof navigator !== 'undefined') {
-    const tag = (navigator.language || '').toLowerCase();
-    if (tag.startsWith('zh')) {
-      // Traditional regions/script: TW, HK, MO, Hant.
-      if (/^(zh-(tw|hk|mo)|.*-hant)/.test(tag)) return 'zh-Hant';
-      return 'zh-Hans';
-    }
+    /* storage unavailable */
   }
   return 'en';
 }

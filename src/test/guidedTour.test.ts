@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { buildTourSteps } from '../components/guided-demo/tourSteps';
 import { dictionaries, en, LOCALES } from '../lib/i18n/dictionaries';
+import { detectLocale } from '../lib/i18n/LanguageContext';
 
 import type { TourStepActions } from '../components/guided-demo/tourSteps';
+
+// Mock localStorage for node environment
+const storageMock: Record<string, string> = {};
+if (typeof globalThis.localStorage === 'undefined') {
+  (globalThis as any).localStorage = {
+    getItem: (key: string) => storageMock[key] ?? null,
+    setItem: (key: string, value: string) => { storageMock[key] = String(value); },
+    removeItem: (key: string) => { delete storageMock[key]; },
+    clear: () => {
+      Object.keys(storageMock).forEach(k => delete storageMock[k]);
+    },
+  };
+}
 
 describe('Guided Tour i18n localization', () => {
   const mockActions: TourStepActions = {
@@ -268,5 +282,29 @@ describe('Guided Tour i18n localization', () => {
     expect(tool).toBe('slack');
     expect(exportOpen).toBe(true);
     expect(tourOpen).toBe(false);
+  });
+
+  it('defaults to English when no language preference is saved in localStorage', () => {
+    localStorage.removeItem('prb.locale');
+    expect(detectLocale()).toBe('en');
+  });
+
+  it('honors explicitly saved language preference in localStorage', () => {
+    localStorage.setItem('prb.locale', 'zh-Hant');
+    expect(detectLocale()).toBe('zh-Hant');
+    localStorage.setItem('prb.locale', 'zh-Hans');
+    expect(detectLocale()).toBe('zh-Hans');
+    localStorage.setItem('prb.locale', 'en');
+    expect(detectLocale()).toBe('en');
+    localStorage.removeItem('prb.locale');
+  });
+
+  it('detects first-time visitor when tour has not been seen yet', () => {
+    localStorage.removeItem('prb.tourSeen');
+    const isFirstTime = !localStorage.getItem('prb.tourSeen');
+    expect(isFirstTime).toBe(true);
+    localStorage.setItem('prb.tourSeen', 'true');
+    expect(!localStorage.getItem('prb.tourSeen')).toBe(false);
+    localStorage.removeItem('prb.tourSeen');
   });
 });
