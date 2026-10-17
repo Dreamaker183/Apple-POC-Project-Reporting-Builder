@@ -9,6 +9,7 @@ import {
   createMailtoLink,
   createGmailComposeLink,
   createOutlookComposeLink,
+  createEmlDraft,
   createWhatsAppShareLink,
   createTelegramShareLink,
   simulateWebhookDispatch,
@@ -52,6 +53,20 @@ describe('Message Tool Integrations', () => {
     const outlook = createOutlookComposeLink(to, subject, body);
     expect(outlook).toContain('https://outlook.live.com/mail/');
     expect(outlook).toContain('subject=Sprint%20Report');
+  });
+
+  it('builds valid RFC 822 .eml draft message with HTML body and X-Unsent: 1', () => {
+    const to = 'exec@acme.corp';
+    const cc = 'pm@acme.corp';
+    const subject = 'Sprint Report';
+    const htmlBody = '<table style="color:red"><tr><td>Metric 85%</td></tr></table>';
+
+    const eml = createEmlDraft(to, subject, htmlBody, cc);
+    expect(eml).toContain('X-Unsent: 1');
+    expect(eml).toContain('To: exec@acme.corp');
+    expect(eml).toContain('Cc: pm@acme.corp');
+    expect(eml).toContain('Content-Type: text/html; charset=utf-8');
+    expect(eml).toContain(htmlBody);
   });
 
   it('builds valid WhatsApp and Telegram mobile sharing links', () => {

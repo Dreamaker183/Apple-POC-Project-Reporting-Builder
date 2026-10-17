@@ -7,12 +7,13 @@ import { ReportProject, SnippetCard } from '../../types/report';
 import { escapeHtml } from './htmlExport';
 import { executiveEmailHtml } from './executiveEmail';
 import { metricGraphText, metricStatus } from './metricGraphs';
+import { Locale } from '../i18n/dictionaries';
 
 /**
  * Executive Email representation (Table-based clean inline CSS, optimized for Outlook/Gmail).
  */
-export function formatForExecutiveEmail(project: ReportProject, cards?: SnippetCard[]): string {
-  return executiveEmailHtml(project, cards);
+export function formatForExecutiveEmail(project: ReportProject, cards?: SnippetCard[], locale?: Locale): string {
+  return executiveEmailHtml(project, cards, locale);
 }
 
 /**
@@ -81,7 +82,7 @@ export function formatForSlack(project: ReportProject, cards?: SnippetCard[]): s
         break;
 
       case 'visual_update':
-        lines.push(`:frame_with_picture: *Visual Update:* ${card.title}`);
+        lines.push(`:frame_with_picture: *Media:* ${card.title}`);
         lines.push(`_${card.caption}_`);
         lines.push(``);
         break;
@@ -493,7 +494,7 @@ export function formatSingleCardForSlack(card: SnippetCard): string {
     case 'milestone':
       return `🎯 *Milestone:* ${card.title} (${card.dueDate || 'TBD'}) - Status: *${card.status}*`;
     case 'visual_update':
-      return `🖼️ *Visual Update:* ${card.caption || card.title}\n_Alt text: ${card.altText}_`;
+      return `🖼️ *Media:* ${card.caption || card.title}\n_Alt text: ${card.altText}_`;
     default:
       return (card as any)?.title || 'Report Card';
   }

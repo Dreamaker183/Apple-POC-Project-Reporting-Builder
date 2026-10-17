@@ -11,7 +11,7 @@ describe('Executive email and dispatch graphs', () => {
     expect(html).toContain('data-metric-graph="bar"');
     expect(html).toContain('data-metric-graph="trend"');
     expect(html).toContain('data-metric-graph="donut"');
-    expect(html).toContain('Visual updates');
+    expect(html).toContain('Media');
     expect(html).toContain('Metrics &amp; data'.replace('&amp;', '&'));
     expect(html).not.toContain('<script');
     expect(html).not.toContain('<svg');
@@ -39,5 +39,22 @@ describe('Executive email and dispatch graphs', () => {
     const metric = project.cards.filter(c => c.type === 'kpi_metric').slice(0, 1);
     expect(formatForExecutiveEmail(project, metric)).toContain('data-metric-graph="bar"');
     expect(formatForExecutiveEmail(project, metric)).not.toContain('Risks & blockers');
+  });
+
+  it('supports localized executive email for Simplified and Traditional Chinese locales', () => {
+    const project = createSampleProject();
+    const hansHtml = formatForExecutiveEmail(project, undefined, 'zh-Hans');
+    expect(hansHtml).toContain('项目简报');
+    expect(hansHtml).toContain('执行摘要');
+    expect(hansHtml).toContain('关键指标与数据');
+    expect(hansHtml).toContain('风险与阻碍');
+    expect(hansHtml).toContain('下一步计划');
+
+    const hantHtml = formatForExecutiveEmail(project, undefined, 'zh-Hant');
+    expect(hantHtml).toContain('專案簡報');
+    expect(hantHtml).toContain('執行摘要');
+    expect(hantHtml).toContain('關鍵指標與數據');
+    expect(hantHtml).toContain('風險與阻礙');
+    expect(hantHtml).toContain('下一步計劃');
   });
 });

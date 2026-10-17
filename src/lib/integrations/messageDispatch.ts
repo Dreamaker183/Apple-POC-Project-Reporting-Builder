@@ -128,26 +128,26 @@ export function clearDispatchAuditLog(): void {
 /**
  * Builds standard mailto URL for default desktop/mobile email client (Apple Mail, Outlook, Thunderbird).
  */
-export function createMailtoLink(to: string, subject: string, bodyText: string, cc?: string, bcc?: string): string {
+export function createMailtoLink(to: string, subject: string, bodyText?: string, cc?: string, bcc?: string): string {
   const params: string[] = [];
   if (cc && cc.trim()) params.push(`cc=${encodeURIComponent(cc.trim())}`);
   if (bcc && bcc.trim()) params.push(`bcc=${encodeURIComponent(bcc.trim())}`);
   params.push(`subject=${encodeURIComponent(subject)}`);
-  params.push(`body=${encodeURIComponent(bodyText)}`);
+  if (bodyText && bodyText.trim()) params.push(`body=${encodeURIComponent(bodyText)}`);
   const query = params.join('&');
-  return `mailto:${encodeURIComponent(to.trim())}?${query}`;
+  return `mailto:${encodeURIComponent(to.trim())}${query ? `?${query}` : ''}`;
 }
 
 /**
  * Builds Gmail Web direct composer link.
  */
-export function createGmailComposeLink(to: string, subject: string, bodyText: string, cc?: string): string {
+export function createGmailComposeLink(to: string, subject: string, bodyText?: string, cc?: string): string {
   const base = 'https://mail.google.com/mail/?view=cm&fs=1&tf=1';
   const query = [
     to.trim() ? `to=${encodeURIComponent(to.trim())}` : '',
     cc?.trim() ? `cc=${encodeURIComponent(cc.trim())}` : '',
     `su=${encodeURIComponent(subject)}`,
-    `body=${encodeURIComponent(bodyText)}`,
+    bodyText && bodyText.trim() ? `body=${encodeURIComponent(bodyText)}` : '',
   ].filter(Boolean).join('&');
   return `${base}&${query}`;
 }
@@ -155,14 +155,53 @@ export function createGmailComposeLink(to: string, subject: string, bodyText: st
 /**
  * Builds Outlook Web direct composer link.
  */
-export function createOutlookComposeLink(to: string, subject: string, bodyText: string): string {
+export function createOutlookComposeLink(to: string, subject: string, bodyText?: string): string {
   const base = 'https://outlook.live.com/mail/0/deeplink/compose';
   const query = [
     to.trim() ? `to=${encodeURIComponent(to.trim())}` : '',
     `subject=${encodeURIComponent(subject)}`,
-    `body=${encodeURIComponent(bodyText)}`,
+    bodyText && bodyText.trim() ? `body=${encodeURIComponent(bodyText)}` : '',
   ].filter(Boolean).join('&');
   return `${base}?${query}`;
+}
+
+/**
+ * Builds standard RFC 822 / MIME .eml draft message with X-Unsent: 1 header.
+ * When opened by Apple Mail (default on macOS), Outlook (macOS & Windows),
+ * or Thunderbird, it opens directly as an unsent draft with the complete
+ * HTML UI, styles, tables, and metric charts rendered in the editor.
+ */
+export function createEmlDraft(
+  to: string,
+  subject: string,
+  htmlBody: string,
+  cc?: string
+): string {
+  const cleanTo = to.trim();
+  const cleanCc = cc?.trim();
+  const cleanSubject = subject.trim();
+  
+  let encodedSubject: string;
+  try {
+    encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(cleanSubject)))}?=`;
+  } catch {
+    encodedSubject = cleanSubject;
+  }
+
+  const headers: string[] = [
+    'MIME-Version: 1.0',
+    'X-Unsent: 1',
+    cleanTo ? `To: ${cleanTo}` : 'To: ',
+  ];
+  if (cleanCc) {
+    headers.push(`Cc: ${cleanCc}`);
+  }
+  headers.push(`Subject: ${encodedSubject}`);
+  headers.push('Content-Type: text/html; charset=utf-8');
+  headers.push('Content-Transfer-Encoding: 8bit');
+  headers.push('');
+
+  return headers.join('\r\n') + '\r\n' + htmlBody;
 }
 
 /**

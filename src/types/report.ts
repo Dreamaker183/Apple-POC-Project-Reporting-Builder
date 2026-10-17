@@ -191,7 +191,9 @@ export type ExportDestination =
   | 'executive_email'
   | 'slack'
   | 'teams'
+  | 'google_chat'
+  | 'discord'
+  | 'mobile'
   | 'weekly_status'
   | 'markdown'
-  | 'json'
-  | 'html';
+  | 'json';

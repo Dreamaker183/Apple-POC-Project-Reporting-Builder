@@ -305,7 +305,7 @@ export function generateSnippetCards(
         id: `card-visual-${Date.now()}-${idx + 1}`,
         type: 'visual_update',
         sourceKey: `image:${img.id}`,
-        title: `Visual Update: ${img.name.replace(/\.[^/.]+$/, '')}`,
+        title: `Media: ${img.name.replace(/\.[^/.]+$/, '')}`,
         imageUrl: img.dataUrl,
         altText: img.altText || `Preview asset for ${projectTitle}`,
         caption: `Design asset: ${img.name}`,
@@ -313,7 +313,7 @@ export function generateSnippetCards(
         createdAt: now,
         updatedAt: now,
         sourceRef: {
-          passageText: `Uploaded visual asset: ${img.name} (${Math.round(img.fileSize / 1024)} KB)`,
+          passageText: `Uploaded media asset: ${img.name} (${Math.round(img.fileSize / 1024)} KB)`,
           confidence: 'explicit',
           notes: 'Source image asset provided by user',
         },

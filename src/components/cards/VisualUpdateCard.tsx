@@ -21,7 +21,7 @@ export const VisualUpdateCard: React.FC<Props> = ({ card, isInlineEditing, onUpd
   const editLabel = 'text-[11px] font-medium text-[#86868B] block mb-1';
   return (
     <div className="space-y-2.5">
-      <h3 className="text-sm font-semibold text-[#1F1F1F]"><EditableText value={card.title} label="visual title" onCommit={(title) => onUpdate?.({ title })} /></h3>
+      <h3 className="text-sm font-semibold text-[#1F1F1F]"><EditableText value={card.title} label="media title" onCommit={(title) => onUpdate?.({ title })} /></h3>
 
       <div className="relative rounded-lg overflow-hidden border border-black/[0.08] bg-neutral-50 aspect-video max-h-56 flex items-center justify-center">
         <img
@@ -77,7 +77,7 @@ export const VisualUpdateCard: React.FC<Props> = ({ card, isInlineEditing, onUpd
         {card.context && (
           <EditableText
             value={card.context}
-            label="visual context"
+            label="media context"
             multiline
             allowEmpty
             onCommit={(context) => onUpdate?.({ context: context.trim() || undefined })}
