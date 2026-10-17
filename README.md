@@ -11,6 +11,9 @@
 </p>
 
 <p align="center">
+  <a href="https://project.anson-chan.com/"><img src="https://img.shields.io/badge/Live%20Demo-project.anson--chan.com-0071E3?style=flat-square&logo=safari&logoColor=white" alt="Live Demo" /></a>
+  <img src="https://img.shields.io/badge/Hosted%20on-Vercel-000000?style=flat-square&logo=vercel&logoColor=white" alt="Vercel" />
+  <img src="https://img.shields.io/badge/CDN%20%26%20DNS-Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white" alt="Cloudflare" />
   <img src="https://img.shields.io/badge/TypeScript-7.0-007ACC?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-8.3-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
@@ -19,6 +22,10 @@
   <img src="https://img.shields.io/badge/Vitest-103%20Passed-34C759?style=flat-square&logo=vitest&logoColor=white" alt="Tests Passing" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20On--Device-0071E3?style=flat-square" alt="Privacy" />
 </p>
+
+> [!NOTE]
+> **Live Production URL:** [https://project.anson-chan.com/](https://project.anson-chan.com/)  
+> Hosted on **Vercel** edge compute with **Cloudflare** DNS management, Full (Strict) SSL/TLS encryption, and global CDN caching.
 
 ---
 
@@ -37,10 +44,11 @@
   - [3.8. Internationalization (i18n) & Accessibility](#38-internationalization-i18n--accessibility)
 - [4. Directory Structure](#4-directory-structure)
 - [5. Getting Started](#5-getting-started)
-- [6. Keyboard Navigation & Ergonomics](#6-keyboard-navigation--ergonomics)
-- [7. Design Tokens & Design System](#7-design-tokens--design-system)
-- [8. Quality Assurance & Test Verification](#8-quality-assurance--test-verification)
-- [9. License](#9-license)
+- [6. Deployment & Hosting (Vercel + Cloudflare)](#6-deployment--hosting-vercel--cloudflare)
+- [7. Keyboard Navigation & Ergonomics](#7-keyboard-navigation--ergonomics)
+- [8. Design Tokens & Design System](#8-design-tokens--design-system)
+- [9. Quality Assurance & Test Verification](#9-quality-assurance--test-verification)
+- [10. License](#10-license)
 
 ---
 
@@ -291,6 +299,7 @@ Apple-POC-Project-Reporting-Builder/
 ├── index.html                      # Entry HTML with Content-Security-Policy
 ├── package.json                    # Project dependencies & scripts
 ├── tsconfig.json                   # Strict TypeScript compiler options
+├── vercel.json                     # Vercel deployment, SPA rewrites & caching rules
 └── vite.config.ts                  # Vite 8 configuration with Tailwind v4
 ```
 
@@ -338,7 +347,79 @@ npm run preview
 
 ---
 
-## 6. Keyboard Navigation & Ergonomics
+## 6. Deployment & Hosting (Vercel + Cloudflare)
+
+The production web application is publicly deployed and accessible at:
+
+<p align="center">
+  <a href="https://project.anson-chan.com/"><strong>https://project.anson-chan.com/</strong></a>
+</p>
+
+### Production Architecture Overview
+
+The system is deployed across a dual-tier edge topology combining **Vercel** serverless static hosting with **Cloudflare** edge security and CDN caching:
+
+```mermaid
+flowchart LR
+    Client["Visitor Browser<br/>(Desktop / Mobile / Tablet)"]
+    
+    subgraph CF["Cloudflare Edge Network"]
+        DNS["Anycast DNS<br/>project.anson-chan.com"]
+        WAF["DDoS Protection & WAF"]
+        TLS["Full (Strict) TLS 1.3 / HTTP/3"]
+        EdgeCache["Global CDN Edge Cache<br/>(Brotli / Early Hints 103)"]
+    end
+    
+    subgraph Vercel["Vercel Edge Network"]
+        CD["Git Continuous Deployment<br/>(main branch atomic rollouts)"]
+        SPA["Vite Static Output Engine<br/>(/dist artifacts)"]
+        Headers["vercel.json<br/>Immutable /assets/* cache"]
+    end
+
+    Client -->|HTTPS / HTTP3| DNS
+    DNS --> WAF
+    WAF --> TLS
+    TLS --> EdgeCache
+    EdgeCache -->|CNAME Proxy| CD
+    CD --> SPA
+    SPA --> Headers
+```
+
+### Hosting Roles & Configuration
+
+| Tier | Provider | Configuration & Features |
+| :--- | :--- | :--- |
+| **Origin & CI/CD** | **Vercel** | - Automated git-triggered builds on every push to `main`<br/>- Framework preset: `Vite`<br/>- Build command: `npm run build`<br/>- Output directory: `dist`<br/>- Clean URL rewrite routing defined in [`vercel.json`](./vercel.json)<br/>- High-performance global static distribution with atomic instant rollbacks |
+| **Edge & Security** | **Cloudflare** | - DNS Management: CNAME record routing `project` to `cname.vercel-dns.com` with proxy active (`🟠 Proxied`)<br/>- SSL/TLS Encryption: **Full (Strict)** with automated Universal SSL certificate rotation<br/>- HTTPS Enforcement: **Always Use HTTPS** and **Automatic HTTPS Rewrites**<br/>- Network Performance: **HTTP/3 (with QUIC)** and **0-RTT connection resumption**<br/>- Compression: **Brotli compression** enabled across text, CSS, and JS bundles<br/>- DDoS & Bot Protection: Enterprise-grade edge mitigation without user challenge friction |
+
+### Step-by-Step Deployment Instructions
+
+#### 1. Deploy to Vercel
+1. Push your repository to GitHub.
+2. Navigate to [vercel.com](https://vercel.com/) and click **Add New Project**.
+3. Import `Apple-POC-Project-Reporting-Builder`.
+4. Configure Build and Output Settings:
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - **Install Command**: `npm install`
+5. Click **Deploy**. Vercel will automatically detect `vercel.json` and compile the production bundle.
+
+#### 2. Configure Cloudflare DNS & Custom Domain
+1. In the Vercel Project Dashboard, navigate to **Settings > Domains** and add `project.anson-chan.com`.
+2. In the [Cloudflare Dashboard](https://dash.cloudflare.com/), select your zone (`anson-chan.com`) and navigate to **DNS > Records**:
+   - **Type**: `CNAME`
+   - **Name**: `project`
+   - **Target**: `cname.vercel-dns.com`
+   - **Proxy status**: `Proxied`
+3. Under **SSL/TLS**:
+   - Set encryption mode to **Full (Strict)**.
+   - Under **Edge Certificates**, enable **Always Use HTTPS** and **Minimum TLS Version 1.2**.
+4. Verification will complete within minutes, serving your application securely from `https://project.anson-chan.com/`.
+
+---
+
+## 7. Keyboard Navigation & Ergonomics
 
 Engineered with macOS keyboard ergonomics for rapid curation without lifting your hands from the keyboard:
 
@@ -358,7 +439,7 @@ Engineered with macOS keyboard ergonomics for rapid curation without lifting you
 
 ---
 
-## 7. Design Tokens & Design System
+## 8. Design Tokens & Design System
 
 The visual language strictly mirrors Apple's Human Interface Guidelines, defined in [`src/design/tokens.ts`](./src/design/tokens.ts):
 
@@ -381,7 +462,7 @@ The visual language strictly mirrors Apple's Human Interface Guidelines, defined
 
 ---
 
-## 8. Quality Assurance & Test Verification
+## 9. Quality Assurance & Test Verification
 
 The codebase is protected by comprehensive test suites executing against Vitest:
 
@@ -414,6 +495,6 @@ npm run lint
 
 ---
 
-## 9. License
+## 10. License
 
 This project is licensed under the Apache 2.0 License. See the header notices across source files for licensing terms.
