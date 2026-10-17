@@ -3,6 +3,7 @@ import { generateSnippetCards } from '../lib/parsing/deterministicParser';
 import { mergeGeneratedCards } from '../lib/composition/mergeCards';
 import { createSeedLibrary, makeSnapshot } from '../lib/persistence/projectLibrary';
 import { ProjectLibrarySchema } from '../schemas/reportSchema';
+import type { SnippetCard } from '../types/report';
 
 describe('Workspace update and snapshot reliability', () => {
   it('preserves edited cards and their order while refreshing unedited source data', () => {
@@ -47,6 +48,7 @@ describe('Workspace update and snapshot reliability', () => {
       type: 'executive_summary',
       title: 'Executive Summary',
       summary: 'Test summary',
+      keyAccomplishments: ['Achievement 1'],
       createdAt: now,
       updatedAt: now,
     };

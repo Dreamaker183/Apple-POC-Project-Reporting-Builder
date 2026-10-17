@@ -190,11 +190,6 @@ export const CardRenderer: React.FC<Props> = ({
               {t('card.sourceVerified')}
             </span>
           )}
-          {card.type === 'visual_update' && card.altText && card.altText.length > 5 && (
-            <span className="text-[11px] text-emerald-700 hidden sm:inline">
-              {t('card.altTextBadge')}
-            </span>
-          )}
         </div>
 
         {/* Clean Hover Actions */}

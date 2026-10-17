@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/Vite-8.3-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/TailwindCSS-4.3-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Zod-4.6-3E67B1?style=flat-square&logo=zod&logoColor=white" alt="Zod" />
-  <img src="https://img.shields.io/badge/Vitest-70%20Passed-34C759?style=flat-square&logo=vitest&logoColor=white" alt="Tests Passing" />
+  <img src="https://img.shields.io/badge/Vitest-100%20Passed-34C759?style=flat-square&logo=vitest&logoColor=white" alt="Tests Passing" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20On--Device-0071E3?style=flat-square" alt="Privacy" />
 </p>
 
@@ -114,29 +114,29 @@ flowchart TD
 ## 3. Key Architectural Features
 
 ### 3.1. Truth-Preserving Deterministic NLP Engine
-Unlike generative AI models that risk hallucinating timeline estimates or misconstruing blockers, the extraction pipeline relies on explicit grammatical rule sets implemented in [`src/lib/parsing/deterministicParser.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/lib/parsing/deterministicParser.ts):
+Unlike generative AI models that risk hallucinating timeline estimates or misconstruing blockers, the extraction pipeline relies on explicit grammatical rule sets implemented in [`src/lib/parsing/deterministicParser.ts`](./src/lib/parsing/deterministicParser.ts):
 - **Sentence Offset Mapping:** Computes exact `[start, end]` character bounds for every sentence extracted from raw notes.
 - **Passage Traceability:** Every generated card carries a `SourceReference` link (`passageText`, confidence score: `explicit` | `inferred` | `manual`). Clicking any card instantly spotlights and highlights the exact originating passage in the composer.
 - **Unconfirmed Status Gating:** Scans for ambiguous delivery language (*"not yet confirmed"*, *"TBD"*, *"pending confirmation"*) and converts them into explicit status warnings rather than assuming completion.
 
 ### 3.2. Modular Snippet Card Ecosystem
-Cards are strictly modeled as a discriminated union over `type` in [`src/types/report.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/types/report.ts) and validated at runtime via [`src/schemas/reportSchema.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/schemas/reportSchema.ts):
+Cards are strictly modeled as a discriminated union over `type` in [`src/types/report.ts`](./src/types/report.ts) and validated at runtime via [`src/schemas/reportSchema.ts`](./src/schemas/reportSchema.ts):
 1. **Executive Summary Card (`executive_summary`):** High-level bottom-line delivery summary, bulleted accomplishments, and unconfirmed commitment disclosures.
 2. **KPI Metric Card (`kpi_metric`):** Quantitative indicator pairing current value, delta, target, previous baseline, and automated directional health evaluation.
 3. **Risk & Blocker Card (`risk_blocker`):** Critical defect and blocker tracking with standardized severity levels (`critical`, `high`, `medium`, `low`), impact assessment, and explicit mitigation ownership.
 4. **Next Steps Card (`next_steps`):** Granular action items with lifecycle status (`planned`, `in_progress`, `completed`), delivery dates, and Directly Responsible Individual (DRI) attribution.
 5. **Milestone Card (`milestone`):** High-watermark delivery milestones with status flags (`achieved`, `on_track`, `at_risk`, `delayed`).
-6. **Visual Update Card (`visual_update`):** High-fidelity architectural diagrams, UI mockups, and telemetry charts with mandatory WCAG AA alternative text.
+6. **Media Card (`visual_update`):** High-fidelity architectural diagrams, UI mockups, and telemetry charts with descriptive alt text adhering to WCAG AA accessibility standards.
 
 ### 3.3. Pure-SVG Metric Visualizations
-Zero reliance on bulky third-party chart libraries. Metric representations in [`src/components/cards/MetricChart.tsx`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/components/cards/MetricChart.tsx) and [`src/lib/export/metricGraphs.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/lib/export/metricGraphs.ts) are rendered using deterministic pure SVG and HTML table primitives:
+Zero reliance on bulky third-party chart libraries. Metric representations in [`src/components/cards/MetricChart.tsx`](./src/components/cards/MetricChart.tsx) and [`src/lib/export/metricGraphs.ts`](./src/lib/export/metricGraphs.ts) are rendered using deterministic pure SVG and HTML table primitives:
 - **Bar Chart:** Zero-baseline aware relative progress bar with target marker ticks and prior-period markers.
 - **Donut Chart:** Mathematical SVG circular progress ring computed using `stroke-dasharray` and `stroke-dashoffset` geometry with percentage center readout.
 - **Trend Chart:** Step-line visualization comparing baseline to current velocity.
 - **Big Number:** Minimalist typography-first headline readout.
 
 ### 3.4. Explainable Executive-Readiness Auditor
-Implemented in [`src/lib/analysis/executiveScore.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/lib/analysis/executiveScore.ts), the diagnostic engine grades project reports against a 6-point enterprise readiness standard:
+Implemented in [`src/lib/analysis/executiveScore.ts`](./src/lib/analysis/executiveScore.ts), the diagnostic engine grades project reports against a 6-point enterprise readiness standard:
 - **Check 1: Executive Summary Presence:** Ensures executive stakeholders receive an immediate overview.
 - **Check 2: Unconfirmed Release Commitments:** Flags speculative or unanchored schedule targets.
 - **Check 3: Defined Reporting Period:** Verifies temporal boundaries for metrics and progress.
@@ -146,7 +146,9 @@ Implemented in [`src/lib/analysis/executiveScore.ts`](file:///Users/ansonchan/Do
 *Includes a one-click automated Quick-Fix applicator that remediates missing fields inline.*
 
 ### 3.5. Time Flow & Baseline Snapshot Differential Engine
-Located in [`src/lib/analysis/snapshotDiff.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/lib/analysis/snapshotDiff.ts), the snapshot system facilitates longitudinal project reporting:
+Located in [`src/lib/analysis/snapshotDiff.ts`](./src/lib/analysis/snapshotDiff.ts) and [`src/components/projects/TimeFlow.tsx`](./src/components/projects/TimeFlow.tsx), the snapshot system facilitates longitudinal project reporting:
+- **Streamlined Snapshot Creation:** Apple-styled snapshot card with inline naming, keyboard shortcuts (<kbd>↵</kbd> save, <kbd>Esc</kbd> cancel), and automatic timestamping.
+- **Auto-Navigation on Card Creation:** Adding a card manually automatically navigates and smoothly scrolls the canvas directly to the newly created card with active inspection highlight.
 - **Immutable Historical Snapshots:** Captures complete project states with chronological timestamps and manual/automatic origin tagging.
 - **"What's Changed?" Comparison:** Automatically computes deltas between any historical baseline and the current draft:
   - Discovered key accomplishments
@@ -155,26 +157,26 @@ Located in [`src/lib/analysis/snapshotDiff.ts`](file:///Users/ansonchan/Document
   - Completed vs. outstanding action item commitments
 
 ### 3.6. Destination-Aware Multi-Channel Export
-A single click transforms the canonical report into destination-optimized formats:
+Unified format preview and message dispatch dialog enabling instant one-click delivery across corporate destinations:
 - **Executive Email:** Self-contained, responsive HTML table structure with inline CSS conforming to Outlook and Gmail layout rendering engines.
+- **Direct Mail Client Compose:** One-click launch with prefilled executive HTML body into **Default Mail App** (Apple Mail / Thunderbird), **Gmail Web**, and **Outlook Web**.
 - **Slack Message:** Native Slack Block Kit and formatted `mrkdwn` with visual emojis and quote blocks.
 - **Microsoft Teams:** Adaptive Cards payload and formatted markdown blocks.
 - **Google Chat:** Structured card representation with formatted section widgets.
 - **Discord:** Rich webhook embed format with categorized field layouts.
 - **Formal Weekly Status Memo:** Clean typographic memo for C-suite executive circulation.
 - **GitHub Flavored Markdown:** Clean Markdown document with headers, checklists, and tables.
-- **Standalone HTML:** Self-contained single-file document with inline styling.
 - **Print-to-PDF Engine:** Print stylesheet (`@media print`) stripping UI chrome, sidebars, and composer panels to produce print-perfect paginated PDFs.
 - **Dual-MIME System Clipboard:** Writes `text/html` and `text/plain` simultaneously to the macOS/Windows clipboard via the modern `navigator.clipboard.write([new ClipboardItem(...)])` API.
 
 ### 3.7. Zero-Trust Security & SSRF-Protected Webhooks
-- **SSRF Prevention:** [`src/lib/security/webhookValidation.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/lib/security/webhookValidation.ts) inspects outbound webhook URLs, enforcing HTTPS and strictly prohibiting calls to `localhost`, `127.0.0.1`, `::1`, `0.0.0.0`, `*.local`, and RFC 1918 private IPv4 subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
-- **XSS Sanitization:** Previews and HTML exports pass through [`src/lib/security/sanitize.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/lib/security/sanitize.ts) powered by DOMPurify with an explicit tag and attribute whitelist that permits inline SVG charts while stripping executable scripts.
+- **SSRF Prevention:** [`src/lib/security/webhookValidation.ts`](./src/lib/security/webhookValidation.ts) inspects outbound webhook URLs, enforcing HTTPS and strictly prohibiting calls to `localhost`, `127.0.0.1`, `::1`, `0.0.0.0`, `*.local`, and RFC 1918 private IPv4 subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
+- **XSS Sanitization:** Previews and HTML exports pass through [`src/lib/security/sanitize.ts`](./src/lib/security/sanitize.ts) powered by DOMPurify with an explicit tag and attribute whitelist that permits inline SVG charts while stripping executable scripts.
 - **Asset Boundaries:** Uploaded images are restricted to explicit MIME types (`image/png`, `image/jpeg`, `image/webp`, `image/svg+xml`) with a hard 5MB memory guard.
 - **Strict Content Security Policy (CSP):** Configured in `index.html` to restrict resource origins, execution contexts, and connection targets.
 
 ### 3.8. Internationalization (i18n) & Accessibility
-- **Full Tri-Locale Localization:** Comprehensive translation dictionaries in [`src/lib/i18n/dictionaries.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/lib/i18n/dictionaries.ts) supporting **English (`en`)**, **Traditional Chinese (`zh-Hant`)**, and **Simplified Chinese (`zh-Hans`)**.
+- **Full Tri-Locale Localization:** Comprehensive translation dictionaries in [`src/lib/i18n/dictionaries.ts`](./src/lib/i18n/dictionaries.ts) supporting **English (`en`)**, **Traditional Chinese (`zh-Hant`)**, and **Simplified Chinese (`zh-Hans`)**.
 - **Dynamic BCP-47 Tagging & Date Localization:** Updates document `<html lang>` and regional date formatting dynamically.
 - **WCAG 2.1 AA Standards:** Semantic HTML landmarks (`<main>`, `<aside>`, `<section>`, `<article>`), high contrast text ratios, and ARIA modal focus trapping (`useDialogFocus`).
 - **Motion Accessibility:** Complete `prefers-reduced-motion` handling, suppressing animations across UI transitions and the animated tour character Pip.
@@ -358,7 +360,7 @@ Engineered with macOS keyboard ergonomics for rapid curation without lifting you
 
 ## 7. Design Tokens & Design System
 
-The visual language strictly mirrors Apple's Human Interface Guidelines, defined in [`src/design/tokens.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/design/tokens.ts):
+The visual language strictly mirrors Apple's Human Interface Guidelines, defined in [`src/design/tokens.ts`](./src/design/tokens.ts):
 
 ### Color Tokens
 - **Canvas Background:** `#F5F5F7` (Light) / `#000000` (Dark)
@@ -388,20 +390,22 @@ npm test
 ```
 
 ### Verification Results: 100% Pass Rate
-- **13 Test Suites Passed** (70 / 70 tests passing)
-  - [`src/test/classifier.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/classifier.test.ts): Linguistic pattern matching & heuristic classification
-  - [`src/test/differentiators.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/differentiators.test.ts): Differential snapshot comparator & card diffing
-  - [`src/test/emailGraphs.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/emailGraphs.test.ts): Outlook/Gmail inline CSS metric graph rendering
-  - [`src/test/export.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/export.test.ts): Markdown, HTML escaping, and destination formatting
-  - [`src/test/integrations.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/integrations.test.ts): Webhook payload generation & dispatch audit logging
-  - [`src/test/metricChart.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/metricChart.test.ts): SVG bar, donut, trend, and number math validations
-  - [`src/test/parsing.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/parsing.test.ts): Sentence offset boundaries & fact extraction
-  - [`src/test/projectLibrary.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/projectLibrary.test.ts): Folder hierarchy, project lifecycle, and snapshot immutability
-  - [`src/test/reordering_and_persistence.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/reordering_and_persistence.test.ts): Card reordering, local draft persistence, and executive scoring
-  - [`src/test/scheduledDispatch.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/scheduledDispatch.test.ts): Scheduled dispatch execution lifecycle
-  - [`src/test/security.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/security.test.ts): SSRF prevention, private IP rejection, and XSS sanitization
-  - [`src/test/validation.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/validation.test.ts): Strict Zod runtime schema boundaries
-  - [`src/test/workspaceFlow.test.ts`](file:///Users/ansonchan/Documents/Self%20Project/Apple-POC-Project-Reporting-Builder/src/test/workspaceFlow.test.ts): End-to-end composer-to-canvas integration flow
+- **15 Test Suites Passed** (100 / 100 tests passing)
+  - [`src/test/classifier.test.ts`](./src/test/classifier.test.ts): Linguistic pattern matching & heuristic classification
+  - [`src/test/differentiators.test.ts`](./src/test/differentiators.test.ts): Differential snapshot comparator & card diffing
+  - [`src/test/editableWords.test.ts`](./src/test/editableWords.test.ts): Word and phrase-level inline transactional editing
+  - [`src/test/emailGraphs.test.ts`](./src/test/emailGraphs.test.ts): Outlook/Gmail inline CSS metric graph rendering
+  - [`src/test/export.test.ts`](./src/test/export.test.ts): Markdown, HTML escaping, and destination formatting
+  - [`src/test/guidedTour.test.ts`](./src/test/guidedTour.test.ts): Interactive 6-step guided walkthrough & tour state machine
+  - [`src/test/integrations.test.ts`](./src/test/integrations.test.ts): Webhook payload generation & dispatch audit logging
+  - [`src/test/metricChart.test.ts`](./src/test/metricChart.test.ts): SVG bar, donut, trend, and number math validations
+  - [`src/test/parsing.test.ts`](./src/test/parsing.test.ts): Sentence offset boundaries & fact extraction
+  - [`src/test/projectLibrary.test.ts`](./src/test/projectLibrary.test.ts): Folder hierarchy, project lifecycle, and snapshot immutability
+  - [`src/test/reordering_and_persistence.test.ts`](./src/test/reordering_and_persistence.test.ts): Card reordering, local draft persistence, and executive scoring
+  - [`src/test/scheduledDispatch.test.ts`](./src/test/scheduledDispatch.test.ts): Scheduled dispatch execution lifecycle
+  - [`src/test/security.test.ts`](./src/test/security.test.ts): SSRF prevention, private IP rejection, and XSS sanitization
+  - [`src/test/validation.test.ts`](./src/test/validation.test.ts): Strict Zod runtime schema boundaries
+  - [`src/test/workspaceFlow.test.ts`](./src/test/workspaceFlow.test.ts): End-to-end composer-to-canvas integration flow
 
 Static type checking:
 ```bash
