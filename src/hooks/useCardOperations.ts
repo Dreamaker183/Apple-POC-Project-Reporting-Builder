@@ -16,6 +16,22 @@ import { formatCardToMarkdown } from '../lib/export/markdownExport';
 import { formatCardToHtml } from '../lib/export/htmlExport';
 import { mergeReviewedCards } from '../lib/composition/mergeReviewedCards';
 
+function scrollToCard(cardId: string, attempts = 6) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const el = document.getElementById(`card-${cardId}`) || document.querySelector(`[data-card-id="${cardId}"]`);
+  if (el) {
+    if (typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    const focusTarget = el.querySelector<HTMLElement>('[tabindex="0"]') || (el instanceof HTMLElement ? el : null);
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+      focusTarget.focus({ preventScroll: true });
+    }
+  } else if (attempts > 0) {
+    window.setTimeout(() => scrollToCard(cardId, attempts - 1), 60);
+  }
+}
+
 /**
  * Manages card-level operations: CRUD, selection, reorder, copy.
  * Expects `recordHistory` and `updateActiveProject` injected from the parent.
@@ -96,6 +112,7 @@ export function useCardOperations(
     updateActiveProject((prev) => ({ ...prev, cards: newCards, isDirty: true }));
     setInspectedCardId(duplicated.id);
     addToast('Duplicated card', 'success');
+    scrollToCard(duplicated.id);
   }, [project.cards, recordHistory, updateActiveProject, addToast]);
 
   const handleMoveCard = useCallback((id: string, direction: 'up' | 'down') => {
@@ -188,6 +205,8 @@ export function useCardOperations(
     updateActiveProject((prev) => ({ ...prev, cards: [...prev.cards, newCard], isDirty: true }));
     setInspectedCardId(newCard.id);
     addToast(`Added new ${newCard.type.replace('_', ' ')} card`, 'success');
+    scrollToCard(newCard.id);
+    return newCard.id;
   }, [project.images, recordHistory, updateActiveProject, addToast]);
 
   // ── Selection ────────────────────────────────────────────────────

@@ -54,7 +54,7 @@ interface Props {
   onOpenMessageToolsForSelected?: () => void;
   onShareCard?: (card: SnippetCard) => void;
   onUpdateCard: (updated: SnippetCard) => void;
-  onAddCard: (type: CardType) => void;
+  onAddCard: (type: CardType) => void | string;
   rawNotes: string;
   metrics: MetricInput[];
   images: ImageAssetInput[];
@@ -121,6 +121,27 @@ export const ReportCanvas: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const addMenuRef = useRef<HTMLDivElement>(null);
   const readinessRef = useRef<HTMLDivElement>(null);
+  const pendingScrollIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (pendingScrollIdRef.current) {
+      const targetId = pendingScrollIdRef.current;
+      const scrollTimer = window.setTimeout(() => {
+        const el = document.getElementById(`card-${targetId}`) || document.querySelector(`[data-card-id="${targetId}"]`);
+        if (el) {
+          if (typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          const focusTarget = el.querySelector<HTMLElement>('[tabindex="0"]') || (el instanceof HTMLElement ? el : null);
+          if (focusTarget && typeof focusTarget.focus === 'function') {
+            focusTarget.focus({ preventScroll: true });
+          }
+        }
+        pendingScrollIdRef.current = null;
+      }, 50);
+      return () => window.clearTimeout(scrollTimer);
+    }
+  }, [cards]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -433,7 +454,16 @@ export const ReportCanvas: React.FC<Props> = ({
                     type="button"
                     onClick={() => {
                       setShowAddMenu(false);
-                      onAddCard(opt.type);
+                      if (filterType !== 'all' && filterType !== opt.type) {
+                        setFilterType('all');
+                      }
+                      if (searchQuery.trim()) {
+                        setSearchQuery('');
+                      }
+                      const newId = onAddCard(opt.type);
+                      if (typeof newId === 'string') {
+                        pendingScrollIdRef.current = newId;
+                      }
                     }}
                     className="w-full text-left px-3.5 py-1.5 hover:bg-black/[0.04] text-[#1D1D1F] transition-colors"
                   >

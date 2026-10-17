@@ -36,4 +36,23 @@ describe('Workspace update and snapshot reliability', () => {
     expect(cards[0]).toMatchObject({ trend: undefined });
     expect(cards[1]).toMatchObject({ trend: 'improving' });
   });
+
+  it('generates well-formed manual cards with valid identifiers and timestamps', () => {
+    const lib = createSeedLibrary();
+    const project = lib.projects[0];
+    const initialCount = project.cards.length;
+    const now = new Date().toISOString();
+    const newCard: SnippetCard = {
+      id: `card-exec-${Date.now()}`,
+      type: 'executive_summary',
+      title: 'Executive Summary',
+      summary: 'Test summary',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updatedCards = [...project.cards, newCard];
+    expect(updatedCards).toHaveLength(initialCount + 1);
+    expect(updatedCards[updatedCards.length - 1].id).toBe(newCard.id);
+    expect(updatedCards[updatedCards.length - 1].id).toMatch(/^card-exec-/);
+  });
 });

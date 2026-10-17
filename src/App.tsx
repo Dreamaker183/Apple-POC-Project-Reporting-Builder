@@ -7,7 +7,7 @@ import React, { Suspense, lazy, useState, useMemo, useRef, useCallback } from 'r
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Eye, Folder } from 'lucide-react';
 
-import type { ReportProject, SnippetCard } from './types/report';
+import type { ReportProject, SnippetCard, CardType } from './types/report';
 import { generateSnippetCards } from './lib/parsing/deterministicParser';
 import { mergeGeneratedCards } from './lib/composition/mergeCards';
 import {
@@ -134,6 +134,12 @@ export default function App() {
   // 5. Layout & Modal UI state
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [mobileArea, setMobileArea] = useState<'projects' | 'canvas'>('canvas');
+
+  const handleAddCardWithNavigation = useCallback((type: CardType) => {
+    setMobileArea('canvas');
+    return handleAddCard(type);
+  }, [handleAddCard]);
+
   const [baselineCards, setBaselineCards] = useState<SnippetCard[]>(() => {
     const latest = latestSnapshotForProject(library.snapshots, library.activeProjectId);
     return latest ? latest.cards : [];
@@ -674,7 +680,7 @@ export default function App() {
                   onOpenMessageToolsForSelected={handleOpenMessageToolsForSelected}
                   onShareCard={handleShareCard}
                   onUpdateCard={handleUpdateCard}
-                  onAddCard={handleAddCard}
+                  onAddCard={handleAddCardWithNavigation}
                   rawNotes={project.rawNotes}
                   metrics={project.metrics}
                   images={project.images}
@@ -736,7 +742,7 @@ export default function App() {
             onOpenMessageToolsForSelected={handleOpenMessageToolsForSelected}
             onShareCard={handleShareCard}
             onUpdateCard={handleUpdateCard}
-            onAddCard={handleAddCard}
+            onAddCard={handleAddCardWithNavigation}
             rawNotes={project.rawNotes}
             metrics={project.metrics}
             images={project.images}

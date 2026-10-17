@@ -167,6 +167,8 @@ export const SortableCard: React.FC<Props> = ({
     <Reorder.Item
       ref={itemRef}
       as="div"
+      id={`card-${card.id}`}
+      data-card-id={card.id}
       value={card}
       dragListener={false}
       dragControls={controls}

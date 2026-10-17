@@ -54,7 +54,58 @@ export const TimeFlow: React.FC<Props> = ({
       </div>
 
       {expanded && <div className="overflow-y-auto px-3.5 pb-3 max-h-72">
-        {naming && <form className="flex gap-1 mb-3" onSubmit={(e) => { e.preventDefault(); onSaveSnapshot(label.trim() || undefined); setLabel(''); setNaming(false); }}><input aria-label={t('timeflow.nameAria')} autoFocus value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t('timeflow.namePlaceholder')} className="min-w-0 flex-1 rounded-lg border border-black/10 px-2 py-1 text-xs" /><button type="submit" className="rounded-lg bg-[#0071E3] text-white px-2 text-xs">{t('timeflow.save')}</button><button type="button" aria-label={t('timeflow.cancelAria')} onClick={() => setNaming(false)}><X className="w-3.5 h-3.5" /></button></form>}
+        {naming && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSaveSnapshot(label.trim() || undefined);
+              setLabel('');
+              setNaming(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setNaming(false);
+                setLabel('');
+              }
+            }}
+            className="mb-3 p-2.5 bg-[#F5F5F7] border border-black/[0.08] rounded-xl shadow-2xs space-y-2 animate-in fade-in duration-150"
+          >
+            <div className="flex items-center justify-between px-0.5">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#1D1D1F]">
+                <Camera className="w-3.5 h-3.5 text-[#0071E3]" />
+                <span>{t('timeflow.nameAria')}</span>
+              </span>
+              <button
+                type="button"
+                aria-label={t('timeflow.cancelAria')}
+                onClick={() => {
+                  setNaming(false);
+                  setLabel('');
+                }}
+                className="p-1 rounded-md text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.05] active:bg-black/[0.08] transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input
+                aria-label={t('timeflow.nameAria')}
+                autoFocus
+                type="text"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder={t('timeflow.namePlaceholder')}
+                className="min-w-0 flex-1 bg-white border border-black/15 rounded-lg px-2.5 py-1.5 text-xs text-[#1D1D1F] placeholder:text-[#86868B] focus:outline-none focus:ring-2 focus:ring-[#0071E3]/20 focus:border-[#0071E3] transition-all shadow-2xs"
+              />
+              <button
+                type="submit"
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-[#0071E3] hover:bg-[#0077ED] active:scale-[0.98] text-white text-xs font-medium shadow-2xs transition-all cursor-pointer"
+              >
+                {t('timeflow.save')}
+              </button>
+            </div>
+          </form>
+        )}
         <div className="text-[11px] text-[#6E6E73] mb-3 flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#0071E3]" />{t('timeflow.workingDraft')}</div>
         {snapshots.length === 0 ? (
           <p className="text-[11px] text-[#86868B] leading-relaxed px-1 pb-1">
