@@ -1,0 +1,1009 @@
+{
+  "capturedAt": "2026-10-21T03:26:00.080Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "locale": "en-US",
+  "colorScheme": "light",
+  "url": "http://127.0.0.1:3200/",
+  "isolatedContext": true,
+  "initialization": "Fresh Playwright browser context, empty cookies and storage; only English and tourSeen preferences initialized. Open demo creates fictional report via actual UI. No app data injected or UI modified.",
+  "privacy": "All scenario data fictional. External HTTP requests blocked; no user browser state, sends, webhooks, clipboard or downloads used.",
+  "coordinateSystem": "Main PNGs: viewport pixels, origin top-left, 1440×900. features/crop are outward-rounded visible rectangles (x,y,w,h); exactBounds are raw Playwright x,y,width,height. Card PNGs: actual component element crops; viewportBounds records original element location.",
+  "pageErrors": [],
+  "blockedExternalOrigins": [],
+  "captures": [
+    {
+      "fileName": "workspace.png",
+      "publicUrl": "/poc/workspace.png",
+      "width": 1440,
+      "height": 900,
+      "state": "Fresh fictional demo opened through Open demo; all 8 automatically generated cards, including milestone. Original UI, initial 240 ms.",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 900
+      },
+      "features": {
+        "sidebar": {
+          "x": 0,
+          "y": 64,
+          "w": 272,
+          "h": 836
+        },
+        "reportCanvas": {
+          "x": 272,
+          "y": 64,
+          "w": 1168,
+          "h": 643
+        },
+        "executiveSummary": {
+          "x": 486,
+          "y": 301,
+          "w": 740,
+          "h": 365
+        },
+        "notesComposer": {
+          "x": 486,
+          "y": 747,
+          "w": 740,
+          "h": 120
+        },
+        "openDemo": {
+          "x": 1006,
+          "y": 15,
+          "w": 91,
+          "h": 33
+        },
+        "sourceNotes": {
+          "x": 486,
+          "y": 715,
+          "w": 145,
+          "h": 24
+        },
+        "refreshReport": {
+          "x": 1072,
+          "y": 818,
+          "w": 141,
+          "h": 36
+        },
+        "projectTitle": {
+          "x": 486,
+          "y": 112,
+          "w": 740,
+          "h": 44
+        },
+        "allCards": {
+          "x": 490,
+          "y": 221,
+          "w": 64,
+          "h": 25
+        }
+      },
+      "exactBounds": {
+        "sidebar": {
+          "x": 0,
+          "y": 64,
+          "width": 272,
+          "height": 836
+        },
+        "reportCanvas": {
+          "x": 272,
+          "y": 64,
+          "width": 1168,
+          "height": 643
+        },
+        "executiveSummary": {
+          "x": 486,
+          "y": 301.6875,
+          "width": 740,
+          "height": 363.625
+        },
+        "notesComposer": {
+          "x": 486,
+          "y": 747,
+          "width": 740,
+          "height": 120
+        },
+        "openDemo": {
+          "x": 1006.609375,
+          "y": 15.5,
+          "width": 89.578125,
+          "height": 32
+        },
+        "sourceNotes": {
+          "x": 486,
+          "y": 715,
+          "width": 144.703125,
+          "height": 24
+        },
+        "refreshReport": {
+          "x": 1072.390625,
+          "y": 818,
+          "width": 140.609375,
+          "height": 36
+        },
+        "projectTitle": {
+          "x": 486,
+          "y": 112,
+          "width": 740,
+          "height": 43.1875
+        },
+        "allCards": {
+          "x": 490,
+          "y": 221.1875,
+          "width": 64,
+          "height": 24
+        }
+      },
+      "sha256": "6c15f01ac264f866d0c5612d717303e3ee503a394d97a4f10bc389c96e2952bb"
+    },
+    {
+      "fileName": "workspace-overview.png",
+      "publicUrl": "/poc/workspace-overview.png",
+      "width": 1440,
+      "height": 900,
+      "state": "Current workspace overview, same fresh fictional eight-card demo as workspace.png.",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 900
+      },
+      "features": {
+        "sidebar": {
+          "x": 0,
+          "y": 64,
+          "w": 272,
+          "h": 836
+        },
+        "reportCanvas": {
+          "x": 272,
+          "y": 64,
+          "w": 1168,
+          "h": 643
+        },
+        "executiveSummary": {
+          "x": 486,
+          "y": 301,
+          "w": 740,
+          "h": 365
+        },
+        "notesComposer": {
+          "x": 486,
+          "y": 747,
+          "w": 740,
+          "h": 120
+        },
+        "openDemo": {
+          "x": 1006,
+          "y": 15,
+          "w": 91,
+          "h": 33
+        },
+        "sourceNotes": {
+          "x": 486,
+          "y": 715,
+          "w": 145,
+          "h": 24
+        },
+        "refreshReport": {
+          "x": 1072,
+          "y": 818,
+          "w": 141,
+          "h": 36
+        },
+        "projectTitle": {
+          "x": 486,
+          "y": 112,
+          "w": 740,
+          "h": 44
+        },
+        "allCards": {
+          "x": 490,
+          "y": 221,
+          "w": 64,
+          "h": 25
+        }
+      },
+      "exactBounds": {
+        "sidebar": {
+          "x": 0,
+          "y": 64,
+          "width": 272,
+          "height": 836
+        },
+        "reportCanvas": {
+          "x": 272,
+          "y": 64,
+          "width": 1168,
+          "height": 643
+        },
+        "executiveSummary": {
+          "x": 486,
+          "y": 301.6875,
+          "width": 740,
+          "height": 363.625
+        },
+        "notesComposer": {
+          "x": 486,
+          "y": 747,
+          "width": 740,
+          "height": 120
+        },
+        "openDemo": {
+          "x": 1006.609375,
+          "y": 15.5,
+          "width": 89.578125,
+          "height": 32
+        },
+        "sourceNotes": {
+          "x": 486,
+          "y": 715,
+          "width": 144.703125,
+          "height": 24
+        },
+        "refreshReport": {
+          "x": 1072.390625,
+          "y": 818,
+          "width": 140.609375,
+          "height": 36
+        },
+        "projectTitle": {
+          "x": 486,
+          "y": 112,
+          "width": 740,
+          "height": 43.1875
+        },
+        "allCards": {
+          "x": 490,
+          "y": 221.1875,
+          "width": 64,
+          "height": 24
+        }
+      },
+      "sha256": "9b59cf1ae0d675d7a49be21f2eed264c6e07f34348dbc904c1c2ebc2767b5f9a"
+    },
+    {
+      "fileName": "library.png",
+      "publicUrl": "/poc/library.png",
+      "width": 1440,
+      "height": 900,
+      "state": "Current project library with actual actions menu expanded; no library action applied.",
+      "crop": {
+        "x": 0,
+        "y": 64,
+        "w": 272,
+        "h": 836
+      },
+      "features": {
+        "sidebar": {
+          "x": 0,
+          "y": 64,
+          "w": 272,
+          "h": 836
+        },
+        "library": {
+          "x": 0,
+          "y": 64,
+          "w": 272,
+          "h": 836
+        },
+        "projectControls": {
+          "x": 80,
+          "y": 286,
+          "w": 176,
+          "h": 167
+        },
+        "activeProject": {
+          "x": 47,
+          "y": 255,
+          "w": 181,
+          "h": 32
+        }
+      },
+      "exactBounds": {
+        "sidebar": {
+          "x": 0,
+          "y": 64,
+          "width": 272,
+          "height": 836
+        },
+        "library": {
+          "x": 0,
+          "y": 64,
+          "width": 272,
+          "height": 836
+        },
+        "projectControls": {
+          "x": 80,
+          "y": 286.828125,
+          "width": 176,
+          "height": 165.328125
+        },
+        "activeProject": {
+          "x": 47,
+          "y": 255.328125,
+          "width": 181,
+          "height": 31
+        }
+      },
+      "sha256": "14da1afb52fd6ef7d066eca013c1ba12085f1d5918e53484a4ee40de1072b69d"
+    },
+    {
+      "fileName": "composer.png",
+      "publicUrl": "/poc/composer.png",
+      "width": 1440,
+      "height": 900,
+      "state": "ONE fictional KPI finding awaiting review; editable name/value/unit/target and exact source passage, not yet applied.",
+      "crop": {
+        "x": 487,
+        "y": 574,
+        "w": 738,
+        "h": 292
+      },
+      "features": {
+        "findingReview": {
+          "x": 487,
+          "y": 574,
+          "w": 738,
+          "h": 292
+        },
+        "reviewHeading": {
+          "x": 508,
+          "y": 595,
+          "w": 395,
+          "h": 25
+        },
+        "finding": {
+          "x": 508,
+          "y": 649,
+          "w": 696,
+          "h": 133
+        },
+        "sourcePassage": {
+          "x": 544,
+          "y": 713,
+          "w": 647,
+          "h": 18
+        },
+        "metricName": {
+          "x": 544,
+          "y": 739,
+          "w": 158,
+          "h": 30
+        },
+        "metricValue": {
+          "x": 707,
+          "y": 739,
+          "w": 158,
+          "h": 30
+        },
+        "metricUnit": {
+          "x": 870,
+          "y": 739,
+          "w": 158,
+          "h": 30
+        },
+        "metricTarget": {
+          "x": 1033,
+          "y": 739,
+          "w": 158,
+          "h": 30
+        },
+        "applyFinding": {
+          "x": 1090,
+          "y": 812,
+          "w": 114,
+          "h": 32
+        }
+      },
+      "exactBounds": {
+        "findingReview": {
+          "x": 487,
+          "y": 574.125,
+          "width": 738,
+          "height": 291.875
+        },
+        "reviewHeading": {
+          "x": 508,
+          "y": 595.125,
+          "width": 394.40625,
+          "height": 24
+        },
+        "finding": {
+          "x": 508,
+          "y": 649.125,
+          "width": 696,
+          "height": 132.875
+        },
+        "sourcePassage": {
+          "x": 544,
+          "y": 713.125,
+          "width": 647,
+          "height": 17.875
+        },
+        "metricName": {
+          "x": 544,
+          "y": 739,
+          "width": 157.25,
+          "height": 30
+        },
+        "metricValue": {
+          "x": 707.25,
+          "y": 739,
+          "width": 157.25,
+          "height": 30
+        },
+        "metricUnit": {
+          "x": 870.5,
+          "y": 739,
+          "width": 157.25,
+          "height": 30
+        },
+        "metricTarget": {
+          "x": 1033.75,
+          "y": 739,
+          "width": 157.25,
+          "height": 30
+        },
+        "applyFinding": {
+          "x": 1090.109375,
+          "y": 812,
+          "width": 113.890625,
+          "height": 32
+        }
+      },
+      "sha256": "59bad7e6afbf85a6c6790b954516b76f89e7d1ec771cfab62b6f473b08b8756e"
+    },
+    {
+      "fileName": "source.png",
+      "publicUrl": "/poc/source.png",
+      "width": 1440,
+      "height": 900,
+      "state": "Reviewed 220 ms KPI after Apply, manual explanation edit and Refresh; original evidence retained and explicit accuracy disclaimer.",
+      "crop": {
+        "x": 486,
+        "y": 149,
+        "w": 740,
+        "h": 449
+      },
+      "features": {
+        "reviewedKpi": {
+          "x": 486,
+          "y": 149,
+          "w": 740,
+          "h": 449
+        },
+        "sourceDisclosure": {
+          "x": 511,
+          "y": 229,
+          "w": 690,
+          "h": 162
+        },
+        "sourceToggle": {
+          "x": 1111,
+          "y": 174,
+          "w": 30,
+          "h": 31
+        },
+        "currentMetric": {
+          "x": 511,
+          "y": 430,
+          "w": 54,
+          "h": 37
+        },
+        "manualExplanation": {
+          "x": 511,
+          "y": 552,
+          "w": 690,
+          "h": 21
+        },
+        "provenanceDisclaimer": {
+          "x": 523,
+          "y": 358,
+          "w": 666,
+          "h": 21
+        }
+      },
+      "exactBounds": {
+        "reviewedKpi": {
+          "x": 486,
+          "y": 149.3125,
+          "width": 740,
+          "height": 448
+        },
+        "sourceDisclosure": {
+          "x": 511,
+          "y": 229.3125,
+          "width": 690,
+          "height": 161
+        },
+        "sourceToggle": {
+          "x": 1111,
+          "y": 174.3125,
+          "width": 30,
+          "height": 30
+        },
+        "currentMetric": {
+          "x": 511,
+          "y": 430.8125,
+          "width": 53.515625,
+          "height": 36
+        },
+        "manualExplanation": {
+          "x": 511,
+          "y": 552.8125,
+          "width": 690,
+          "height": 19.5
+        },
+        "provenanceDisclaimer": {
+          "x": 523,
+          "y": 358.8125,
+          "width": 666,
+          "height": 19.5
+        }
+      },
+      "sha256": "b3dbce1efb02da01e3d440e55917d57b78d136fb1373a6253a05039a594cd87e"
+    },
+    {
+      "fileName": "readiness.png",
+      "publicUrl": "/poc/readiness.png",
+      "width": 1440,
+      "height": 900,
+      "state": "Honest 93% report completeness, 5 of 6 checks; expanded original panel with disclaimer and unconfirmed release warning. No fixes applied.",
+      "crop": {
+        "x": 485,
+        "y": 191,
+        "w": 321,
+        "h": 390
+      },
+      "features": {
+        "readiness": {
+          "x": 485,
+          "y": 191,
+          "w": 321,
+          "h": 390
+        },
+        "readinessTrigger": {
+          "x": 685,
+          "y": 163,
+          "w": 121,
+          "h": 22
+        },
+        "disclaimer": {
+          "x": 500,
+          "y": 247,
+          "w": 291,
+          "h": 55
+        },
+        "releaseWarning": {
+          "x": 532,
+          "y": 407,
+          "w": 185,
+          "h": 46
+        }
+      },
+      "exactBounds": {
+        "readiness": {
+          "x": 485.078125,
+          "y": 191.859375,
+          "width": 320,
+          "height": 388.28125
+        },
+        "readinessTrigger": {
+          "x": 685.640625,
+          "y": 163.859375,
+          "width": 119.4375,
+          "height": 20.65625
+        },
+        "disclaimer": {
+          "x": 500.078125,
+          "y": 247.515625,
+          "width": 290,
+          "height": 53.625
+        },
+        "releaseWarning": {
+          "x": 532.078125,
+          "y": 407.390625,
+          "width": 184.046875,
+          "height": 45.375
+        }
+      },
+      "sha256": "588406f721443cd39c63fd176745d4b1844de9cb2a92bb4683d7d6a0d667fca5"
+    },
+    {
+      "fileName": "snapshots.png",
+      "publicUrl": "/poc/snapshots.png",
+      "width": 1440,
+      "height": 900,
+      "state": "Actual baseline comparison after reviewed correction: latency 260 → 220 ms (-40 ms), sprint 70 → 85%, defects 5 → 3; risk absence is not resolution.",
+      "crop": {
+        "x": 336,
+        "y": 54,
+        "w": 768,
+        "h": 792
+      },
+      "features": {
+        "comparisonDialog": {
+          "x": 336,
+          "y": 54,
+          "w": 768,
+          "h": 792
+        },
+        "metricEvolutions": {
+          "x": 357,
+          "y": 211,
+          "w": 726,
+          "h": 202
+        },
+        "latencyDelta": {
+          "x": 374,
+          "y": 363,
+          "w": 186,
+          "h": 33
+        },
+        "accomplishments": {
+          "x": 357,
+          "y": 429,
+          "w": 726,
+          "h": 120
+        }
+      },
+      "exactBounds": {
+        "comparisonDialog": {
+          "x": 336,
+          "y": 54,
+          "width": 768,
+          "height": 792
+        },
+        "metricEvolutions": {
+          "x": 357,
+          "y": 211,
+          "width": 726,
+          "height": 202
+        },
+        "latencyDelta": {
+          "x": 374,
+          "y": 363.5,
+          "width": 185.234375,
+          "height": 32.5
+        },
+        "accomplishments": {
+          "x": 357,
+          "y": 429,
+          "width": 726,
+          "height": 120
+        }
+      },
+      "sha256": "ef809013f37613fa93c0a41b17c2d75e1dcc668e3f0b5c5e18ea4e91fc1b4500"
+    },
+    {
+      "fileName": "export.png",
+      "publicUrl": "/poc/export.png",
+      "width": 1440,
+      "height": 900,
+      "state": "Header Share defaults to whole current report (Email: 8 cards), reviewed 220 ms and manual explanation; preview only, no transmission or download.",
+      "crop": {
+        "x": 208,
+        "y": 36,
+        "w": 1024,
+        "h": 828
+      },
+      "features": {
+        "exportDialog": {
+          "x": 208,
+          "y": 36,
+          "w": 1024,
+          "h": 828
+        },
+        "destinations": {
+          "x": 209,
+          "y": 120,
+          "w": 256,
+          "h": 743
+        },
+        "reportPreview": {
+          "x": 485,
+          "y": 377,
+          "w": 726,
+          "h": 466
+        },
+        "entireReportScope": {
+          "x": 534,
+          "y": 146,
+          "w": 52,
+          "h": 16
+        },
+        "current220": {
+          "x": 558,
+          "y": 590,
+          "w": 580,
+          "h": 40
+        },
+        "exportActions": {
+          "x": 919,
+          "y": 140,
+          "w": 292,
+          "h": 28
+        }
+      },
+      "exactBounds": {
+        "exportDialog": {
+          "x": 208,
+          "y": 36,
+          "width": 1024,
+          "height": 828
+        },
+        "destinations": {
+          "x": 209,
+          "y": 120,
+          "width": 256,
+          "height": 743
+        },
+        "reportPreview": {
+          "x": 485,
+          "y": 377,
+          "width": 726,
+          "height": 466
+        },
+        "entireReportScope": {
+          "x": 534.09375,
+          "y": 146,
+          "width": 51.59375,
+          "height": 16
+        },
+        "current220": {
+          "x": 558,
+          "y": 590.78125,
+          "width": 580,
+          "height": 38.390625
+        },
+        "exportActions": {
+          "x": 919.359375,
+          "y": 140,
+          "width": 291.640625,
+          "height": 28
+        }
+      },
+      "sha256": "99c2196962b3caeb405bec27ead606a313008cd54ce00f105eb225e2b0eb1020"
+    },
+    {
+      "fileName": "cards.png",
+      "publicUrl": "/poc/cards.png",
+      "width": 1440,
+      "height": 900,
+      "state": "Current original Metrics filter, 3 KPI components; reviewed latency remains 220 ms.",
+      "crop": {
+        "x": 272,
+        "y": 64,
+        "w": 1168,
+        "h": 643
+      },
+      "features": {
+        "cardCanvas": {
+          "x": 272,
+          "y": 64,
+          "w": 1168,
+          "h": 643
+        },
+        "sprintCompletion": {
+          "x": 486,
+          "y": 301,
+          "w": 740,
+          "h": 292
+        },
+        "metricGraph": {
+          "x": 511,
+          "y": 487,
+          "w": 690,
+          "h": 30
+        },
+        "filters": {
+          "x": 486,
+          "y": 217,
+          "w": 507,
+          "h": 33
+        }
+      },
+      "exactBounds": {
+        "cardCanvas": {
+          "x": 272,
+          "y": 64,
+          "width": 1168,
+          "height": 643
+        },
+        "sprintCompletion": {
+          "x": 486,
+          "y": 301.6875,
+          "width": 740,
+          "height": 290.5
+        },
+        "metricGraph": {
+          "x": 511,
+          "y": 487.1875,
+          "width": 690,
+          "height": 29
+        },
+        "filters": {
+          "x": 486,
+          "y": 217.1875,
+          "width": 506.390625,
+          "height": 32
+        }
+      },
+      "sha256": "c2dfc3195369744e7b4ac6c67775bdfbf4bc38556649afac5ca103d029faa43f"
+    },
+    {
+      "fileName": "card-summary.png",
+      "publicUrl": "/poc/card-summary.png",
+      "width": 740,
+      "height": 365,
+      "state": "Current original summary component from the same fictional eight-card report; unchanged demo content.",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 740,
+        "h": 365
+      },
+      "features": {
+        "card": {
+          "x": 0,
+          "y": 0,
+          "w": 740,
+          "h": 365
+        }
+      },
+      "viewportBounds": {
+        "x": 486,
+        "y": 301.6875,
+        "width": 740,
+        "height": 363.625
+      },
+      "sha256": "c78f66b06328959e08f0351d5fa7c774af9ef0b6b55cb72b11bbf42acf331882"
+    },
+    {
+      "fileName": "card-kpi.png",
+      "publicUrl": "/poc/card-kpi.png",
+      "width": 740,
+      "height": 272,
+      "state": "Current original kpi component from the same fictional eight-card report; reviewed 220 ms, manual explanation.",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 740,
+        "h": 272
+      },
+      "features": {
+        "card": {
+          "x": 0,
+          "y": 0,
+          "w": 740,
+          "h": 272
+        }
+      },
+      "viewportBounds": {
+        "x": 486,
+        "y": 250.3125,
+        "width": 740,
+        "height": 271
+      },
+      "sha256": "d3910162ede3916e8e6aecd86b8be813f8a746fdea44e17ee68438fb4e8d8b1e"
+    },
+    {
+      "fileName": "card-risk.png",
+      "publicUrl": "/poc/card-risk.png",
+      "width": 740,
+      "height": 207,
+      "state": "Current original risk component from the same fictional eight-card report; unchanged demo content.",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 740,
+        "h": 207
+      },
+      "features": {
+        "card": {
+          "x": 0,
+          "y": 0,
+          "w": 740,
+          "h": 207
+        }
+      },
+      "viewportBounds": {
+        "x": 486,
+        "y": 500.3125,
+        "width": 740,
+        "height": 206.5
+      },
+      "sha256": "418d8920cf9c7232fc604d1e6b42a599643ddd5477e180e2d6e84dead5cfe04c"
+    },
+    {
+      "fileName": "card-next-steps.png",
+      "publicUrl": "/poc/card-next-steps.png",
+      "width": 740,
+      "height": 281,
+      "state": "Current original next-steps component from the same fictional eight-card report; unchanged demo content.",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 740,
+        "h": 281
+      },
+      "features": {
+        "card": {
+          "x": 0,
+          "y": 0,
+          "w": 740,
+          "h": 281
+        }
+      },
+      "viewportBounds": {
+        "x": 486,
+        "y": 245.8125,
+        "width": 740,
+        "height": 280
+      },
+      "sha256": "7ebd05f66986894aefd70f73a34abcf7a5fed3b9829826de9b702662cebac322"
+    },
+    {
+      "fileName": "card-visual.png",
+      "publicUrl": "/poc/card-visual.png",
+      "width": 740,
+      "height": 410,
+      "state": "Current original visual component from the same fictional eight-card report; unchanged demo content.",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 740,
+        "h": 410
+      },
+      "features": {
+        "card": {
+          "x": 0,
+          "y": 0,
+          "w": 740,
+          "h": 410
+        }
+      },
+      "viewportBounds": {
+        "x": 486,
+        "y": 250.5625,
+        "width": 740,
+        "height": 408.484375
+      },
+      "sha256": "7f4450085cba3b90605f4a77a691dee85d2d89b5c9ee960f61dbd2cc8e9b21b8"
+    },
+    {
+      "fileName": "card-milestone.png",
+      "publicUrl": "/poc/card-milestone.png",
+      "width": 740,
+      "height": 191,
+      "state": "Current original milestone component from the same fictional eight-card report; automatically generated, NOT manually added.",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "w": 740,
+        "h": 191
+      },
+      "features": {
+        "card": {
+          "x": 0,
+          "y": 0,
+          "w": 740,
+          "h": 191
+        }
+      },
+      "viewportBounds": {
+        "x": 486,
+        "y": 63.8125,
+        "width": 740,
+        "height": 189.75
+      },
+      "sha256": "b1f4fc13cc94cf992ed5ff2c777b20141c951c32448ab27b891ef546d09b0759"
+    }
+  ]
+}

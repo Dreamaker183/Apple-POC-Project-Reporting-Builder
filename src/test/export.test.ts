@@ -49,7 +49,7 @@ describe('Export & Serialization Reliability', () => {
   it('generates standalone, valid HTML with embedded Apple styling', () => {
     const html = exportReportToHtml(project);
     expect(html).toContain('<!DOCTYPE html>');
-    expect(html).toContain('<title>Customer Portal Modernization — Executive Report</title>');
+    expect(html).toContain(`<title>${project.title} — Executive Report</title>`);
     expect(html).toContain('snippet-card');
     expect(html).toContain('data-metric-graph="bar"');
   });
@@ -62,7 +62,7 @@ describe('Export & Serialization Reliability', () => {
 
     // 2. Slack
     const slackText = formatForSlack(project);
-    expect(slackText).toContain(':bar_chart: *Customer Portal Modernization*');
+    expect(slackText).toContain(`:bar_chart: *${project.title}*`);
     expect(slackText).toContain('`85%`');
 
     // 3. Teams

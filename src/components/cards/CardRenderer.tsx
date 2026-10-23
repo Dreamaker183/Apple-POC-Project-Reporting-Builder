@@ -71,6 +71,15 @@ export const CardRenderer: React.FC<Props> = ({
   const [editing, setEditing] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const sourceLabel = card.sourceRef
+    ? card.manuallyEdited
+      ? 'Edited · source retained'
+      : card.sourceRef.confidence === 'explicit'
+        ? 'Source-backed'
+        : card.sourceRef.confidence === 'inferred'
+          ? 'Inferred from source'
+          : 'Manually entered'
+    : 'Manually entered';
 
   useEffect(() => {
     const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') { setShowMenu(false); setShowSource(false); } };
@@ -185,11 +194,9 @@ export const CardRenderer: React.FC<Props> = ({
             }`} />
             {cardTypeNames[card.type] || card.type}
           </span>
-          {card.sourceRef && (
-            <span className="text-[11px] text-[#86868B] hidden sm:inline">
-              {t('card.sourceVerified')}
-            </span>
-          )}
+          <span className="text-[11px] text-[#86868B] hidden sm:inline">
+            {sourceLabel}
+          </span>
         </div>
 
         {/* Clean Hover Actions */}
@@ -288,7 +295,16 @@ export const CardRenderer: React.FC<Props> = ({
         </div>
       </div>
 
-      {showSource && card.sourceRef && <div className="no-print mb-4 rounded-xl bg-[#F5F5F7] p-3 text-[12px] leading-relaxed text-[#6E6E73]"><span className="block text-[#1D1D1F] font-medium mb-1">{t('card.sourceRef')}</span>{card.sourceRef.passageText}</div>}
+      {showSource && card.sourceRef && (
+        <div className="no-print mb-4 rounded-xl bg-[#F5F5F7] p-3 text-[12px] leading-relaxed text-[#6E6E73]">
+          <span className="block text-[#1D1D1F] font-medium mb-1">{t('card.sourceRef')}</span>
+          <p>{card.sourceRef.passageText}</p>
+          <p className="mt-2">Reference confidence: {card.sourceRef.confidence}</p>
+          {card.manuallyEdited && <p>Edited · source retained</p>}
+          {card.sourceRef.notes && <p className="mt-1">Notes: {card.sourceRef.notes}</p>}
+          <p className="mt-1">Source references provide provenance; factual accuracy has not been independently verified.</p>
+        </div>
+      )}
       {/* Specific Card Content (click text to edit inline) */}
       <div onClick={handleBodyClick} className={editing ? 'cursor-text' : ''}>
       {card.type === 'executive_summary' && (

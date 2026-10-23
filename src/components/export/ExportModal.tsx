@@ -69,6 +69,7 @@ interface Props {
   onNotify: (msg: string, type: 'success' | 'error' | 'info') => void;
   initialMode?: 'formats' | 'tools';
   initialTool?: MessageToolId;
+  initialScope?: 'all' | 'selected';
 }
 
 export const ExportModal: React.FC<Props> = ({
@@ -79,6 +80,7 @@ export const ExportModal: React.FC<Props> = ({
   onNotify,
   initialMode = 'formats',
   initialTool = 'email',
+  initialScope = 'all',
 }) => {
   useDialogFocus(isOpen, onClose);
   const { t, locale } = useLanguage();
@@ -86,7 +88,7 @@ export const ExportModal: React.FC<Props> = ({
   // Unified destination state
   const [destination, setDestination] = useState<ExportDestination>('executive_email');
   const [exportScope, setExportScope] = useState<'all' | 'selected'>(
-    selectedCards.length > 0 ? 'selected' : 'all'
+    initialScope
   );
   const [copied, setCopied] = useState(false);
   const [copiedRawHtml, setCopiedRawHtml] = useState(false);
@@ -172,7 +174,7 @@ export const ExportModal: React.FC<Props> = ({
         setDestination('executive_email');
       }
 
-      setExportScope(selectedCards.length > 0 ? 'selected' : 'all');
+      setExportScope(initialScope);
       setEmailSubject(`[Status Report] ${project.title}${project.reportingPeriod ? ` (${project.reportingPeriod})` : ''}`);
       setDispatchStatus(null);
       
@@ -185,7 +187,7 @@ export const ExportModal: React.FC<Props> = ({
       if (saved.googleChat) setGoogleChatWebhookUrl(saved.googleChat);
       if (saved.discord) setDiscordWebhookUrl(saved.discord);
     }
-  }, [isOpen, initialMode, initialTool, selectedCards.length, project.title, project.reportingPeriod]);
+  }, [isOpen, initialMode, initialTool, initialScope, selectedCards.length, project.title, project.reportingPeriod]);
 
   // Persist webhook changes
   const handleSaveSettings = (updates: Partial<{ emailTo: string; emailCc: string; slack: string; teams: string; googleChat: string; discord: string }>) => {

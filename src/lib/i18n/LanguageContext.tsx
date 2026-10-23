@@ -36,8 +36,8 @@ const LanguageContext = createContext<LanguageValue>({
   dateLocale: undefined,
 });
 
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [locale, setLocaleState] = useState<Locale>(detectLocale);
+export const LanguageProvider: React.FC<{ children: React.ReactNode; initialLocale?: Locale }> = ({ children, initialLocale }) => {
+  const [locale, setLocaleState] = useState<Locale>(() => initialLocale ?? detectLocale());
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);

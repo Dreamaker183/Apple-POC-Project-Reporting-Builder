@@ -4,8 +4,12 @@
  */
 
 import { ReportProject, SnippetCard } from '../../types/report';
-import { ReportProjectSchema, SnippetCardSchema } from '../../schemas/reportSchema';
+import { MetricInputSchema, ReportProjectSchema, SnippetCardSchema } from '../../schemas/reportSchema';
 import { z } from 'zod';
+
+const MetricsSummarySchema = z.array(MetricInputSchema.extend({
+  id: z.string().min(1).optional(),
+}));
 
 export function exportReportToJson(project: ReportProject, selectedCards?: SnippetCard[]): string {
   const cardsToExport = selectedCards && selectedCards.length > 0 ? selectedCards : project.cards;
@@ -18,8 +22,9 @@ export function exportReportToJson(project: ReportProject, selectedCards?: Snipp
       title: project.title,
       reportingPeriod: project.reportingPeriod,
     },
-    metricsSummary: project.metrics.map(m => ({
-      name: m.name,
+    metricsSummary: cardsToExport.filter(card => card.type === 'kpi_metric').map(m => ({
+      id: m.sourceKey?.startsWith('metric:') ? m.sourceKey.slice('metric:'.length) || m.id : m.id,
+      name: m.label,
       value: m.value,
       unit: m.unit,
       target: m.target,
@@ -72,9 +77,10 @@ export function importReportFromJson(jsonString: string): { success: boolean; da
           ...(item.content || {}),
         };
         const cardVal = SnippetCardSchema.safeParse(flatCard);
-        if (cardVal.success) {
-          reconstructedCards.push(cardVal.data as SnippetCard);
+        if (!cardVal.success) {
+          return { success: false, error: 'Invalid report card in JSON export.' };
         }
+        reconstructedCards.push(cardVal.data as SnippetCard);
       }
 
       const project: ReportProject = {
@@ -82,24 +88,21 @@ export function importReportFromJson(jsonString: string): { success: boolean; da
         title: raw.project.title || 'Imported Project',
         reportingPeriod: raw.project.reportingPeriod || '',
         rawNotes: '',
-        metrics: Array.isArray(raw.metricsSummary) ? raw.metricsSummary.map((m: any, idx: number) => ({
-          id: `metric-imported-${idx}`,
-          name: m.name || '',
-          value: Number(m.value) || 0,
-          unit: m.unit || '',
-          target: m.target !== undefined ? Number(m.target) : undefined,
-          previousValue: m.previousValue !== undefined ? Number(m.previousValue) : undefined,
-          explanation: m.explanation,
-          chartStyle: ['number', 'bar', 'donut', 'trend'].includes(m.chartStyle) ? m.chartStyle : undefined,
-          direction: ['higher', 'lower', 'neutral'].includes(m.direction) ? m.direction : undefined,
-        })) : [],
+        metrics: MetricsSummarySchema.parse(raw.metricsSummary ?? []).map((metric, idx) => ({
+          ...metric,
+          id: metric.id ?? `metric-imported-${idx}`,
+        })),
         images: [],
         cards: reconstructedCards,
         lastSavedAt: new Date().toISOString(),
         isDirty: false,
       };
 
-      return { success: true, data: project };
+      const validated = ReportProjectSchema.safeParse(project);
+      if (!validated.success) {
+        return { success: false, error: 'Invalid project in JSON export.' };
+      }
+      return { success: true, data: validated.data as ReportProject };
     }
 
     return { success: false, error: 'JSON does not match Project Reporting Builder format.' };

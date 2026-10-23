@@ -25,8 +25,9 @@ import {
   snapshotLabelFor,
   uid,
 } from '../lib/persistence/projectLibrary';
-import { createSampleProject } from '../lib/sampleData';
+import { createSampleProject, WEEK_40_BASELINE_SNAPSHOT } from '../lib/sampleData';
 import { isScheduleDue, sendScheduledReport } from '../lib/integrations/scheduledDispatch';
+import { syncMetricCards } from '../lib/composition/syncMetricCards';
 
 /**
  * Core hook that owns the full project library lifecycle:
@@ -213,20 +214,12 @@ export function useProjectLibrary(addToast: (msg: string, type?: 'success' | 'er
   const handleLoadSample = useCallback((useMessy: boolean = false, emptyCards: boolean = false) => {
     const sample = createSampleProject(useMessy);
     const cardsToUse = emptyCards ? [] : sample.cards;
-    updateActiveProject((prev) => ({
-      ...prev,
-      title: sample.title,
-      reportingPeriod: sample.reportingPeriod,
-      rawNotes: sample.rawNotes,
-      metrics: sample.metrics,
-      images: sample.images,
-      cards: cardsToUse,
-      isDirty: true,
-      lastSavedAt: new Date().toISOString(),
-    }));
-    addToast(useMessy ? 'Loaded messy standup sample' : 'Loaded Customer Portal sample project', 'success');
-    return { ...sample, cards: cardsToUse };
-  }, [updateActiveProject, addToast]);
+    const prepared = { ...sample, id: uid('demo'), folderId: library.folders[0]?.id, cards: cardsToUse, isDirty: true };
+    setLibrary(prev => ({ ...prev, projects: [...prev.projects, prepared], activeProjectId: prepared.id,
+      snapshots: addSnapshot(prev.snapshots, makeSnapshot(prepared.id, 'Week 40 baseline · Fictional', WEEK_40_BASELINE_SNAPSHOT, 'manual')) }));
+    addToast('Opened a new fictional demo project. Existing projects preserved.', 'success');
+    return prepared;
+  }, [library.folders, addToast]);
 
   // ── Folder CRUD ──────────────────────────────────────────────────
 
@@ -304,7 +297,7 @@ export function useProjectLibrary(addToast: (msg: string, type?: 'success' | 'er
   }, [updateActiveProject]);
 
   const handleMetricsChange = useCallback((metrics: MetricInput[]) => {
-    updateActiveProject((prev) => ({ ...prev, metrics, isDirty: true }));
+    updateActiveProject((prev) => ({ ...prev, metrics, cards: syncMetricCards(prev.cards, prev.metrics, metrics), isDirty: true }));
   }, [updateActiveProject]);
 
   const handleImagesChange = useCallback((images: ImageAssetInput[]) => {

@@ -286,10 +286,11 @@ export const ReportCanvas: React.FC<Props> = ({
                           className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white text-[11px] font-medium"
                         >
                           <Zap className="w-3 h-3" />
-                          <span>{t('canvas.fixAll')}</span>
+                          <span>Review gaps</span>
                         </button>
                       )}
                     </div>
+                    <p className="text-[11px] leading-relaxed text-[#526477] my-2">Report completeness only—not factual accuracy or project delivery health. Missing facts require your input.</p>
                     <div className="space-y-1.5 max-h-64 overflow-y-auto">
                       {readinessScore.items.map((item) => (
                         <div key={item.id} className="rounded-xl bg-[#F5F5F7] p-2.5 flex items-start justify-between gap-2">
@@ -312,7 +313,7 @@ export const ReportCanvas: React.FC<Props> = ({
                               onClick={() => onApplyQuickFix(item.id)}
                               className="shrink-0 px-2 py-1 rounded-lg bg-white border border-black/10 text-[11px] font-medium text-[#0071E3] hover:bg-[#0071E3]/10"
                             >
-                              {t('canvas.fix')}
+                              Review
                             </button>
                           )}
                         </div>

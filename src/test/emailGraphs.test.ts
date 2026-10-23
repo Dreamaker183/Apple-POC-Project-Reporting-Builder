@@ -6,7 +6,8 @@ import { KpiMetricCardData } from '../types/report';
 
 describe('Executive email and dispatch graphs', () => {
   it('exports the chosen graph forms and all report sections in email-safe HTML', () => {
-    const project = createSampleProject();
+    const sample = createSampleProject();
+    const project = { ...sample, cards: sample.cards.map(card => card.type === 'kpi_metric' && card.label === 'Sprint completion' ? { ...card, chartStyle: 'donut' as const } : card) };
     const html = formatForExecutiveEmail(project);
     expect(html).toContain('data-metric-graph="bar"');
     expect(html).toContain('data-metric-graph="trend"');
@@ -17,7 +18,8 @@ describe('Executive email and dispatch graphs', () => {
     expect(html).not.toContain('<svg');
   });
   it('carries portable graphs into all four live webhook payloads', () => {
-    const project = createSampleProject();
+    const sample = createSampleProject();
+    const project = { ...sample, cards: sample.cards.map(card => card.type === 'kpi_metric' && card.label === 'Sprint completion' ? { ...card, chartStyle: 'donut' as const } : card) };
     for (const formatter of [formatSlackWebhookPayload, formatTeamsWebhookPayload, formatGoogleChatWebhookPayload, formatDiscordWebhookPayload]) {
       const payload = JSON.stringify(formatter(project));
       expect(payload).toContain('█');

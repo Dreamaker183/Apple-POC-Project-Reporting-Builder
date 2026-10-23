@@ -16,12 +16,19 @@ export interface DiffReport {
     percentChange?: number;
     improved: boolean;
   }>;
+  /** Risks removed from the report; disappearance does not verify resolution. */
   resolvedRisks: string[];
   newBlockers: string[];
   outstandingActions: string[];
   resolvedActions: string[];
   addedCardsCount: number;
   removedCardsCount: number;
+}
+
+function sameRisk(baseline: RiskBlockerCardData, current: RiskBlockerCardData): boolean {
+  return baseline.id === current.id
+    || Boolean(baseline.sourceKey && baseline.sourceKey === current.sourceKey)
+    || Boolean(baseline.description.trim() && baseline.description === current.description);
 }
 
 export function compareReportSnapshots(
@@ -62,8 +69,10 @@ export function compareReportSnapshots(
     const baseMatch = baseMetrics.find(b => b.label.toLowerCase() === curr.label.toLowerCase());
     if (baseMatch && baseMatch.value !== curr.value) {
       const delta = curr.value - baseMatch.value;
-      const isLowerBetter = /defect|bug|time|latency|delay|ms|second/i.test(curr.label + curr.unit);
-      const improved = isLowerBetter ? delta < 0 : delta > 0;
+      const direction = curr.direction ?? baseMatch.direction;
+      const isLowerBetter = direction === 'lower'
+        || (direction === undefined && /defect|bug|time|latency|delay|ms|second/i.test(curr.label + curr.unit));
+      const improved = direction !== 'neutral' && (isLowerBetter ? delta < 0 : delta > 0);
       const percentChange = baseMatch.value !== 0 
         ? Number(((delta / baseMatch.value) * 100).toFixed(1))
         : undefined;
@@ -84,10 +93,10 @@ export function compareReportSnapshots(
   const baseRisks = baselineCards.filter((c): c is RiskBlockerCardData => c.type === 'risk_blocker');
   const currRisks = currentCards.filter((c): c is RiskBlockerCardData => c.type === 'risk_blocker');
 
-  // Check for resolved risks in baseline that are no longer in current
+  // Retain the legacy field name for risks no longer included, not verified resolved.
   baseRisks.forEach(baseRisk => {
     const stillPresent = currRisks.some(
-      curr => curr.title === baseRisk.title || curr.description === baseRisk.description
+      curr => sameRisk(baseRisk, curr)
     );
     if (!stillPresent) {
       diff.resolvedRisks.push(baseRisk.title);
@@ -98,7 +107,7 @@ export function compareReportSnapshots(
   currRisks.forEach(currRisk => {
     if (currRisk.isBlocker) {
       const wasInBase = baseRisks.some(
-        b => (b.title === currRisk.title || b.description === currRisk.description) && b.isBlocker
+        b => sameRisk(b, currRisk) && b.isBlocker
       );
       if (!wasInBase) {
         diff.newBlockers.push(currRisk.title);
@@ -107,11 +116,19 @@ export function compareReportSnapshots(
   });
 
   // 4. Action items tracking
+  const baseNextSteps = baselineCards.filter((c): c is NextStepsCardData => c.type === 'next_steps');
+  const baseItems = baseNextSteps.flatMap(card => card.items);
   const currNextSteps = currentCards.filter((c): c is NextStepsCardData => c.type === 'next_steps');
   currNextSteps.forEach(card => {
     card.items.forEach(item => {
       if (item.status === 'completed') {
-        diff.resolvedActions.push(item.action);
+        const baseCard = baseNextSteps.find(base => base.id === card.id);
+        const identityMatch = baseCard?.items.find(base => base.id === item.id);
+        const textMatches = baseItems.filter(base => item.action.trim() && base.action === item.action);
+        const baseItem = identityMatch ?? (textMatches.length === 1 ? textMatches[0] : undefined);
+        if (baseItem && baseItem.status !== 'completed') {
+          diff.resolvedActions.push(item.action);
+        }
       } else {
         diff.outstandingActions.push(item.action);
       }

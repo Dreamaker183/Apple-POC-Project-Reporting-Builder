@@ -8,8 +8,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Eye, Folder } from 'lucide-react';
 
 import type { ReportProject, SnippetCard, CardType } from './types/report';
-import { generateSnippetCards } from './lib/parsing/deterministicParser';
-import { mergeGeneratedCards } from './lib/composition/mergeCards';
+import { refreshReport } from './lib/composition/refreshReport';
 import {
   ensureDefaultFolder,
   makeSnapshot,
@@ -18,7 +17,7 @@ import {
   snapshotLabelFor,
   uid,
 } from './lib/persistence/projectLibrary';
-import { calculateExecutiveScore, applyQuickFixToProject } from './lib/analysis/executiveScore';
+import { calculateExecutiveScore } from './lib/analysis/executiveScore';
 import { importReportFromJson } from './lib/export/jsonExport';
 import { useLanguage } from './lib/i18n/LanguageContext';
 
@@ -159,6 +158,7 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportInitialMode, setExportInitialMode] = useState<'formats' | 'tools'>('formats');
   const [exportInitialTool, setExportInitialTool] = useState<MessageToolId>('email');
+  const [exportInitialScope, setExportInitialScope] = useState<'all' | 'selected'>('all');
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
   const [isGuidedTourOpen, setIsGuidedTourOpen] = useState(shouldAutoStartTour);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
@@ -230,11 +230,12 @@ export default function App() {
   }, [deleteProjectInLib, clearHistory, resetWorkspaceUI]);
 
   const handleLoadSample = useCallback((useMessy: boolean = false, emptyCards: boolean = false) => {
-    recordProjectHistory();
+    clearHistory();
     const sample = loadSampleInLib(useMessy, emptyCards);
     resetWorkspaceUI(sample.cards);
+    setBaselineCards([]);
     return sample;
-  }, [recordProjectHistory, loadSampleInLib, resetWorkspaceUI]);
+  }, [clearHistory, loadSampleInLib, resetWorkspaceUI]);
 
   // 7. Snapshot Handlers
   const handleRestoreSnapshot = useCallback((snapshotId: string) => {
@@ -258,10 +259,7 @@ export default function App() {
       : project.rawNotes;
     if (!rawNotes.trim() && !project.metrics.length && !project.images.length) return [];
     recordProjectHistory();
-    const generatedCards = mergeGeneratedCards(
-      project.cards,
-      generateSnippetCards(rawNotes, project.metrics, project.images, project.title)
-    );
+    const generatedCards = refreshReport({ ...project, rawNotes });
 
     const label = snapshotLabelFor(project);
     const projectId = project.id;
@@ -293,31 +291,22 @@ export default function App() {
       }
     }
     setMobileArea('canvas');
-    addToast(`Generated ${generatedCards.length} verified snippet cards`, 'success');
+    addToast(`Report refreshed — ${generatedCards.length} cards. Reviewed edits preserved.`, 'success');
     return generatedCards;
   }, [project, recordProjectHistory, setLibrary, setInspectedCardId, setHighlightPassage, addToast]);
 
   // 9. Quick Fixes for Readiness Scores
   const handleApplyQuickFix = useCallback((checkId: string) => {
-    recordProjectHistory();
-    const updated = applyQuickFixToProject(project, checkId);
-    updateActiveProject(() => updated);
-    addToast('Applied readiness quick-fix', 'success');
-  }, [recordProjectHistory, project, updateActiveProject, addToast]);
+    const item = calculateExecutiveScore(project, t).items.find(check => check.id === checkId);
+    if (item?.cardId) handleInspectCard(item.cardId);
+    addToast(item ? `${item.label}: ${item.description} Edit the relevant field; no facts were filled in automatically.` : 'Review the missing report fields.', 'info');
+  }, [project, t, handleInspectCard, addToast]);
 
   const handleApplyAllFixes = useCallback(() => {
-    recordProjectHistory();
-    let current = { ...project };
-    const score = calculateExecutiveScore(current, t);
-    score.items.forEach((item) => {
-      if (item.status !== 'pass') {
-        current = applyQuickFixToProject(current, item.id);
-      }
-    });
-    const fixed = current;
-    updateActiveProject(() => fixed);
-    addToast('All diagnostic readiness checks resolved!', 'success');
-  }, [recordProjectHistory, project, t, updateActiveProject, addToast]);
+    const first = calculateExecutiveScore(project, t).items.find(item => item.status !== 'pass');
+    if (first) handleApplyQuickFix(first.id);
+    else addToast('Structural checks passed. This does not verify factual accuracy or delivery health.', 'info');
+  }, [project, t, handleApplyQuickFix, addToast]);
 
   // 10. Import JSON project
   const triggerImportProject = useCallback(() => {
@@ -471,23 +460,27 @@ export default function App() {
 
   // 13. Sharing & Message Tool Triggers
   const handleOpenExport = useCallback(() => {
+    setExportInitialScope('all');
     setExportInitialMode('formats');
     setIsExportOpen(true);
   }, []);
 
   const handleOpenMessageTools = useCallback((tool: MessageToolId = 'email') => {
+    setExportInitialScope('all');
     setExportInitialMode('tools');
     setExportInitialTool(tool);
     setIsExportOpen(true);
   }, []);
 
   const handleOpenMessageToolsForSelected = useCallback(() => {
+    setExportInitialScope('selected');
     setExportInitialMode('tools');
     setExportInitialTool('slack');
     setIsExportOpen(true);
   }, []);
 
   const handleShareCard = useCallback((card: SnippetCard) => {
+    setExportInitialScope('selected');
     handleSelectSingleCard(card.id);
     setExportInitialMode('tools');
     setExportInitialTool('slack');
@@ -841,6 +834,7 @@ export default function App() {
             onNotify={addToast}
             initialMode={exportInitialMode}
             initialTool={exportInitialTool}
+            initialScope={exportInitialScope}
           />
         </Suspense>
       )}

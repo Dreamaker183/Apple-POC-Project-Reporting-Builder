@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { PanelLeft, Undo2, Redo2, Share2, MoreHorizontal, Plus, Upload, Printer, GitCompare, Keyboard, Compass, Sparkles, Check, LoaderCircle, AlertCircle } from 'lucide-react';
+import { PanelLeft, Undo2, Redo2, Share2, MoreHorizontal, Plus, Upload, Printer, GitCompare, Keyboard, Compass, Sparkles, Check, LoaderCircle, AlertCircle, Presentation } from 'lucide-react';
 import { useLanguage } from '../../lib/i18n/LanguageContext';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 
@@ -75,6 +75,8 @@ export function Header(props: Props) {
         </span>
       </div>
       <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <button type="button" onClick={props.onLoadSample} className="hidden sm:flex text-xs text-[#0071E3] px-3 py-2 rounded-full hover:bg-blue-50" title="Open a new fictional demo project; keep existing projects">Open demo</button>
+        <a href="/poc" className={iconButton} aria-label="View POC presentation" title="View POC presentation"><Presentation className="w-4 h-4" /></a>
         <button type="button" className={iconButton} disabled={!props.canUndo} onClick={props.onUndo} aria-label={t('header.undo')} title={t('header.undoTitle')}><Undo2 className="w-4 h-4" /></button>
         <button type="button" className={`${iconButton} hidden sm:flex`} disabled={!props.canRedo} onClick={props.onRedo} aria-label={t('header.redo')} title={t('header.redoTitle')}><Redo2 className="w-4 h-4" /></button>
         <div ref={menuRef} className="relative">

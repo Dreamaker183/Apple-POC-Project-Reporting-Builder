@@ -15,9 +15,7 @@ import {
   TrendingDown, 
   Copy, 
   Check, 
-  ArrowRight,
-  Sparkles,
-  Layers
+  ArrowRight
 } from 'lucide-react';
 import { copyToClipboard } from '../../lib/export/clipboard';
 import { useDialogFocus } from '../common/useDialogFocus';
@@ -46,6 +44,13 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
 
   const baselineCards = initialCards;
   const diff: DiffReport = compareReportSnapshots(baselineCards, currentCards);
+  // Preserve DiffReport's boolean shape while presenting neutral changes without judgement.
+  const neutralMetrics = new Set(currentCards.flatMap(card => {
+    if (card.type !== 'kpi_metric') return [];
+    const baseline = baselineCards.find(base => base.type === 'kpi_metric' && base.label.toLowerCase() === card.label.toLowerCase());
+    const direction = card.direction ?? (baseline?.type === 'kpi_metric' ? baseline.direction : undefined);
+    return direction === 'neutral' ? [card.label] : [];
+  }));
 
   const formatDiffSummaryText = (): string => {
     const lines: string[] = [];
@@ -57,7 +62,7 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
     if (diff.metricChanges.length > 0) {
       lines.push(`\n${t('diff.logMetricSection')}`);
       diff.metricChanges.forEach(m => {
-        const trend = m.improved ? t('diff.improved') : t('diff.attentionNeeded');
+        const trend = neutralMetrics.has(m.label) ? 'No status judgement' : m.improved ? t('diff.improved') : t('diff.attentionNeeded');
         lines.push(`• ${m.label}: ${m.oldValue}${m.unit} → ${m.newValue}${m.unit} (${m.diff > 0 ? `+${m.diff}` : m.diff}${m.unit}, ${trend})`);
       });
     }
@@ -68,8 +73,8 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
     }
 
     if (diff.resolvedRisks.length > 0) {
-      lines.push(`\n${t('diff.logResolvedSection')}`);
-      diff.resolvedRisks.forEach(r => lines.push(`✓ ${t('diff.logResolvedTag')} ${r}`));
+      lines.push('\nREMOVED FROM REPORT — VERIFY RESOLUTION:');
+      diff.resolvedRisks.forEach(r => lines.push(`• [Removed from report; verify resolution] ${r}`));
     }
 
     if (diff.newBlockers.length > 0) {
@@ -170,11 +175,14 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
 
                     <div className="flex items-center gap-2">
                       <span className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold ${
-                        m.improved 
+                        neutralMetrics.has(m.label)
+                          ? 'bg-neutral-50 text-neutral-700 border border-neutral-200'
+                          : m.improved
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                           : 'bg-amber-50 text-amber-700 border border-amber-200'
                       }`}>
-                        {m.improved ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        {neutralMetrics.has(m.label) ? <ArrowRight className="w-3.5 h-3.5" /> : m.improved ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        {neutralMetrics.has(m.label) && <span className="sr-only">No status judgement</span>}
                         <span>{m.diff > 0 ? `+${m.diff}` : m.diff}{m.unit}</span>
                         {m.percentChange !== undefined && (
                           <span className="text-[10px] opacity-80">
@@ -207,19 +215,20 @@ export const SnapshotComparisonModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Resolved Blockers / Risks */}
+          {/* Removed Blockers / Risks */}
           {diff.resolvedRisks.length > 0 && (
             <div className="p-4 bg-blue-50/40 rounded-xl border border-blue-200/80 shadow-xs space-y-2.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#0071E3] uppercase tracking-wider">
-                <Check className="w-4 h-4 text-[#0071E3] shrink-0" />
-                <span>{t('diff.resolved')}</span>
+                <AlertTriangle className="w-4 h-4 text-[#0071E3] shrink-0" />
+                <span>Removed from report</span>
               </div>
+              <p className="text-xs text-[#727272]">Verify resolution: absence from this report does not confirm the risk is resolved.</p>
               <ul className="space-y-1.5">
                 {diff.resolvedRisks.map((risk, idx) => (
                   <li key={idx} className="text-xs text-[#1F1F1F] flex items-center gap-2">
-                    <span className="line-through text-[#727272]">{risk}</span>
-                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                      {t('diff.resolvedBadge')}
+                    <span>{risk}</span>
+                    <span className="text-[10px] font-semibold text-[#727272] bg-neutral-50 px-1.5 py-0.2 rounded border border-neutral-200">
+                      Verify resolution
                     </span>
                   </li>
                 ))}

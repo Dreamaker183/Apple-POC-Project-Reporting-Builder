@@ -51,9 +51,11 @@ export function calculateExecutiveScore(project: ReportProject, t: ScoreT = engl
     });
   }
 
-  // Check 2: Unconfirmed release commitments or unstated dates
-  const unconfirmedCard = project.cards.find(c => 
-    c.type === 'executive_summary' && c.statusNote?.toLowerCase().includes('not yet')
+  // Textual uncertainty detection only; absence is not factual validation.
+  const uncertainty = /\b(?:not[\s-]*yet|unconfirmed|t\.?b\.?d\.?|unknown|not\s+(?:been\s+)?confirmed|to\s+be\s+(?:determined|confirmed)|pending\s+confirmation)\b/i;
+  const unconfirmedCard = project.cards.find(c =>
+    c.type === 'executive_summary' &&
+    [c.statusNote, c.summary, ...c.keyAccomplishments].some(text => uncertainty.test(text ?? ''))
   );
   if (unconfirmedCard) {
     items.push({
@@ -71,7 +73,7 @@ export function calculateExecutiveScore(project: ReportProject, t: ScoreT = engl
       category: 'completeness',
       label: t('score.releaseLabel'),
       status: 'pass',
-      description: t('score.releaseOk'),
+      description: 'No uncertainty wording detected in executive summaries; release facts are not validated.',
       actionableFix: 'Looking great.',
     });
   }
@@ -129,7 +131,7 @@ export function calculateExecutiveScore(project: ReportProject, t: ScoreT = engl
         category: 'metrics',
         label: t('score.targetsLabel'),
         status: 'pass',
-        description: t('score.targetsOk'),
+        description: 'All metrics have target fields populated; target accuracy is not validated.',
         actionableFix: 'Looking great.',
       });
     }
@@ -167,7 +169,7 @@ export function calculateExecutiveScore(project: ReportProject, t: ScoreT = engl
       category: 'ownership',
       label: t('score.ownershipLabel'),
       status: 'pass',
-      description: t('score.ownershipOk'),
+      description: 'All next steps have owner fields populated; assignments are not validated.',
       actionableFix: 'Looking great.',
     });
   } else {
@@ -203,7 +205,7 @@ export function calculateExecutiveScore(project: ReportProject, t: ScoreT = engl
         category: 'accessibility',
         label: t('score.altLabel'),
         status: 'pass',
-        description: t('score.altOk'),
+        description: 'All visual cards have alternative text of at least five characters; image accuracy and accessibility are not validated.',
         actionableFix: 'Looking great.',
       });
     }
@@ -233,89 +235,10 @@ export function calculateExecutiveScore(project: ReportProject, t: ScoreT = engl
 }
 
 /**
- * Applies deterministic 1-click fixes for diagnostic readiness issues.
+ * Compatibility entry point for readiness actions. These checks require facts
+ * or human review, so callers must route to field/manual guidance instead.
+ * Even alt text needs image knowledge; a title alone cannot establish it.
  */
-export function applyQuickFixToProject(project: ReportProject, checkId: string): ReportProject {
-  const updatedProject = { ...project, isDirty: true };
-
-  switch (checkId) {
-    case 'check-reporting-period':
-       const date = new Date();
-       updatedProject.reportingPeriod = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      break;
-
-    case 'check-unconfirmed-release':
-      updatedProject.cards = project.cards.map(c => {
-        if (c.type === 'executive_summary') {
-          return {
-            ...c,
-            statusNote: 'Target release window: Mid-November pending staging signoff & security audit',
-          };
-        }
-        return c;
-      });
-      break;
-
-    case 'check-metrics-targets':
-      updatedProject.cards = project.cards.map(c => {
-        if (c.type === 'kpi_metric' && c.target === undefined) {
-          return {
-            ...c,
-            target: c.value <= 10 ? 0 : 100,
-          };
-        }
-        return c;
-      });
-      break;
-
-    case 'check-action-ownership':
-      updatedProject.cards = project.cards.map(c => {
-        if (c.type === 'next_steps') {
-          return {
-            ...c,
-            items: c.items.map((item, idx) => ({
-              ...item,
-              owner: item.owner || (idx % 2 === 0 ? 'alex-lead' : 'taylor-eng'),
-              dueDate: item.dueDate || '16 Oct 2026',
-            })),
-          };
-        }
-        return c;
-      });
-      break;
-
-    case 'check-accessibility-alt':
-      updatedProject.cards = project.cards.map(c => {
-        if (c.type === 'visual_update' && (!c.altText || c.altText.trim().length < 5)) {
-          return {
-            ...c,
-            altText: `Customer portal modern settings mockup for ${c.title}`,
-          };
-        }
-        return c;
-      });
-      break;
-
-    case 'check-exec-summary':
-      if (!project.cards.some(c => c.type === 'executive_summary')) {
-        updatedProject.cards = [
-          {
-            id: `card-exec-fix-${Date.now()}`,
-            type: 'executive_summary',
-            title: 'Executive Summary',
-            summary: project.rawNotes.slice(0, 150) || 'Sprint progress summary.',
-            keyAccomplishments: ['Core features ready for review'],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          ...project.cards,
-        ];
-      }
-      break;
-
-    default:
-      break;
-  }
-
-  return updatedProject;
+export function applyQuickFixToProject(project: ReportProject, _checkId: string): ReportProject {
+  return project;
 }

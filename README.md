@@ -29,6 +29,18 @@
 
 ---
 
+## Interactive POC Presentation
+
+For the 15-minute meeting agenda and repeatable five-minute live workflow, see **[POC demo runbook](docs/POC-DEMO.md)**. In the workspace, **Open demo** creates a new fictional sample without replacing existing projects.
+
+Open **[`/poc`](https://project.anson-chan.com/poc)** or select the presentation icon in the workspace header. The twelve-slide, fixed 16:9 presentation covers the vision and user story, original website, project library, input review, six card components, source references, readiness checks, snapshots, export, architecture, pilot criteria, and roadmap.
+
+Use **Next / Previous**, arrow keys, **Home / End**, the slide chooser, or full-screen control. Actual application screenshots are marked with blue highlight boxes, connector arrows, and clickable explanatory callouts. Toggle markings with the highlighter control. The presentation scales uniformly without reflowing into a webpage; landscape/full screen offers the clearest small-screen view. Screenshots use fictional sample data, and pilot metrics are proposed targets rather than measured outcomes.
+
+Install the matching test browser once with `npx playwright install chromium`, then run presentation browser tests with `npm run test:e2e`. Tests start a dedicated server on port 3100. Run unit tests with `npm test`, type-check with `npm run lint`, and build with `npm run build`.
+
+**PowerPoint download:** Select **Download PowerPoint** in the presentation toolbar. The `.pptx` contains all twelve widescreen slides as high-resolution images, with slide text and component context in speaker notes. Slide artwork is image-based rather than individually editable shapes. After changing presentation content or screenshots, run `npm run export:pptx` before building to regenerate `public/poc/project-reporting-builder-poc.pptx` using the matching Playwright Chromium. Export runs locally and does not upload report data.
+
 ## Table of Contents
 
 - [1. Design Philosophy: The Apple Way](#1-design-philosophy-the-apple-way)

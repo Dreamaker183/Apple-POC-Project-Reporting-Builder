@@ -1,5 +1,10 @@
 import { SnippetCard } from '../../types/report';
 
+function combinedSource(old: SnippetCard, next: SnippetCard) {
+  const passages = [...new Set([old.sourceRef?.passageText, next.sourceRef?.passageText].filter(Boolean))];
+  return passages.length ? { passageText: passages.join('\n\n'), confidence: 'inferred' as const, notes: 'Combined reviewed source passages. Human interpretation retained; facts not independently verified.' } : undefined;
+}
+
 /** Merge explicitly reviewed findings by stable source identity; retain manual edits and ordering. */
 export function mergeReviewedCards(existing: SnippetCard[], reviewed: SnippetCard[]): SnippetCard[] {
   const incoming = [...reviewed];
@@ -10,9 +15,7 @@ export function mergeReviewedCards(existing: SnippetCard[], reviewed: SnippetCar
     const exactIndex = incoming.findIndex((next) => next.sourceKey && next.sourceKey === old.sourceKey);
     if (exactIndex >= 0) {
       const [next] = incoming.splice(exactIndex, 1);
-      if (old.manuallyEdited) {
-        merged.push(old);
-      } else if (old.type === 'executive_summary' && next.type === 'executive_summary' && next.sourceKey === 'review:summary') {
+      if (old.type === 'executive_summary' && next.type === 'executive_summary' && next.sourceKey === 'review:summary') {
         const existingSet = new Set(old.keyAccomplishments.map((a) => a.toLowerCase()));
         const added = next.keyAccomplishments.filter((a) => !existingSet.has(a.toLowerCase()));
         merged.push({
@@ -20,6 +23,7 @@ export function mergeReviewedCards(existing: SnippetCard[], reviewed: SnippetCar
           id: old.id,
           createdAt: old.createdAt,
           summary: [old.summary, next.summary].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join(' '),
+          sourceRef: combinedSource(old, next),
           keyAccomplishments: [...old.keyAccomplishments, ...added],
           statusNote: next.statusNote ?? old.statusNote,
         });
@@ -32,7 +36,7 @@ export function mergeReviewedCards(existing: SnippetCard[], reviewed: SnippetCar
           updatedAt: next.updatedAt,
         });
       } else {
-        merged.push({ ...next, id: old.id, createdAt: old.createdAt });
+        merged.push(old.manuallyEdited && !next.manuallyEdited ? old : { ...next, id: old.id, createdAt: old.createdAt });
       }
       continue;
     }
@@ -49,9 +53,9 @@ export function mergeReviewedCards(existing: SnippetCard[], reviewed: SnippetCar
           const added = next.keyAccomplishments.filter((a) => !existingSet.has(a.toLowerCase()));
           merged.push({
             ...old,
-            summary: old.manuallyEdited
-              ? old.summary
-              : [old.summary, next.summary].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join(' '),
+            summary: [old.summary, next.summary].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join(' '),
+            sourceRef: combinedSource(old, next),
+            manuallyEdited: true,
             keyAccomplishments: [...old.keyAccomplishments, ...added],
             updatedAt: next.updatedAt,
           });

@@ -27,27 +27,41 @@ interface PassageMatch {
 function extractSentencesWithOffsets(text: string): PassageMatch[] {
   if (!text || !text.trim()) return [];
 
-  // Match sentences ending in punctuation or linebreaks
-  const regex = /[^.!?\n]+(?:[.!?]+|$)/g;
   const passages: PassageMatch[] = [];
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    const raw = match[0];
-    const trimmed = raw.trim();
-    if (trimmed.length > 5) {
-      const offsetInRaw = raw.indexOf(trimmed);
-      const start = match.index + offsetInRaw;
-      const end = start + trimmed.length;
-      passages.push({
-        sentence: trimmed,
-        start,
-        end,
-      });
+  let lineOffset = 0;
+  for (const line of text.split('\n')) {
+    const content = line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '');
+    const lead = line.indexOf(content);
+    // A decimal point between digits is part of the value, not a sentence boundary.
+    const regex = /(?:[^.!?]|(?<=\d)\.(?=\d))+(?:[.!?]+|$)/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(content)) !== null) {
+      const trimmed = match[0].trim();
+      if (trimmed.length <= 5 || trimmed.endsWith(':')) continue;
+      const start = lineOffset + lead + match.index + match[0].indexOf(trimmed);
+      passages.push({ sentence: trimmed, start, end: start + trimmed.length });
     }
+    lineOffset += line.length + 1;
   }
 
   return passages;
+}
+
+function commitmentDetails(sentence: string) {
+  return {
+    owner: sentence.match(/\bowner\s*:\s*([\p{L}-]+)\b/iu)?.[1]
+      ?? sentence.match(/\b([A-Z][\p{L}-]+)\s+(?:will|plans to)\b/u)?.[1],
+    dueDate: sentence.match(/\b(?:by|on|for)\s+(\d{4}-\d{2}-\d{2})\b/i)?.[1],
+  };
+}
+
+function milestoneStatus(sentence: string): MilestoneCardData['status'] | undefined {
+  if (/\bnot\s+(?:yet\s+)?(?:achieved|completed)\b/i.test(sentence)) return undefined;
+  if (/\b(?:achieved|completed|shipped|launched)\b/i.test(sentence)) return 'achieved';
+  if (/\bdelayed\b/i.test(sentence)) return 'delayed';
+  if (/\bat risk\b/i.test(sentence)) return 'at_risk';
+  if (/\bon track\b/i.test(sentence)) return 'on_track';
+  return undefined;
 }
 
 /**
@@ -68,12 +82,18 @@ export function generateSnippetCards(
   const keyAccomplishments: string[] = [];
   const riskPassages: PassageMatch[] = [];
   const planPassages: PassageMatch[] = [];
+  const milestonePassages: PassageMatch[] = [];
   let statusNotes: string[] = [];
   let execSummarySourcePassage: PassageMatch | null = null;
 
   // 1. Analyze text passages with explicit linguistic cues
   passages.forEach((p) => {
     const lower = p.sentence.toLowerCase();
+    const isPlan = /\b(?:plans? to|will (?!not\b|be determined\b)[a-z]+|scheduled to|todo|target date)\b/.test(lower);
+    const isResolved = /\b(?:resolved|fixed|closed|cleared|unblocked)\b/.test(lower)
+      && !/\b(?:not|unresolved)\b/.test(lower);
+    const isMilestone = /\bmilestone\b/.test(lower) && milestoneStatus(p.sentence) !== undefined;
+    if (isMilestone) milestonePassages.push(p);
 
     // Check for unconfirmed / missing constraint notes
     if (
@@ -87,7 +107,7 @@ export function generateSnippetCards(
     }
 
     // Check for risks / blockers / defects
-    if (
+    if (!isPlan && !isResolved && !isMilestone && (
       lower.includes('defect') ||
       lower.includes('block') ||
       lower.includes('risk') ||
@@ -95,7 +115,7 @@ export function generateSnippetCards(
       lower.includes('issue') ||
       lower.includes('failure') ||
       lower.includes('behind')
-    ) {
+    )) {
       riskPassages.push(p);
     }
 
@@ -115,15 +135,7 @@ export function generateSnippetCards(
     }
 
     // Check for next steps / plans / actions
-    if (
-      lower.includes('plans to') ||
-      lower.includes('will complete') ||
-      lower.includes('will resolve') ||
-      lower.includes('next review') ||
-      lower.includes('scheduled to') ||
-      lower.includes('todo') ||
-      lower.includes('target date')
-    ) {
+    if (isPlan) {
       planPassages.push(p);
     }
   });
@@ -169,9 +181,9 @@ export function generateSnippetCards(
   if (metrics && metrics.length > 0) {
     metrics.forEach((m, idx) => {
       // Find matching passage in text if mentioned
-      const matchedPassage = passages.find(p => 
-        p.sentence.toLowerCase().includes(m.name.toLowerCase()) ||
-        p.sentence.includes(String(m.value))
+      const matchedPassage = passages.find(p =>
+        p.sentence.toLowerCase().includes(m.name.toLowerCase()) &&
+        [...p.sentence.matchAll(/-?\d+(?:\.\d+)?/g)].some(token => Number(token[0]) === m.value)
       );
 
       let trend: 'improving' | 'neutral' | 'declining' | undefined;
@@ -206,11 +218,11 @@ export function generateSnippetCards(
           startIndex: matchedPassage.start,
           endIndex: matchedPassage.end,
           confidence: 'explicit',
-          notes: `Explicit metric extracted with source validation: ${m.name}`,
+          notes: `Value matched to an original source passage: ${m.name}. Factual accuracy is not independently verified.`,
         } : {
           passageText: `${m.name}: ${m.value}${m.unit}${m.target !== undefined ? ` (Target: ${m.target}${m.unit})` : ''}`,
-          confidence: 'explicit',
-          notes: 'Configured in verified structured metrics table',
+          confidence: 'manual',
+          notes: 'Manually configured structured metric. Factual accuracy is not independently verified.',
         },
       };
       cards.push(metricCard);
@@ -222,7 +234,7 @@ export function generateSnippetCards(
     const isBlocker = rp.sentence.toLowerCase().includes('blocking') || rp.sentence.toLowerCase().includes('block');
     const isCritical = rp.sentence.toLowerCase().includes('critical');
 
-    // Extract potential mitigation or impact from context
+    // Keep optional impact and mitigation absent unless supplied by source evidence.
     let title = isBlocker ? 'Critical Blocker' : 'Identified Risk';
     if (rp.sentence.toLowerCase().includes('defect')) {
       title = 'Open Defects & Validation Blocker';
@@ -237,8 +249,6 @@ export function generateSnippetCards(
       description: rp.sentence,
       severity: isCritical ? 'critical' : isBlocker ? 'high' : 'medium',
       isBlocker,
-      impact: isBlocker ? 'Blocking end-to-end flow validation' : undefined,
-      mitigation: 'Targeted resolution prioritized in current sprint cycle',
       createdAt: now,
       updatedAt: now,
       sourceRef: {
@@ -268,6 +278,7 @@ export function generateSnippetCards(
     nextStepItems.push({
       id: `step-${idx + 1}`,
       action: formattedAction,
+      ...commitmentDetails(sentence),
       status: 'planned',
       sourceRef: {
         passageText: pp.sentence,
@@ -297,6 +308,26 @@ export function generateSnippetCards(
     };
     cards.push(nextStepsCard);
   }
+
+  milestonePassages.forEach((passage, idx) => {
+    cards.push({
+      id: `card-milestone-${Date.now()}-${idx + 1}`,
+      type: 'milestone',
+      title: 'Milestone',
+      description: passage.sentence,
+      status: milestoneStatus(passage.sentence)!,
+      ...commitmentDetails(passage.sentence),
+      createdAt: now,
+      updatedAt: now,
+      sourceRef: {
+        passageText: passage.sentence,
+        startIndex: passage.start,
+        endIndex: passage.end,
+        confidence: 'explicit',
+        notes: 'Milestone with explicit status in source notes',
+      },
+    });
+  });
 
   // 6. Card: Visual Updates (P2)
   if (images && images.length > 0) {

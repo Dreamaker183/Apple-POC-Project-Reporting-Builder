@@ -129,34 +129,53 @@ export const SAMPLE_IMAGE_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
 `)}`;
 
 /**
- * Standard enterprise source text from prompt specification
+ * Fictional demo scenario; all people, delivery facts, and measurements are synthetic.
  */
 export const SAMPLE_SOURCE_TEXT =
-  `The team completed 85% of planned sprint work across the unified customer portal and identity platform. The customer profile page and account settings flow are ready for review following end-to-end design and accessibility audits. Three critical defects remain open, including a payment callback issue that is blocking end-to-end validation across staging merchant flows. API response time currently averages 240 ms against a 200 ms target, with query cache optimizations underway to close the gap. The team plans to complete payment integration testing and resolve the remaining critical defects before the next review. The release date has not yet been confirmed pending third-party gateway security certification.`;
+  `Customer Portal Modernization — Fictional demo
+Reporting period: 2026-10-03..2026-10-09 | As of 2026-10-09
+Sprint completion: the team completed 85% of planned sprint work (34 of 40 committed story points).
+The customer profile page and account settings flow are ready for review following design and accessibility checks.
+Open critical defects: 3 defects remain open, including a payment callback issue that is blocking end-to-end validation in staging; the other two affect profile form validation and keyboard focus.
+Average API response time is 240 ms against target 200 ms, measured across staging API requests during the reporting period.
+Profile review handoff milestone achieved on 2026-10-08; owner: Marcus.
+The staging database migration timeout was resolved on 2026-10-05 after David adjusted the migration batch size and reran integration tests.
+Sarah will patch the payment callback HMAC handler and rerun payment integration testing by 2026-10-12.
+Marcus plans to resolve the two profile defects by 2026-10-13.
+David will measure the query cache change against the average response time target by 2026-10-12.
+The release date has not yet been confirmed; payment validation must pass before Elena proposes a date.`;
+
+/** One reviewable measurement update; the initial sample remains at 240 ms. */
+export const DEMO_UPDATE_TEXT = 'Average API response time is 220 ms against target 200 ms.';
 
 /**
  * Messy, unstructured raw notes demonstrating real-world ingestion resilience
  */
 export const SAMPLE_MESSY_SOURCE_TEXT =
-  `Sprint 42 Engineering Standup & Raw Sync Notes (Build 26A4092b)
+  `Customer Portal Modernization — Fictional demo / raw sync notes (Build 26A4092b)
+Reporting period: 2026-10-03..2026-10-09 | As of 2026-10-09
 Attendees: @marcus (Identity & Frontend), @sarah (Billing & Payments), @david (Infra/API Gateway), @elena (EPM)
 
 Delivery & Accomplishments:
 - The customer profile page and account settings flow are ready for review following design handoff.
-- The team completed 85% of planned sprint work overall (34 of 40 committed story points).
+- Sprint completion: the team completed 85% of planned sprint work overall (34 of 40 committed story points).
 - Merged PR #842 for SSO token refresh with zero staging regressions reported.
 
 Blockers & Quality:
-- Three critical defects remain open, including a payment callback issue that is blocking end-to-end validation across staging merchant flows.
-- API response time currently averages 240 ms against a 200 ms target SLA (p99 spiked to 460ms during synthetic load testing).
+- Open critical defects: 3 defects remain open, including a payment callback issue that is blocking end-to-end validation in staging; the other two affect profile form validation and keyboard focus.
+- Average API response time is 240 ms against target 200 ms, measured across staging API requests during the reporting period.
+
+Handoff & Infra:
+- Profile review handoff milestone achieved on 2026-10-08; owner: Marcus.
+- The staging database migration timeout was resolved on 2026-10-05 after David adjusted the migration batch size and reran integration tests.
 
 Next Steps & Commitments:
-- The team plans to complete payment integration testing and resolve the remaining critical defects before the next review.
-- @sarah to patch HMAC webhook handler by Wednesday EOD.
-- @david tuning database query cache and indexing on tenant account lookup.
+- Sarah will patch the payment callback HMAC handler and rerun payment integration testing by 2026-10-12.
+- Marcus plans to resolve the two profile defects by 2026-10-13.
+- David will measure the query cache change against the average response time target by 2026-10-12.
 
 Deployment Constraint:
-- The release date has not yet been confirmed pending external payment gateway compliance signoff.`;
+- The release date has not yet been confirmed; payment validation must pass before Elena proposes a date.`;
 
 export const SAMPLE_METRICS: MetricInput[] = [
   {
@@ -166,7 +185,7 @@ export const SAMPLE_METRICS: MetricInput[] = [
     unit: '%',
     target: 100,
     previousValue: 70,
-    explanation: '34 of 40 committed story points delivered; final 15% delayed by payment webhook blocker',
+    explanation: '2026-10-03..2026-10-09: 34 of 40 committed story points delivered (85%); previous reporting period 2026-09-26..2026-10-02: 28 of 40 (70%).',
     chartStyle: 'bar',
     direction: 'higher',
   },
@@ -174,10 +193,10 @@ export const SAMPLE_METRICS: MetricInput[] = [
     id: 'sample-metric-2',
     name: 'Open critical defects',
     value: 3,
-    unit: '',
+    unit: 'defects',
     target: 0,
     previousValue: 5,
-    explanation: 'Down from 5 in Week 40; 1 Sev-1 webhook blocker in payment callback and 2 Sev-2 UI regressions',
+    explanation: '2026-10-03..2026-10-09: 3 open critical defects as of 2026-10-09, down from 5 as of 2026-10-02 in 2026-09-26..2026-10-02; one payment callback blocker and two profile defects.',
     chartStyle: 'trend',
     direction: 'lower',
   },
@@ -188,8 +207,8 @@ export const SAMPLE_METRICS: MetricInput[] = [
     unit: 'ms',
     target: 200,
     previousValue: 260,
-    explanation: 'p99 latency improved by 20ms over last sprint; redis query cache layer tuning underway',
-    chartStyle: 'donut',
+    explanation: '2026-10-03..2026-10-09: average across staging API requests is 240 ms against target 200 ms; previous reporting period 2026-09-26..2026-10-02: average 260 ms using the same staging workload.',
+    chartStyle: 'bar',
     direction: 'lower',
   },
 ];
@@ -211,12 +230,12 @@ export function createSampleProject(useMessyInput: boolean = false): ReportProje
     sourceText,
     SAMPLE_METRICS,
     SAMPLE_IMAGES,
-    'Customer Portal Modernization'
+    'Customer Portal Modernization — Fictional demo'
   );
 
   return {
     id: 'project-sample-customer-portal',
-    title: 'Customer Portal Modernization',
+    title: 'Customer Portal Modernization — Fictional demo',
     reportingPeriod: '2026-10-09',
     createdAt: '2026-10-09T09:00:00.000Z',
     rawNotes: sourceText,
@@ -229,7 +248,7 @@ export function createSampleProject(useMessyInput: boolean = false): ReportProje
 }
 
 /**
- * Historical Week 40 Baseline Snapshot (prior sprint) to compare against Week 41
+ * Fictional baseline for 2026-09-26..2026-10-02, as of 2026-10-02.
  */
 export const WEEK_40_BASELINE_SNAPSHOT: SnippetCard[] = [
   {
@@ -255,7 +274,7 @@ export const WEEK_40_BASELINE_SNAPSHOT: SnippetCard[] = [
     target: 100,
     trend: 'improving',
     direction: 'higher',
-    explanation: '28 of 40 committed story points completed in Week 40 sprint',
+    explanation: '2026-09-26..2026-10-02: 28 of 40 committed story points completed (70%), as of 2026-10-02.',
     createdAt: '2026-10-02T17:00:00.000Z',
     updatedAt: '2026-10-02T17:00:00.000Z',
   },
@@ -265,11 +284,11 @@ export const WEEK_40_BASELINE_SNAPSHOT: SnippetCard[] = [
     title: 'Open critical defects',
     label: 'Open critical defects',
     value: 5,
-    unit: '',
+    unit: 'defects',
     target: 0,
     trend: 'declining',
     direction: 'lower',
-    explanation: '5 critical issues identified during initial staging spin-up',
+    explanation: '2026-09-26..2026-10-02: 5 open critical defects as of 2026-10-02 during staging validation.',
     createdAt: '2026-10-02T17:00:00.000Z',
     updatedAt: '2026-10-02T17:00:00.000Z',
   },
@@ -283,7 +302,7 @@ export const WEEK_40_BASELINE_SNAPSHOT: SnippetCard[] = [
     target: 200,
     trend: 'declining',
     direction: 'lower',
-    explanation: 'Baseline p99 response time prior to Redis caching layer integration',
+    explanation: '2026-09-26..2026-10-02: average across staging API requests was 260 ms against target 200 ms, using the same workload as the following reporting period.',
     createdAt: '2026-10-02T17:00:00.000Z',
     updatedAt: '2026-10-02T17:00:00.000Z',
   },
@@ -308,7 +327,7 @@ export const WEEK_40_BASELINE_SNAPSHOT: SnippetCard[] = [
       {
         id: 'step-old-1',
         action: 'Resolve staging database timeout',
-        status: 'completed',
+        status: 'in_progress',
         owner: 'david-infra',
         dueDate: '02 Oct 2026',
       },
@@ -324,4 +343,3 @@ export const WEEK_40_BASELINE_SNAPSHOT: SnippetCard[] = [
     updatedAt: '2026-10-02T17:00:00.000Z',
   },
 ];
-

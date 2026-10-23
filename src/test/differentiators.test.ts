@@ -57,20 +57,21 @@ describe('Surprise-and-Delight Differentiator 2: Executive-Ready Score', () => {
     });
   });
 
-  it('applies 1-click deterministic quick-fixes to resolve diagnostic warnings', () => {
+  it('keeps unsupported commitments unresolved rather than inventing quick-fix facts', () => {
     let project = createSampleProject();
+    const before = calculateExecutiveScore(project);
 
     // Fix unassigned DRIs
     project = applyQuickFixToProject(project, 'check-action-ownership');
     const scoreAfterDri = calculateExecutiveScore(project);
     const driCheck = scoreAfterDri.items.find(i => i.id === 'check-action-ownership');
-    expect(driCheck?.status).toBe('pass');
+    expect(scoreAfterDri).toEqual(before);
 
     // Fix unconfirmed release date note
     project = applyQuickFixToProject(project, 'check-unconfirmed-release');
     const scoreAfterRelease = calculateExecutiveScore(project);
     const releaseCheck = scoreAfterRelease.items.find(i => i.id === 'check-unconfirmed-release');
-    expect(releaseCheck?.status).toBe('pass');
+    expect(releaseCheck?.status).toBe('warning');
   });
 });
 

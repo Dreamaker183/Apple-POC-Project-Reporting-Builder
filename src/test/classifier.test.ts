@@ -10,7 +10,8 @@ describe('Passage classification review', () => {
     expect(findings.map(f => f.category)).toEqual(['accomplishment', 'metric', 'risk', 'action']);
     for (const finding of findings) expect(text.slice(finding.sourceStart, finding.sourceEnd)).toBe(finding.evidence);
     const metric = findings.find(f => f.category === 'metric')!;
-    expect(metric.metric).toMatchObject({ value: 240, previousValue: 260, target: 200, unit: 'ms', chartStyle: 'trend' });
+    expect(metric.metric).toMatchObject({ value: 240, previousValue: 260, target: 200, unit: 'ms' });
+    expect(cardsFromFindings([metric], [], [], 'Demo')[0]).toMatchObject({ chartStyle: 'trend' });
     expect(findings.find(f => f.category === 'action')?.detail).toContain('Maya');
     expect(findings.find(f => f.category === 'action')?.detail).toContain('Friday');
   });

@@ -1,5 +1,4 @@
-import { MetricInput, SnippetCard, SourceReference } from '../../types/report';
-import { generateSnippetCards } from './deterministicParser';
+import { ImageAssetInput, MetricInput, SnippetCard, SourceReference } from '../../types/report';
 
 export type FindingCategory = 'accomplishment' | 'metric' | 'risk' | 'action' | 'milestone' | 'context';
 
@@ -30,7 +29,7 @@ function passagesOf(text: string): Passage[] {
   for (const line of lines) {
     const content = line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '');
     const lead = line.indexOf(content);
-    const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g;
+    const sentenceRegex = /(?:[^.!?]|(?<=\d)\.(?=\d))+(?:[.!?]+|$)/g;
     let match: RegExpExecArray | null;
     while ((match = sentenceRegex.exec(content))) {
       const value = match[0].trim();
@@ -60,18 +59,18 @@ const add = (out: ClassificationFinding[], p: Passage, category: FindingCategory
 };
 
 function metricFromPassage(p: Passage): MetricInput | null {
-  const numeric = /-?\d[\d,]*(?:\.\d+)?/g;
+  const numeric = /(?<![\w.])-?\d[\d,]*(?:\.\d+)?/g;
   const tokens = [...p.text.matchAll(numeric)];
   if (!tokens.length) return null;
   const parse = (s: string) => Number(s.replace(/,/g, ''));
   const range = p.text.match(/from\s+(-?\d[\d,]*(?:\.\d+)?)\s*(%|percent|ms|milliseconds?|seconds?|minutes?|hours?|days?|users?|defects?|bugs?|points?|requests?)?\s+(?:to|→)\s+(-?\d[\d,]*(?:\.\d+)?)\s*(%|percent|ms|milliseconds?|seconds?|minutes?|hours?|days?|users?|defects?|bugs?|points?|requests?)?/i);
-  let currentToken = tokens[tokens.length - 1];
+  let currentToken = tokens[0];
   let previousValue: number | undefined;
   let unitText = '';
   if (range) {
     previousValue = parse(range[1]);
-    const currentValue = parse(range[3]);
-    currentToken = tokens.find(t => t[0].replace(/,/g, '') === String(currentValue)) ?? currentToken;
+    const currentIndex = range.index! + range[0].lastIndexOf(range[3]);
+    currentToken = tokens.find(t => t.index === currentIndex) ?? currentToken;
     unitText = range[4] || range[2] || '';
   } else {
     const targetFirst = p.text.match(/(?:target|goal)\s*(?:of|is|at)?\s*(-?\d[\d,]*(?:\.\d+)?)(?:\s*(%|percent|ms|milliseconds?|seconds?|minutes?|hours?|days?|users?|defects?|bugs?|points?|requests?))?/i);
@@ -80,7 +79,7 @@ function metricFromPassage(p: Passage): MetricInput | null {
     const targetIndex = targetMatch?.index ?? -1;
     const targetNumber = targetMatch ? (targetFirst ? targetMatch[1] : targetMatch[1]) : undefined;
     const eligible = tokens.filter(t => !(targetMatch && t.index === targetIndex + targetMatch[0].indexOf(targetNumber!)));
-    currentToken = eligible[eligible.length - 1] ?? tokens[tokens.length - 1];
+    currentToken = eligible[0] ?? tokens[0];
     const tail = p.text.slice(currentToken.index! + currentToken[0].length);
     unitText = tail.match(/^\s*(%|percent|ms|milliseconds?|seconds?|minutes?|hours?|days?|users?|defects?|bugs?|points?|requests?)/i)?.[1] ?? '';
   }
@@ -89,7 +88,7 @@ function metricFromPassage(p: Passage): MetricInput | null {
   const targetLast = p.text.match(/(-?\d[\d,]*(?:\.\d+)?)(?:\s*(%|percent|ms|milliseconds?|seconds?|minutes?|hours?|days?|users?|defects?|bugs?|points?|requests?))?\s*(?:is the\s*)?(?:target|goal)\b/i);
   const target = targetFirst ? parse(targetFirst[1]) : targetLast ? parse(targetLast[1]) : undefined;
   unitText = /^percent$/i.test(unitText) ? '%' : /^milliseconds?$/i.test(unitText) ? 'ms' : unitText;
-  const labelEnd = currentToken.index ?? 0;
+  const labelEnd = range?.index ?? currentToken.index ?? 0;
   const prefix = p.text.slice(0, labelEnd).replace(/\b(?:dropped|decreased|increased|rose|improved|moved|changed|from|is|was|currently|now|at|averages?|reached|completed|stands|to)\b\s*$/i, '').trim();
   const label = prefix.split(/[;,]/).pop()?.replace(/^(?:the team|overall|and)\s+/i, '').trim();
   const looksMetric = !!unitText || target !== undefined || previousValue !== undefined || /\b(?:metric|latency|response time|velocity|completion|revenue|users|defects|bugs|conversion|uptime|average|score|rate|traffic)\b/i.test(p.text);
@@ -102,8 +101,6 @@ function metricFromPassage(p: Passage): MetricInput | null {
     previousValue,
     target,
     explanation: p.text,
-    direction: /defect|bug|latency|time|delay/i.test(label ?? '' + unitText) ? 'lower' : 'neutral',
-    chartStyle: previousValue !== undefined ? 'trend' : target !== undefined ? 'bar' : 'number',
   };
 }
 
@@ -113,16 +110,16 @@ export function classifyPassages(text: string): ClassificationFinding[] {
   for (const p of passagesOf(text)) {
     const lower = p.text.toLowerCase();
     const negated = /\b(no|not|without|never|none|zero)\b/.test(lower);
-    const resolved = /\b(resolved|fixed|closed|cleared|unblocked|completed|eliminated)\b/.test(lower);
-    const riskCue = /\b(block(?:er|ing|ed)?|risk|defect|bug|issue|failure|behind|at risk)\b/.test(lower);
-    const riskNegated = /\b(no|not|without|never|none|zero)\b.{0,35}\b(block(?:er|ing|ed)?|risk|defect|bug|issue|failure)s?\b/.test(lower);
-    const completed = /\b(completed|delivered|achieved|shipped|launched|finished|complete|ready for review|resolved|fixed)\b/.test(lower) && !/\bnot\s+(?:completed|resolved|fixed|complete)\b/.test(lower);
-    const isCompletionStatement = /\b(?:is|was|has been)\s+(?:complete|completed|resolved|fixed|finished)\b/.test(lower) || /\b(?:completed|delivered|achieved|shipped|launched|finished|resolved|fixed)\b/.test(lower);
     const actionCue = /\b(?:will\s+(?!not\b|be\s+determined\b)[a-z]+|plans?\s+to|need(?:s)?\s+to|should|must|action\s+item|follow\s+up|investigate|scheduled\s+to)\b/.test(lower);
+    const resolved = !actionCue && /\b(resolved|fixed|closed|cleared|unblocked|completed|eliminated)\b/.test(lower);
+    const riskCue = /\b(block(?:s|ers?|ing|ed)?|risks?|defects?|bugs?|issues?|failures?|behind|at risk)\b/.test(lower);
+    const riskNegated = /\b(no|not|without|never|none|zero)\b.{0,35}\b(block(?:er|ing|ed)?|risk|defect|bug|issue|failure)s?\b/.test(lower);
+    const completed = !actionCue && /\b(completed|delivered|achieved|shipped|launched|finished|complete|ready for review|resolved|fixed)\b/.test(lower) && !/\bnot\s+(?:completed|resolved|fixed|complete)\b/.test(lower);
+    const isCompletionStatement = completed && (/\b(?:is|was|has been)\s+(?:complete|completed|resolved|fixed|finished)\b/.test(lower) || /\b(?:completed|delivered|achieved|shipped|launched|finished|resolved|fixed)\b/.test(lower));
     const milestoneCue = /\b(?:milestone|phase\s+\d+|release\s+candidate|beta\s+launch|ga\s+launch|target\s+release|handoff\s+milestone)\b/.test(lower);
 
     if (riskCue && !riskNegated && !resolved) {
-      const blocker = /\b(block(?:er|ing|ed)?|blocking)\b/.test(lower);
+      const blocker = /\bblock(?:s|ers?|ing|ed)?\b/.test(lower);
       add(findings, p, 'risk', blocker ? 'Potential blocker' : 'Potential risk');
     }
     if (actionCue && !completed) {
@@ -146,15 +143,30 @@ export function classifyPassages(text: string): ClassificationFinding[] {
   return findings;
 }
 
-export function cardsFromFindings(findings: ClassificationFinding[], existingMetrics: MetricInput[], images: import('../../types/report').ImageAssetInput[], projectTitle: string): SnippetCard[] {
+/** Resolve a reviewed metric without letting omitted fields erase project settings. */
+export function resolveReviewedMetric(update: MetricInput, existingMetrics: MetricInput[]): MetricInput {
+  const nameKey = (name: string) => name.trim().toLowerCase();
+  const existing = existingMetrics.find(m => m.id === update.id && !update.id.startsWith('metric-source-'))
+    ?? existingMetrics.find(m => nameKey(m.name) === nameKey(update.name));
+  return { ...existing, ...update,
+    target: update.target ?? existing?.target,
+    previousValue: update.previousValue ?? existing?.previousValue,
+    direction: update.direction ?? existing?.direction ?? (/defect|bug|latency|time|delay/i.test(update.name + update.unit) ? 'lower' : 'neutral'),
+    chartStyle: update.chartStyle ?? existing?.chartStyle ?? (update.previousValue !== undefined ? 'trend' : update.target !== undefined ? 'bar' : 'number'),
+    explanation: update.explanation ?? existing?.explanation,
+    id: existing?.id ?? `metric-${crypto.randomUUID()}`,
+  };
+}
+
+export function cardsFromFindings(findings: ClassificationFinding[], existingMetrics: MetricInput[], images: ImageAssetInput[], projectTitle: string): SnippetCard[] {
   const selected = findings.filter(f => f.selected);
   const now = new Date().toISOString();
   const source = (f: ClassificationFinding): SourceReference => ({
     passageText: f.evidence,
     startIndex: f.sourceStart,
     endIndex: f.sourceEnd,
-    confidence: f.confidence === 'explicit' ? 'explicit' : 'inferred',
-    notes: 'Classified locally; user reviewed before adding to report',
+    confidence: 'inferred',
+    notes: 'User-reviewed content from source notes; review does not independently verify the reported facts.',
   });
   const cards: SnippetCard[] = [];
   const summaries = selected.filter(f => f.category === 'accomplishment' || f.category === 'context');
@@ -171,12 +183,13 @@ export function cardsFromFindings(findings: ClassificationFinding[], existingMet
       sourceRef: source(summaries[0]),
     });
   }
+  let resolvedMetrics = [...existingMetrics];
   selected.filter(f => f.category === 'metric' && f.metric).forEach((f) => {
     const extracted = f.metric!;
-    const existing = existingMetrics.find(metric => metric.name.toLowerCase() === extracted.name.toLowerCase());
-    const m = existing ? { ...existing, ...extracted, id: existing.id } : extracted;
+    const m = resolveReviewedMetric(extracted, resolvedMetrics);
+    resolvedMetrics = [...resolvedMetrics.filter(metric => metric.id !== m.id), m];
     let trend: 'improving' | 'neutral' | 'declining' | undefined;
-    if (m.target !== undefined && m.direction !== 'neutral') {
+    if (m.target !== undefined && m.direction && m.direction !== 'neutral') {
       const lowerIsBetter = m.direction === 'lower';
       trend = lowerIsBetter ? (m.value <= m.target ? 'improving' : 'declining') : (m.value >= m.target ? 'improving' : 'declining');
     }
@@ -201,10 +214,10 @@ export function cardsFromFindings(findings: ClassificationFinding[], existingMet
   });
   selected.filter(f => f.category === 'risk').forEach((f, index) => {
     const lower = f.evidence.toLowerCase();
-    const isBlocker = /\b(block|blocking|blocked)\b/.test(lower);
+    const isBlocker = /\bblock(?:s|ers?|ing|ed)?\b/.test(lower);
     const severity = /\bcritical\b/.test(lower) ? 'critical' : /\bhigh\b/.test(lower) ? 'high' : 'medium';
     cards.push({
-      id: `card-risk-${f.sourceStart}-${index}`,
+      id: `card-risk-${crypto.randomUUID()}`,
       type: 'risk_blocker',
       sourceKey: `review:risk:${slugKey(f.evidence)}`,
       title: f.title,
@@ -225,7 +238,7 @@ export function cardsFromFindings(findings: ClassificationFinding[], existingMet
         : 'on_track';
     const dueDate = f.evidence.match(/\b(?:by|for|on)\s+((?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:\s+\w+\s+\d{1,2})?|\w+\s+\d{1,2}(?:,\s*\d{4})?)\b/i)?.[1];
     cards.push({
-      id: `card-milestone-${f.sourceStart}-${index}`,
+      id: `card-milestone-${crypto.randomUUID()}`,
       type: 'milestone',
       sourceKey: `review:milestone:${slugKey(f.evidence)}`,
       title: f.title === 'Accomplishment' || f.title === 'Context' ? 'Milestone' : f.title,
@@ -255,6 +268,16 @@ export function cardsFromFindings(findings: ClassificationFinding[], existingMet
       sourceRef: source(actions[0]),
     });
   }
-  cards.push(...generateSnippetCards('', [], images, projectTitle).filter(c => c.type === 'visual_update'));
-  return cards;
+  cards.push(...images.map((image): SnippetCard => ({
+    id: `card-visual-${crypto.randomUUID()}`,
+    type: 'visual_update', sourceKey: `image:${image.id}`,
+    title: `Media: ${image.name.replace(/\.[^/.]+$/, '')}`,
+    imageUrl: image.dataUrl, altText: image.altText || `Preview asset for ${projectTitle}`,
+    caption: `Design asset: ${image.name}`, context: 'Asset submitted with current reporting cycle',
+    createdAt: now, updatedAt: now,
+    sourceRef: { passageText: `Uploaded media asset: ${image.name}`, confidence: 'manual',
+      notes: 'User-reviewed uploaded image source; review does not independently verify image content.' },
+  })));
+  return cards.filter((card, index) => cards.findIndex(c => c.sourceKey === card.sourceKey) === index)
+    .map(card => ({ ...card, manuallyEdited: true }));
 }

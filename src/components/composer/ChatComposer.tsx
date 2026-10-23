@@ -22,10 +22,12 @@ import {
 } from 'lucide-react';
 import { MetricInput, ImageAssetInput, MetricChartStyle } from '../../types/report';
 import { MetricChart, CHART_STYLE_OPTIONS } from '../cards/MetricChart';
-import { ClassificationFinding, FindingCategory, cardsFromFindings, classifyPassages } from '../../lib/parsing/classifier';
+import { ClassificationFinding, FindingCategory, classifyPassages } from '../../lib/parsing/classifier';
 import { SnippetCard } from '../../types/report';
 import { useLanguage } from '../../lib/i18n/LanguageContext';
 import { DictKey } from '../../lib/i18n/dictionaries';
+import { prepareReviewedUpdate } from '../../lib/composition/prepareReviewedUpdate';
+import { DEMO_UPDATE_TEXT } from '../../lib/sampleData';
 
 type TFn = (key: DictKey, vars?: Record<string, string | number>) => string;
 
@@ -117,7 +119,10 @@ export const ChatComposer: React.FC<Props> = ({
     try { sessionStorage.setItem(`reporting-attachments:${projectId}`, JSON.stringify(signatures)); } catch { /* optional storage */ }
   };
   const [draft, setDraft] = useState('');
+  const [showSources, setShowSources] = useState(false);
   const [reviewFindings, setReviewFindings] = useState<ClassificationFinding[] | null>(null);
+  const [reviewError, setReviewError] = useState('');
+  const [invalidReviewMetrics, setInvalidReviewMetrics] = useState<string[]>([]);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     try { setDraft(sessionStorage.getItem(`reporting-composer:${projectId}`) ?? ''); } catch { /* keep editing in memory */ }
@@ -292,6 +297,8 @@ export const ChatComposer: React.FC<Props> = ({
 
   const submitUpdate = () => {
     if (draft.trim()) {
+      setReviewError('');
+      setInvalidReviewMetrics([]);
       setReviewFindings(classifyPassages(draft));
       return;
     }
@@ -307,15 +314,12 @@ export const ChatComposer: React.FC<Props> = ({
 
   const applyReviewedFindings = () => {
     if (!reviewFindings) return;
-    const selected = reviewFindings.filter(f => f.selected);
-    const additions = selected.flatMap(f => f.category === 'metric' && f.metric ? [f.metric] : []);
-    const updatedMetrics = [...metrics];
-    for (const metric of additions) {
-      const match = updatedMetrics.findIndex(m => m.name.toLowerCase() === metric.name.toLowerCase());
-      if (match >= 0) updatedMetrics[match] = { ...updatedMetrics[match], ...metric, id: updatedMetrics[match].id };
-      else updatedMetrics.push(metric);
+    if (invalidReviewMetrics.length || reviewFindings.some(finding => finding.selected && finding.category === 'metric' && (!finding.metric?.name.trim() || !Number.isFinite(finding.metric.value)))) {
+      setReviewError('Enter a metric name and finite numeric value before adding findings. No report data has changed.');
+      return;
     }
-    const cards = cardsFromFindings(reviewFindings, metrics, images, projectTitle);
+    const selected = reviewFindings.filter(f => f.selected);
+    const { cards, metrics: updatedMetrics } = prepareReviewedUpdate(reviewFindings, metrics, pendingMetrics, pendingImages, projectTitle);
     onApplyFindings(draft, cards, updatedMetrics, selected.length);
     clearAttachmentStrip(updatedMetrics);
     setDraft('');
@@ -325,8 +329,7 @@ export const ChatComposer: React.FC<Props> = ({
 
   const keepAsContext = () => {
     if (!draft.trim()) return;
-    onGenerateReport(draft);
-    clearAttachmentStrip();
+    onApplyFindings(draft, [], metrics, 0);
     setDraft('');
     setReviewFindings(null);
     try { sessionStorage.removeItem(`reporting-composer:${projectId}`); } catch { /* optional storage */ }
@@ -351,6 +354,11 @@ export const ChatComposer: React.FC<Props> = ({
   return (
     <div className="no-print shrink-0 px-3 sm:px-6 md:px-10 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 bg-transparent">
       <div className="max-w-[740px] mx-auto">
+        <div className="flex items-center gap-3 pb-2 text-xs text-[#526477]">
+          <button type="button" aria-label={t('composer.toggleSources')} aria-expanded={showSources} onClick={() => setShowSources(!showSources)} className="flex items-center gap-1.5 rounded px-1 py-1"><StickyNote className="w-3.5 h-3.5" />{t('composer.sourceNotes')}</button>
+          {projectTitle.includes('Fictional demo') && <button type="button" className="ml-auto text-[#0071E3]" onClick={() => { setDraft(DEMO_UPDATE_TEXT); try { sessionStorage.setItem(`reporting-composer:${projectId}`, DEMO_UPDATE_TEXT); } catch { /* draft stays in memory */ } }}>Use fictional KPI update</button>}
+        </div>
+        {showSources && <div className="mb-3 rounded-2xl border border-black/10 bg-white p-4"><h2 className="text-sm font-semibold">{t('composer.sourceNotesTitle')}</h2><p className="text-xs text-[#6E6E73] mt-1 mb-2">Original passages are retained. Refresh preserves reviewed cards; new notes go through Review update.</p><textarea aria-label={t('composer.editSources')} value={rawNotes} onChange={event => onNotesChange(event.target.value)} rows={8} className="w-full resize-y text-sm leading-relaxed rounded-lg bg-[#F5F5F7] p-3" /><button type="button" onClick={() => setShowSources(false)} className="text-xs text-[#0071E3] mt-2">Close source notes</button></div>}
         {/* Chatbot card */}
         <div
           className={`relative rounded-[26px] border bg-white/95 backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.12),0_2px_6px_rgba(0,0,0,0.04)] transition-all duration-200 ${
@@ -408,7 +416,11 @@ export const ChatComposer: React.FC<Props> = ({
                   <blockquote className="mt-2 border-l-2 border-[#0071E3]/40 pl-2 text-[11px] leading-relaxed text-[#6E6E73]">“{finding.evidence}”</blockquote>
                   {finding.metric && finding.category === 'metric' && <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     <input aria-label={t('composer.metricNameAria')} value={finding.metric.name} onChange={(e) => setFinding(finding.id, { title: e.target.value, metric: { ...finding.metric!, name: e.target.value } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
-                    <input aria-label={t('composer.metricValueAria')} type="number" value={finding.metric.value} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, value: Number(e.target.value) } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
+                    <input aria-label={t('composer.metricValueAria')} aria-invalid={invalidReviewMetrics.includes(finding.id)} type="number" value={Number.isFinite(finding.metric.value) ? finding.metric.value : ''} onChange={(e) => {
+                      const invalid = !e.target.value.trim() || !Number.isFinite(e.target.valueAsNumber);
+                      setInvalidReviewMetrics(previous => invalid ? [...new Set([...previous, finding.id])] : previous.filter(id => id !== finding.id));
+                      setFinding(finding.id, { metric: { ...finding.metric!, value: invalid ? NaN : e.target.valueAsNumber } });
+                    }} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
                     <input aria-label={t('composer.metricUnitAria')} value={finding.metric.unit} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, unit: e.target.value } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
                     <input aria-label={t('composer.metricTargetAria')} type="number" placeholder={t('composer.fieldTarget')} value={finding.metric.target ?? ''} onChange={(e) => setFinding(finding.id, { metric: { ...finding.metric!, target: e.target.value ? Number(e.target.value) : undefined } })} className="min-w-0 text-xs rounded-lg border border-black/10 px-2 py-1.5" />
                   </div>}
@@ -416,6 +428,7 @@ export const ChatComposer: React.FC<Props> = ({
               </div>
             </div>)}
           </div>}
+          {reviewError && <p role="alert" className="text-xs text-rose-700 mt-3">{reviewError}</p>}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-3 border-t border-black/[0.06]"><span className="text-[11px] text-[#6E6E73]">{t('composer.analyzedLocally')}</span><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => setReviewFindings(null)} className="px-3 py-2 text-xs text-[#6E6E73]">{t('composer.reviewBack')}</button><button type="button" onClick={keepAsContext} className="px-3 py-2 rounded-full border border-black/10 text-[#424245] text-xs">{t('composer.keepAsContext')}</button><button type="button" disabled={!reviewFindings.some(f => f.selected)} onClick={applyReviewedFindings} className="px-4 py-2 rounded-full bg-[#0071E3] text-white text-xs font-medium disabled:opacity-40">{t('composer.addFindings', { count: reviewFindings.filter(f => f.selected).length })}</button></div></div>
         </div>}
         {/* Metrics sheet: placed directly on the chatbot when open, content-sized like before */}
@@ -890,10 +903,10 @@ export const ChatComposer: React.FC<Props> = ({
               type="button"
               onClick={submitUpdate}
               disabled={!draft.trim() && !rawNotes.trim() && !metrics.length && !images.length}
-              aria-label={hasCards ? t('composer.updateReport') : t('composer.buildReport')}
+              aria-label={draft.trim() ? 'Review update' : hasCards ? 'Refresh report' : t('composer.buildReport')}
               className="h-9 px-4 gap-2 flex items-center justify-center bg-gradient-to-r from-[#0071E3] to-[#0077ED] hover:from-[#0077ED] hover:to-[#0082FF] active:scale-[0.97] text-white rounded-full text-[12.5px] font-medium transition-all shadow-[0_2px_10px_rgba(0,113,227,0.28)] disabled:opacity-40 disabled:shadow-none disabled:active:scale-100"
             >
-              <span>{hasCards ? t('composer.updateReport') : t('composer.buildReport')}</span>
+              <span>{draft.trim() ? 'Review update' : hasCards ? 'Refresh report' : t('composer.buildReport')}</span>
               <Send className="w-3.5 h-3.5" />
             </button>
           </div>

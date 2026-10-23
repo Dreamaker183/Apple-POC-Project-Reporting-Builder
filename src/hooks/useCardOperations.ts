@@ -15,6 +15,7 @@ import { copyToClipboard } from '../lib/export/clipboard';
 import { formatCardToMarkdown } from '../lib/export/markdownExport';
 import { formatCardToHtml } from '../lib/export/htmlExport';
 import { mergeReviewedCards } from '../lib/composition/mergeReviewedCards';
+import { metricStatus } from '../lib/analysis/metricStatus';
 
 function scrollToCard(cardId: string, attempts = 6) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -54,7 +55,8 @@ export function useCardOperations(
     recordHistory();
     updateActiveProject((prev) => ({
       ...prev,
-      cards: prev.cards.map((c) => (c.id === updated.id ? { ...updated, manuallyEdited: true, updatedAt: new Date().toISOString() } : c)),
+      metrics: updated.type === 'kpi_metric' ? prev.metrics.map(metric => updated.sourceKey === `metric:${metric.id}` ? { ...metric, name: updated.label, value: updated.value, unit: updated.unit, target: updated.target, previousValue: updated.previousValue, explanation: updated.explanation, chartStyle: updated.chartStyle, direction: updated.direction } : metric) : prev.metrics,
+      cards: prev.cards.map((c) => (c.id === updated.id ? { ...updated, ...(updated.type === 'kpi_metric' ? { trend: metricStatus(updated) } : {}), manuallyEdited: true, updatedAt: new Date().toISOString() } : c)),
       isDirty: true,
     }));
   }, [recordHistory, updateActiveProject]);
@@ -273,7 +275,7 @@ export function useCardOperations(
     const firstNew = updatedCards.find((card) => cards.some((created) => created.sourceKey === card.sourceKey));
     if (firstNew) setInspectedCardId(firstNew.id);
     const count = selectedCount ?? cards.length;
-    addToast(`Added ${count} reviewed ${count === 1 ? 'finding' : 'findings'} to the report`, 'success');
+    addToast(count === 0 ? 'Saved source notes as context. Report cards unchanged.' : `Added ${count} reviewed ${count === 1 ? 'finding' : 'findings'} to the report`, 'success');
   }, [project.rawNotes, project.cards, recordHistory, updateActiveProject, addToast]);
 
   // ── Reset workspace UI (used on project switch) ──────────────────
